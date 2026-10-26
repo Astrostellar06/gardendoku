@@ -101,12 +101,17 @@ describe('advanced levels', () => {
 });
 
 describe('hard levels (joined edges)', () => {
-  it('appear every 5 levels on square gardens', () => {
-    for (let n = 1; n <= 60; n++) {
+  it('appear every 5 levels, on square or rectangular gardens', () => {
+    let rectangles = 0;
+    for (let n = 1; n <= 100; n++) {
       const info = levelInfo(n);
       expect(info.wrap, `level ${n}`).toBe(n % 5 === 0);
-      if (info.wrap) expect(info.width).toBe(info.height);
+      if (info.wrap) {
+        expect(info.shape).toBe('rect');
+        if (info.width !== info.height) rectangles++;
+      }
     }
+    expect(rectangles).toBeGreaterThan(0);
   });
 
   it('are uniquely solvable and solved by their own solution', () => {

@@ -10,7 +10,16 @@ import type { ThemeId } from './render/themes';
 import { Hud } from './ui/hud';
 import { attachInput } from './ui/input';
 import { loadSave, SaveData, writeSave } from './ui/storage';
-import { buildTutorialBoard, LOCK_CELL, STEPS, stepNumber, TURN_CELL, TutorialStep } from './tutorial';
+import {
+  buildTutorialBoard,
+  LAST_CELL,
+  LAST_HINT_DELAY,
+  LOCK_CELL,
+  STEP_COUNT,
+  STEPS,
+  TURN_CELL,
+  TutorialStep,
+} from './tutorial';
 
 type Mode = 'home' | 'play' | 'tutorial';
 
@@ -33,6 +42,9 @@ export class Game {
   /** Lock state applied by the current finger stroke, and how many tiles it changed. */
   private paint: { lock: boolean; count: number } | null = null;
   private tutorialStep: TutorialStep = 'intro';
+  /** Seconds spent on the current tutorial step, and whether the last tile has been turned. */
+  private tutorialClock = 0;
+  private tutorialSolved = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.applyStyleColors(setTheme(this.save.settings.theme).id);
@@ -128,10 +140,18 @@ export class Game {
 
   tick(dt: number) {
     if (this.mode === 'tutorial') {
-      if (this.tutorialStep === 'flowing' && this.renderer.waterComplete()) {
-        this.sound.win();
-        this.renderer.celebrate(() => undefined);
-        this.setTutorialStep('bloom');
+      this.tutorialClock += dt;
+      if (this.tutorialStep === 'finish') {
+        if (this.tutorialSolved && this.renderer.waterComplete()) {
+          // The whole garden is watered: celebrate, then congratulate.
+          this.sound.win();
+          this.vibrate([18, 40, 18]);
+          this.renderer.celebrate(() => undefined);
+          this.setTutorialStep('bravo');
+        } else if (!this.tutorialSolved && !this.renderer.spotlight && this.tutorialClock > LAST_HINT_DELAY) {
+          // Stuck for a while: point at the tile that is still wrong.
+          this.renderer.spotlight = { cell: LAST_CELL, kind: 'tap' };
+        }
       }
       return;
     }
@@ -230,6 +250,7 @@ export class Game {
     this.hud.showGameBars(false);
     const board = buildTutorialBoard();
     this.board = board;
+    this.tutorialSolved = false;
     this.renderer.setBoard(board, 'tutoriel');
     this.analysis = board.analyze();
     this.renderer.setAnalysis(this.analysis);
@@ -238,8 +259,9 @@ export class Game {
 
   private setTutorialStep(step: TutorialStep) {
     this.tutorialStep = step;
+    this.tutorialClock = 0;
     const info = STEPS[step];
-    this.hud.showCoach(info.text, stepNumber(step), info.button);
+    this.hud.showCoach(info.text, [info.number, STEP_COUNT], info.button);
     this.renderer.spotlight = info.focus;
     requestAnimationFrame(() => this.relayout());
   }
@@ -248,8 +270,8 @@ export class Game {
   private advanceTutorial() {
     if (this.mode !== 'tutorial') return;
     if (this.tutorialStep === 'intro') this.setTutorialStep('turn');
-    else if (this.tutorialStep === 'bloom') this.setTutorialStep('lock');
-    else if (this.tutorialStep === 'done') this.finishTutorial();
+    else if (this.tutorialStep === 'flowing') this.setTutorialStep('lock');
+    else if (this.tutorialStep === 'bravo') this.finishTutorial();
   }
 
   private finishTutorial() {
@@ -258,6 +280,32 @@ export class Game {
     this.save.seenLockTip = true;
     writeSave(this.save);
     this.play(this.save.level);
+  }
+
+  /**
+   * Tutorial taps: first only the highlighted tile turns; on the last step the
+   * player plays freely (locked tiles refuse to turn) until the garden is done.
+   */
+  private tutorialTap(board: Board, cell: number) {
+    const free = this.tutorialStep === 'finish' && !this.tutorialSolved;
+    const allowed = (this.tutorialStep === 'turn' && cell === TURN_CELL) || (free && !board.locked[cell]);
+    if (!allowed) {
+      this.renderer.shake(cell);
+      if (free) this.sound.denied();
+      return;
+    }
+    board.rotate(cell, 1);
+    this.renderer.rotate(cell, 1);
+    this.sound.rotate();
+    this.analysis = board.analyze();
+    this.renderer.setAnalysis(this.analysis);
+    if (this.tutorialStep === 'turn' && board.isCorrect(TURN_CELL)) {
+      this.setTutorialStep('flowing');
+    } else if (free && this.analysis.solved) {
+      // Wait for the water to reach every tile before congratulating.
+      this.tutorialSolved = true;
+      this.renderer.spotlight = null;
+    }
   }
 
   private leaveTutorial() {
@@ -270,17 +318,7 @@ export class Game {
   private onTap(cell: number) {
     const board = this.board;
     if (this.mode === 'tutorial' && board) {
-      // Only the highlighted tile turns; the rest of the little garden is a picture.
-      if (this.tutorialStep !== 'turn' || cell !== TURN_CELL) {
-        this.renderer.shake(cell);
-        return;
-      }
-      board.rotate(cell, 1);
-      this.renderer.rotate(cell, 1);
-      this.sound.rotate();
-      this.analysis = board.analyze();
-      this.renderer.setAnalysis(this.analysis);
-      if (this.analysis.solved) this.setTutorialStep('flowing');
+      this.tutorialTap(board, cell);
       return;
     }
     if (this.mode !== 'play' || this.won || !board) return;
@@ -306,7 +344,7 @@ export class Game {
         board.setLock(cell, true);
         this.sound.lock(true);
         this.vibrate(12);
-        this.setTutorialStep('done');
+        this.setTutorialStep('finish');
       }
       return;
     }

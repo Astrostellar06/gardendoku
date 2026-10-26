@@ -3,12 +3,12 @@
  * size, shape and generator settings are derived from a per-level seed,
  * then the garden itself is generated from that seed.
  *
- * Every fifth level is a "hard" one: a square garden whose opposite edges
- * are joined (water leaving one side comes back on the other).
+ * Every fifth level is a "hard" one: a square or rectangular garden whose
+ * opposite edges are joined (water leaving one side comes back on the other).
  */
 import { generate, Puzzle } from './generator';
 import { Rng } from './rng';
-import { buildShape, ShapeId, SHAPE_NAMES } from './shapes';
+import { buildShape, heartHeight, ShapeId, SHAPE_NAMES } from './shapes';
 
 export interface LevelInfo {
   index: number;
@@ -30,7 +30,7 @@ export interface LevelInfo {
  * Bump whenever generation changes: saved games from another version are not
  * restored (they would land on a different garden).
  */
-export const GENERATOR_VERSION = 2;
+export const GENERATOR_VERSION = 3;
 
 /** From these levels on, gardens require hypothesis reasoning on part of the tiles. */
 export const ADVANCED_FROM = 21;
@@ -50,12 +50,12 @@ export function isHardLevel(index: number): boolean {
   return index % HARD_EVERY === 0;
 }
 
-/** Side of the square garden of a hard level. */
-const WRAP_SIZES: Array<{ upTo: number; size: number }> = [
-  { upTo: 10, size: 5 },
-  { upTo: 25, size: 6 },
-  { upTo: 50, size: 7 },
-  { upTo: Infinity, size: 8 },
+/** Candidate sizes [w, h] of the hard levels' gardens, square or portrait. */
+const WRAP_SIZES: Array<{ upTo: number; sizes: Array<[number, number]> }> = [
+  { upTo: 10, sizes: [[5, 5], [5, 6]] },
+  { upTo: 25, sizes: [[5, 7], [6, 6], [6, 7]] },
+  { upTo: 50, sizes: [[6, 8], [7, 7], [7, 8]] },
+  { upTo: Infinity, sizes: [[7, 9], [8, 8], [8, 10]] },
 ];
 
 interface Band {
@@ -76,8 +76,17 @@ const BANDS: Band[] = [
   { upTo: Infinity, sizes: [[8, 12], [9, 11], [9, 12]], shapeChance: 0.5 },
 ];
 
-/** Hand-picked early shapes so players discover them soon. */
-const FIXED_SHAPES: Record<number, ShapeId> = { 9: 'heart', 14: 'circle', 17: 'ponds' };
+/** Hand-picked shapes so players meet every one of them early on. */
+const FIXED_SHAPES: Record<number, ShapeId> = {
+  9: 'heart',
+  12: 'flower',
+  14: 'circle',
+  17: 'ponds',
+  22: 'octagon',
+  27: 'diamond',
+  33: 'hourglass',
+  44: 'heart',
+};
 
 const SHAPES: ShapeId[] =['circle', 'octagon', 'diamond', 'plus', 'heart', 'flower', 'hourglass', 'ponds'];
 
@@ -102,6 +111,18 @@ const MAX_EXTRA_ROWS: Record<ShapeId, number> = {
 function fitShape(shape: ShapeId, target: number, rng: Rng): [number, number, number] {
   let best: [number, number, number] = [5, 5, 0];
   let bestScore = Infinity;
+  if (shape === 'heart') {
+    // A heart has one natural height per width (5x5, 7x6, 9x8).
+    for (const w of [5, 7, 9]) {
+      const h = heartHeight(w);
+      const count = buildShape('heart', w, h).reduce((a, b) => a + b, 0);
+      if (Math.abs(count - target) < bestScore) {
+        bestScore = Math.abs(count - target);
+        best = [w, h, count];
+      }
+    }
+    return best;
+  }
   for (let w = 5; w <= 9; w += 2) {
     for (let h = w; h <= w + MAX_EXTRA_ROWS[shape] && h <= 15; h += 2) {
       const count = buildShape(shape, w, h, rng.fork('probe')).reduce((a, b) => a + b, 0);
@@ -119,16 +140,16 @@ export function levelInfo(index: number): LevelInfo {
   const seed = `jardin-${index}`;
   const rng = new Rng(seed + ':params');
   if (isHardLevel(index)) {
-    const size = WRAP_SIZES.find((b) => index <= b.upTo)!.size;
+    const [width, height] = rng.pick(WRAP_SIZES.find((b) => index <= b.upTo)!.sizes);
     return {
       index,
-      width: size,
-      height: size,
+      width,
+      height,
       shape: 'rect',
       shapeName: 'Bords reliés',
       windiness: rng.float(0.3, 0.8),
       seed,
-      cells: size * size,
+      cells: width * height,
       wrap: true,
       advanced: advancedShare(index, true),
     };
@@ -141,7 +162,9 @@ export function levelInfo(index: number): LevelInfo {
   let width = bw;
   let height = bh;
   const roll = rng.chance(band.shapeChance);
-  const picked = rng.pick(SHAPES);
+  // Hearts top out at 46 tiles (9x8): keep them for gardens not much bigger.
+  const pool = bw * bh > 80 ? SHAPES.filter((s) => s !== 'heart') : SHAPES;
+  const picked = rng.pick(pool);
   if (FIXED_SHAPES[index] || roll) {
     shape = FIXED_SHAPES[index] ?? picked;
     if (shape === 'ponds') {

@@ -49,12 +49,12 @@ Au premier lancement, un mini-jardin 3×3 explique le jeu en 5 étapes. Un proje
 | Cercle | Rond-point |
 | Losange | Losange |
 | Croix | Croisée |
-| Cœur | Cœur |
+| Cœur (en escalier, 5×5, 7×6 ou 9×8) | Cœur |
 | Trèfle à quatre lobes | Trèfle |
 | Sablier | Sablier |
-| Carré aux bords reliés (niveaux difficiles) | Bords reliés |
+| Carré ou rectangle aux bords reliés (niveaux difficiles) | Bords reliés |
 
-Les formes rondes (cœur, cercle, trèfle) ne s'allongent que de 2 lignes au plus en hauteur, pour ne pas paraître étirées.
+Le cœur est dessiné case par case comme en pixel art : ses bords descendent d'une case par ligne jusqu'à une pointe d'une seule case. Le cercle et le trèfle ne s'allongent que de 2 lignes au plus en hauteur.
 
 ## Difficulté : déductions avancées
 
@@ -67,7 +67,7 @@ Jusqu'au niveau 20, chaque jardin se résout par déductions directes. À partir
 
 ## Niveaux difficiles : bords reliés
 
-Un niveau sur 5 (5, 10, 15…) est un niveau difficile : une grille carrée (5×5 à 8×8) dont les bords opposés sont reliés. L'eau qui sort d'un côté réapparaît du côté opposé. Pour que ça reste lisible :
+Un niveau sur 5 (5, 10, 15…) est un niveau difficile : une grille carrée ou rectangulaire (de 5×5 à 8×10) dont les bords opposés sont reliés. L'eau qui sort d'un côté réapparaît du côté opposé. Pour que ça reste lisible :
 
 - le jardin est posé sur un **plateau lilas**, avec un **liseré en pointillés** sur les bords qui mènent de l'autre côté ;
 - des **bandes fantômes** autour du jardin montrent en transparence le bord des parcelles opposées : le canal qui arrive de l'autre côté est visible juste à côté du bord (toucher une parcelle fantôme fait tourner la vraie) ;

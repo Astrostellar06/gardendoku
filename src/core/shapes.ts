@@ -68,14 +68,9 @@ function inside(shape: ShapeId, u: number, v: number, w: number, h: number): boo
       ];
       return petals.some(([pu, pv]) => Math.hypot(u - pu, v - pv) <= 0.4 + (hu + hv) * 0.3);
     }
-    case 'heart': {
-      // Two round lobes on top of a triangle pointing down.
-      const lobe = (cx: number) => ((u - cx) / 0.52) ** 2 + ((v + 0.48) / 0.52) ** 2 <= 1 + (hu + hv) * 0.9;
-      if (lobe(-0.48) || lobe(0.48)) return true;
-      if (v < -0.48) return false;
-      const halfWidth = ((1 - v) / 1.48) * 1.0;
-      return Math.abs(u) <= halfWidth + hu * 0.6;
-    }
+    case 'heart':
+      // Built cell by cell instead (see heartMask).
+      return true;
   }
 }
 
@@ -129,7 +124,46 @@ function carvePonds(active: Uint8Array, width: number, height: number, rng: Rng)
   }
 }
 
+/**
+ * Rows of a pixel-art heart of odd width w: a row of two lobes (plus a notched
+ * row from 9 wide), full rows, then sides stepping in by one cell per row down
+ * to a single-cell tip, so the tip never sticks out more than the slope.
+ */
+export function heartHeight(w: number): number {
+  return (w >= 9 ? 4 : 3) + (w - 1) / 2;
+}
+
+function heartMask(width: number, height: number): Uint8Array {
+  const active = new Uint8Array(width * height);
+  const c = (width - 1) / 2;
+  const slope = Math.floor((width - 1) / 2);
+  const top = Math.max(2, height - slope);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const dx = Math.abs(x - c);
+      let on: boolean;
+      if (y === 0) {
+        // Two lobes, one cell in from the sides, apart in the middle.
+        on = dx >= (width >= 9 ? 2 : 1) && dx <= c - 1;
+      } else if (y === 1 && width >= 9) {
+        on = dx >= 1;
+      } else if (y < top) {
+        on = true;
+      } else {
+        on = dx <= c - (y - top + 1);
+      }
+      if (on) active[y * width + x] = 1;
+    }
+  }
+  return active;
+}
+
 export function buildShape(shape: ShapeId, width: number, height: number, rng?: Rng): Uint8Array {
+  if (shape === 'heart') {
+    const heart = heartMask(width, height);
+    keepConnected(heart, width, height, centerOf(width, height));
+    return heart;
+  }
   const active = new Uint8Array(width * height);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
