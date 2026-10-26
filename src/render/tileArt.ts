@@ -3,9 +3,10 @@
  * tile (-0.5..0.5) and in the tile's own (unrotated) frame.
  */
 import { DX, DY, popcount4 } from '../core/grid';
-import { Decor, Flower, G } from './decor';
+import { Decor, Flower, G, PropInstance } from './decor';
 import { clamp01, easeOutBack, easeOutCubic, sub } from './easing';
 import { mixColor, P } from './palette';
+import { currentTheme } from './themes';
 
 export interface TileState {
   mask: number;
@@ -61,6 +62,12 @@ function drawSmallFlower(ctx: CanvasRenderingContext2D, f: Flower, t: number) {
   ctx.save();
   ctx.translate(f.x, f.y);
   ctx.rotate(f.rot + (1 - t) * 1.2);
+  const custom = currentTheme().smallFlower;
+  if (custom) {
+    custom(ctx, r, f.color, f.center);
+    ctx.restore();
+    return;
+  }
   // Soft shadow under the flower.
   disc(ctx, 0.008, 0.012, r * 0.9, 'rgba(120, 150, 110, 0.18)');
   ctx.fillStyle = f.color;
@@ -81,6 +88,12 @@ function drawTuft(ctx: CanvasRenderingContext2D, x: number, y: number, s: number
   ctx.translate(x, y);
   ctx.rotate(rot);
   ctx.scale(k, k);
+  const custom = currentTheme().tuft;
+  if (custom) {
+    custom(ctx, s);
+    ctx.restore();
+    return;
+  }
   ctx.strokeStyle = P.grassDeep;
   ctx.lineWidth = 0.016;
   ctx.lineCap = 'round';
@@ -212,6 +225,8 @@ export function drawTile(ctx: CanvasRenderingContext2D, st: TileState) {
     ctx.ellipse(p.x, p.y, p.r, p.r * 0.75, p.rot, 0, TAU);
     ctx.fill();
   }
+  const theme = currentTheme();
+  theme.dryGround?.(ctx, decor.ground);
 
   // Grass spreading from the canal.
   if (bloom > 0) {
@@ -227,6 +242,12 @@ export function drawTile(ctx: CanvasRenderingContext2D, st: TileState) {
       ctx.arc(b.x, b.y, b.r * k, 0, TAU);
     }
     ctx.fill();
+    if (theme.bloomGround) {
+      ctx.save();
+      ctx.clip();
+      theme.bloomGround(ctx, decor.ground);
+      ctx.restore();
+    }
   }
 
   // Canal: stone rim then sandy groove.
@@ -320,23 +341,69 @@ export function drawTile(ctx: CanvasRenderingContext2D, st: TileState) {
     ctx.restore();
   }
 
-  // Tufts and flowers (plants stand upright once the tile is at rest).
+  // End of a canal: a seedling becomes a lotus (or the style's own bloom).
   const upright = (-st.rot * Math.PI) / 2;
-  if (bloom > 0) {
-    for (const t of decor.tufts) drawTuft(ctx, t.x, t.y, t.s, t.rot + upright, sub(bloom, t.delay, 0.35));
-    for (const f of decor.flowers) drawSmallFlower(ctx, f, sub(bloom, f.delay, 0.3));
-  }
-
-  // End of a canal: a seedling becomes a lotus.
   if (isLeaf) {
     const t = sub(bloom, 0.3, 0.7);
     ctx.save();
     ctx.rotate(upright);
     drawSprout(ctx, 1 - easeOutCubic(clamp01(t * 3)));
     ctx.restore();
-    if (t > 0) drawLotus(ctx, G.basinR * 0.95, decor.bloomColor, decor.bloomPetals, decor.padAngle, t);
+    if (t > 0) {
+      if (theme.basin) theme.basin(ctx, G.basinR * 0.95, decor.ground, t);
+      else drawLotus(ctx, G.basinR * 0.95, decor.bloomColor, decor.bloomPetals, decor.padAngle, t);
+    }
   }
 
+  // Bridges over the canals, then things floating on the water.
+  for (const p of decor.props) {
+    if (p.def.place !== 'ground' && !p.def.animated) drawProp(ctx, p, st, upright, 0);
+  }
+
+  // Tufts and flowers (plants stand upright once the tile is at rest).
+  if (bloom > 0) {
+    for (const t of decor.tufts) drawTuft(ctx, t.x, t.y, t.s, t.rot + upright, sub(bloom, t.delay, 0.35));
+    for (const f of decor.flowers) drawSmallFlower(ctx, f, sub(bloom, f.delay, 0.3));
+  }
+
+  ctx.restore();
+
+  // Ground props, back to front as seen on screen. They are not clipped to the
+  // tile face: a tree may rise a little above it, over the tile behind.
+  const ground = decor.props.filter((p) => p.def.place === 'ground' && !p.def.animated);
+  if (ground.length > 1) {
+    const a = (st.rot * Math.PI) / 2;
+    const screenY = (p: PropInstance) => p.x * Math.sin(a) + p.y * Math.cos(a);
+    ground.sort((p, q) => screenY(p) - screenY(q));
+  }
+  for (const p of ground) drawProp(ctx, p, st, upright, 0);
+}
+
+/** How far (in tiles) drawings may spill outside the tile, e.g. tall props. */
+export const TILE_OVERFLOW = 0.2;
+
+/** Draw one style prop in its own frame, scaled in when it belongs to the bloom. */
+function drawProp(ctx: CanvasRenderingContext2D, p: PropInstance, st: TileState, upright: number, time: number) {
+  const def = p.def;
+  let scale = 1;
+  if (def.when === 'bloom') {
+    const t = def.place === 'water' ? sub(st.water, 0.5, 0.5) * sub(st.bloom, p.delay * 0.5, 0.3) : sub(st.bloom, p.delay, 0.35);
+    scale = easeOutBack(t);
+    if (scale <= 0.01) return;
+  }
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  if (def.place !== 'ground') ctx.rotate(p.angle);
+  else if (def.upright) ctx.rotate(upright);
+  // Upright props stand on their base and grow upward from it.
+  const k = scale * (def.upright ? def.drawScale ?? 1.5 : 1);
+  const base = def.upright ? p.r * 0.9 : 0;
+  if (k !== 1) {
+    ctx.translate(0, base);
+    ctx.scale(k, k);
+    ctx.translate(0, -base);
+  }
+  def.draw(ctx, { r: p.r, bloom: st.bloom, water: st.water, time, v: p.v, v2: p.v2 });
   ctx.restore();
 }
 
@@ -346,6 +413,9 @@ export function drawTile(ctx: CanvasRenderingContext2D, st: TileState) {
  */
 export function drawTileOverlay(ctx: CanvasRenderingContext2D, st: TileState, time: number) {
   const { mask, isSource } = st;
+  for (const p of st.decor.props) {
+    if (p.def.animated) drawProp(ctx, p, st, (-st.rot * Math.PI) / 2, time);
+  }
   if (st.water >= 1) {
     // Two lanes of irregular glints drifting downstream.
     ctx.save();

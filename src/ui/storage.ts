@@ -6,6 +6,8 @@ const KEY = 'jardin-des-sources:v1';
 export interface Settings {
   sound: boolean;
   haptics: boolean;
+  /** Garden style id. */
+  theme: string;
 }
 
 export interface SaveData {
@@ -19,16 +21,18 @@ export interface SaveData {
   solved: number;
   seenTutorial: boolean;
   seenLockTip: boolean;
+  seenHardIntro: boolean;
 }
 
 const DEFAULTS: SaveData = {
   level: 1,
   maxLevel: 1,
   snapshot: null,
-  settings: { sound: true, haptics: true },
+  settings: { sound: true, haptics: true, theme: 'printemps' },
   solved: 0,
   seenTutorial: false,
   seenLockTip: false,
+  seenHardIntro: false,
 };
 
 export function loadSave(): SaveData {

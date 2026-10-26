@@ -25,8 +25,39 @@ En mode dev, la console du navigateur expose aussi `__game` : `__game.debugSolve
 | --- | --- |
 | Tourner une parcelle | Tap |
 | Verrouiller / déverrouiller | Appui long, ou bouton **Verrou** puis tap (clic droit sur ordinateur) |
+| Verrouiller plusieurs parcelles | Après l'appui long (ou en mode Verrou), glisser le doigt : chaque parcelle touchée prend l'état de la première |
 | Indice | Bouton **Indice** : remet une parcelle dans le bon sens et la verrouille |
 | Recommencer | Bouton **Recommencer**, à toucher deux fois |
+| Aide | Bouton **?** en jeu |
+| Changer de style | Bouton **Styles** sur l'écran d'accueil |
+
+## Niveaux difficiles : bords reliés
+
+Un niveau sur 5 (5, 10, 15…) est un niveau difficile : une grille carrée (5×5 à 8×8) dont les bords opposés sont reliés. L'eau qui sort d'un côté réapparaît du côté opposé. Pour que ça reste lisible :
+
+- le jardin est posé sur un **plateau lilas**, avec un **liseré en pointillés** sur les bords qui mènent de l'autre côté ;
+- des **bandes fantômes** autour du jardin montrent en transparence le bord des parcelles opposées : le canal qui arrive de l'autre côté est visible juste à côté du bord (toucher une parcelle fantôme fait tourner la vraie) ;
+- quand deux parcelles sont reliées à travers un bord, le **canal se prolonge** jusque dans la bande fantôme, et l'eau qui passe fait une petite **étincelle** des deux côtés ;
+- une **carte d'explication** s'affiche la première fois, et le bandeau du niveau passe en lilas avec la mention « ★ Difficile ».
+
+## Styles de jardin
+
+Huit styles, choisis depuis l'écran d'accueil (bouton **Styles**, avec un aperçu dessiné de chacun) :
+
+| Style | Ambiance et détails |
+| --- | --- |
+| Printemps | Le style d'origine : tulipes, coccinelles, escargots, nichoirs, arrosoirs, canetons, abeilles |
+| Japon | Gravier ratissé, mousse, ponts rouges arqués, lanternes de pierre (allumées quand l'eau arrive), pagodes, torii, pas japonais, bambous, pins bonsaï, cerisiers, carpes koï |
+| Automne | Herbe dorée, feuilles mortes, glands, citrouilles, hérissons, écureuils, pommes, arbres roux |
+| Hiver | Tuiles enneigées, bonshommes de neige, sapins (illuminés quand l'eau arrive), cadeaux, sucres d'orge, houx, pingouins, luges |
+| Savane | Terre craquelée, acacias, baobabs, termitières, girafes, éléphants, suricates, hippopotames dans l'eau |
+| Désert | Sable ondulé, oasis verte, saguaros (qui fleurissent), cactus tonneaux, palmiers, jarres, chameaux, lézards |
+| Jungle | Monsteras, fougères, hibiscus, bambous, toucans, statues tiki, bananiers, grenouilles, tortues |
+| Sauvage | Roseaux et massettes, fleurs des champs, bûches moussues, grenouilles sur nénuphar, canards, libellules |
+
+Chaque style a sa palette, son paysage de fond, ses particules d'ambiance (sakura, feuilles, neige, pollen, sable, lucioles, aigrettes) et son catalogue de détails. Environ 80 % des parcelles reçoivent un ou deux détails tirés au hasard (de façon déterministe : un même niveau garde les mêmes détails). Certains sont là dès le départ (lanternes, rochers…), d'autres apparaissent quand l'eau arrive (animaux, fleurs). Les éléments debout restent droits quelle que soit la rotation de la tuile.
+
+Ajouter un style = un fichier dans `src/render/themes/` (palette, décor de fond, liste de détails), à déclarer dans `themes/index.ts`.
 
 ## Organisation du code
 
@@ -41,8 +72,10 @@ src/
     board.ts       État de jeu : rotations, verrous, eau, boucles, victoire
     levels.ts      Progression infinie : niveau n → taille, forme, seed
   render/          Rendu Canvas 2D
-    tileArt.ts     Dessin procédural d'une parcelle (sol, canal, eau, herbe, fleurs, lotus)
+    tileArt.ts     Dessin procédural d'une parcelle (sol, canal, eau, herbe, fleurs, lotus, détails)
     decor.ts       Décor de chaque parcelle, déterministe (placé hors des canaux)
+    themes/        Les 8 styles (palette, paysage, détails), kit de dessin partagé
+    preview.ts     Aperçu d'un style pour le menu
     renderer.ts    Animations (ressort de rotation, eau qui avance, floraison), cache des parcelles
     particles.ts   Pétales, étincelles, papillons
     background.ts  Ciel pastel, nuages, collines
@@ -68,5 +101,5 @@ La victoire ne compare pas avec la solution d'origine : elle est déclarée dès
 
 - **Application native** : empaqueter avec [Capacitor](https://capacitorjs.com/) (iOS / Android), ajouter un service worker pour jouer hors ligne, et des icônes PNG.
 - Zoom par pincement pour les très grandes grilles.
-- Variantes exotiques : grilles toriques (les bords se rejoignent), tuiles hexagonales.
+- Variantes exotiques : tuiles hexagonales.
 - Musique d'ambiance, réglage des vibrations, statistiques et défi quotidien (seed = date du jour).

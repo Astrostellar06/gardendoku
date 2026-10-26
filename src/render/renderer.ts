@@ -7,13 +7,14 @@
  * from the spring along the canals. Grass and flowers follow the water.
  */
 import { Analysis, Board } from '../core/board';
-import { opposite } from '../core/grid';
+import { DX, DY, opposite } from '../core/grid';
 import { Particles } from './particles';
 import { renderBackground } from './background';
 import { Decor, G, makeDecor } from './decor';
 import { clamp01, easeOutBack } from './easing';
 import { mixColor, P } from './palette';
-import { drawTile, drawTileOverlay, roundRectPath, TileState } from './tileArt';
+import { currentTheme } from './themes';
+import { drawTile, drawTileOverlay, roundRectPath, TILE_OVERFLOW, TileState } from './tileArt';
 
 interface CellVis {
   angle: number;
@@ -45,6 +46,8 @@ const DRAIN_RATE = 5;
 const BLOOM_RATE = 1.05;
 const WILT_RATE = 1.6;
 const HOLD_VISIBLE_AFTER = 0.12;
+/** Width (in tiles) of the faded strips showing the opposite edge on joined-edge levels. */
+const GHOST = 0.42;
 
 export class GardenRenderer {
   readonly canvas: HTMLCanvasElement;
@@ -61,6 +64,8 @@ export class GardenRenderer {
   private tile = 40;
   private ox = 0;
   private oy = 0;
+  /** Margin (in tiles) reserved around the garden for the ghost strips. */
+  private ghost = 0;
   private bg: HTMLCanvasElement | null = null;
   private bed: HTMLCanvasElement | null = null;
   /** Soft shadow under a tile and glossy light on its face, shared by all tiles. */
@@ -75,9 +80,28 @@ export class GardenRenderer {
   lockMode = false;
   hold: { cell: number; start: number; duration: number } | null = null;
 
+  private decorSeed = '';
+
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
+    const theme = currentTheme();
+    this.particles.setAmbient(theme.ambient, theme.ambientColors);
+  }
+
+  /** Redraw everything for the newly selected style (palette, scenery, tile decorations). */
+  refreshTheme() {
+    const theme = currentTheme();
+    this.particles.setAmbient(theme.ambient, theme.ambientColors);
+    if (this.width) this.bg = renderBackground(this.width, this.height, this.dpr);
+    const board = this.board;
+    if (board) {
+      this.vis.forEach((v, i) => {
+        const active = board.grid.active[i] === 1;
+        v.decor = makeDecor(active ? board.base[i] : 0, `${this.decorSeed}:${i}`, i === board.source);
+      });
+    }
+    this.layout();
   }
 
   resize(width: number, height: number, dpr: number) {
@@ -101,6 +125,7 @@ export class GardenRenderer {
 
   setBoard(board: Board, decorSeed: string) {
     this.board = board;
+    this.decorSeed = decorSeed;
     this.analysis = null;
     this.timers = [];
     this.particles.clearEffects();
@@ -160,8 +185,17 @@ export class GardenRenderer {
   cellAt(x: number, y: number): number {
     if (!this.board) return -1;
     const g = this.board.grid;
-    const gx = Math.floor((x - this.ox) / this.tile);
-    const gy = Math.floor((y - this.oy) / this.tile);
+    const fx = (x - this.ox) / this.tile;
+    const fy = (y - this.oy) / this.tile;
+    let gx = Math.floor(fx);
+    let gy = Math.floor(fy);
+    if (g.wrap) {
+      // Touching a ghost tile turns the real tile on the other side.
+      const inX = fx >= -this.ghost && fx < g.width + this.ghost;
+      const inY = fy >= -this.ghost && fy < g.height + this.ghost;
+      if ((gx === -1 || gx === g.width) && gy >= 0 && gy < g.height && inX) gx = (gx + g.width) % g.width;
+      else if ((gy === -1 || gy === g.height) && gx >= 0 && gx < g.width && inY) gy = (gy + g.height) % g.height;
+    }
     if (gx < 0 || gy < 0 || gx >= g.width || gy >= g.height) return -1;
     const i = g.index(gx, gy);
     return g.active[i] ? i : -1;
@@ -202,11 +236,13 @@ export class GardenRenderer {
         });
       }
     }
-    this.after(last * 0.5 + 0.4, () => {
-      const b = this.boardBounds();
-      this.particles.butterfly(-20, b.y + b.h * 0.3, b);
-      this.particles.butterfly(this.width + 20, b.y + b.h * 0.7, b);
-    });
+    if (currentTheme().creature === 'butterfly') {
+      this.after(last * 0.5 + 0.4, () => {
+        const b = this.boardBounds();
+        this.particles.butterfly(-20, b.y + b.h * 0.3, b);
+        this.particles.butterfly(this.width + 20, b.y + b.h * 0.7, b);
+      });
+    }
     this.after(last + 0.7, onDone);
   }
 
@@ -215,7 +251,10 @@ export class GardenRenderer {
     const g = this.board.grid;
     const availW = this.width - this.insets.side * 2;
     const availH = this.height - this.insets.top - this.insets.bottom;
-    this.tile = Math.max(12, Math.floor(Math.min(availW / g.width, availH / g.height, this.maxTile)));
+    this.ghost = g.wrap ? GHOST : 0;
+    const cols = g.width + this.ghost * 2;
+    const rows = g.height + this.ghost * 2;
+    this.tile = Math.max(12, Math.floor(Math.min(availW / cols, availH / rows, this.maxTile)));
     this.ox = Math.round((this.width - this.tile * g.width) / 2);
     this.oy = Math.round(this.insets.top + (availH - this.tile * g.height) / 2);
     for (const v of this.vis) {
@@ -282,6 +321,11 @@ export class GardenRenderer {
     ctx.scale(this.dpr, this.dpr);
     const t = this.tile;
     const pad = t * 0.1;
+    if (g.wrap) {
+      this.bed = c;
+      this.renderWrapBed(ctx);
+      return;
+    }
     ctx.beginPath();
     for (const i of g.cells) {
       const x = this.ox + g.x(i) * t - pad;
@@ -305,6 +349,77 @@ export class GardenRenderer {
     ctx.fillStyle = 'rgba(255,255,255,0.35)';
     ctx.fill('nonzero');
     this.bed = c;
+  }
+
+  /**
+   * Joined-edge levels sit on a lilac tray that also holds the ghost strips,
+   * with a dotted line marking the edges that lead to the other side.
+   */
+  private renderWrapBed(ctx: CanvasRenderingContext2D) {
+    const g = this.board!.grid;
+    const t = this.tile;
+    const m = this.ghost * t;
+    const pad = t * 0.1;
+    const x = this.ox - m - pad;
+    const y = this.oy - m - pad;
+    const w = g.width * t + (m + pad) * 2;
+    const h = g.height * t + (m + pad) * 2;
+    roundRectPath(ctx, x, y, w, h, t * 0.35);
+    ctx.save();
+    ctx.shadowColor = P.bedShadow;
+    ctx.shadowBlur = t * 0.5;
+    ctx.shadowOffsetY = t * 0.12;
+    ctx.fillStyle = P.hardBed;
+    ctx.fill();
+    ctx.restore();
+    roundRectPath(ctx, this.ox - t * 0.03, this.oy - t * 0.03, g.width * t + t * 0.06, g.height * t + t * 0.06, t * 0.18);
+    ctx.setLineDash([t * 0.08, t * 0.1]);
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = P.hardEdge;
+    ctx.lineWidth = Math.max(1.5, t * 0.035);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  /**
+   * Faded copies of the tiles of the opposite edge, clipped to the strips
+   * around the garden: a canal leaving through one edge visibly continues
+   * into the tile it reaches on the other side.
+   */
+  private drawGhosts() {
+    const g = this.board!.grid;
+    const ctx = this.ctx;
+    const t = this.tile;
+    const m = this.ghost * t;
+    const W = g.width * t;
+    const Hh = g.height * t;
+    const strips: Array<{ clip: [number, number, number, number]; cells: number[]; dx: number; dy: number; fade: [number, number, number, number] }> = [];
+    const col = (x: number) => g.cells.filter((i) => g.x(i) === x);
+    const row = (y: number) => g.cells.filter((i) => g.y(i) === y);
+    const gap = t * (0.5 - G.half);
+    // Left strip shows the last column, right strip the first one, and so on.
+    strips.push({ clip: [this.ox - m - gap, this.oy - t * 0.1, m, Hh + t * 0.2], cells: col(g.width - 1), dx: -W, dy: 0, fade: [this.ox - gap, 0, this.ox - m - gap, 0] });
+    strips.push({ clip: [this.ox + W + gap, this.oy - t * 0.1, m, Hh + t * 0.2], cells: col(0), dx: W, dy: 0, fade: [this.ox + W + gap, 0, this.ox + W + m + gap, 0] });
+    strips.push({ clip: [this.ox - t * 0.1, this.oy - m - gap, W + t * 0.2, m], cells: row(g.height - 1), dx: 0, dy: -Hh, fade: [0, this.oy - gap, 0, this.oy - m - gap] });
+    strips.push({ clip: [this.ox - t * 0.1, this.oy + Hh + gap, W + t * 0.2, m], cells: row(0), dx: 0, dy: Hh, fade: [0, this.oy + Hh + gap, 0, this.oy + Hh + m + gap] });
+    for (const strip of strips) {
+      const [cx, cy, cw, ch] = strip.clip;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(cx, cy, cw, ch);
+      ctx.clip();
+      ctx.globalAlpha = 0.6;
+      for (const i of strip.cells) this.drawCell(i, strip.dx, strip.dy);
+      ctx.globalAlpha = 1;
+      // Mist toward the outside of the strip.
+      const [x0, y0, x1, y1] = strip.fade;
+      const fade = ctx.createLinearGradient(x0, y0, x1, y1);
+      fade.addColorStop(0, 'rgba(255,255,255,0)');
+      fade.addColorStop(1, P.hardMist);
+      ctx.fillStyle = fade;
+      ctx.fillRect(cx, cy, cw, ch);
+      ctx.restore();
+    }
   }
 
   private settled(v: CellVis): boolean {
@@ -362,6 +477,7 @@ export class GardenRenderer {
           v.arrived = true;
           this.events.onWaterArrive?.(i, an.dist[i]);
         }
+        if (before === 0 && v.water > 0 && i !== board.source) this.sparkleIfTeleported(i, an.inflow[i]);
       } else if (!settled) {
         v.water = Math.max(0, v.water - dt * DRAIN_RATE * 2);
       }
@@ -374,6 +490,19 @@ export class GardenRenderer {
       if (watered && v.water >= 0.5) v.bloom = Math.min(1, v.bloom + dt * BLOOM_RATE);
       else if (!watered) v.bloom = Math.max(0, v.bloom - dt * WILT_RATE);
     }
+  }
+
+  /** Water entering tile i through a joined edge: a little sparkle on both sides. */
+  private sparkleIfTeleported(i: number, inflow: number) {
+    const g = this.board!.grid;
+    const p = g.neighbor(i, inflow);
+    if (p < 0 || Math.abs(g.x(i) - g.x(p)) + Math.abs(g.y(i) - g.y(p)) === 1) return;
+    const t = this.tile;
+    const [ix, iy] = this.facePos(i);
+    const [px, py] = this.facePos(p);
+    const out = opposite(inflow);
+    this.particles.sparkle(ix + DX[inflow] * t * 0.5, iy + DY[inflow] * t * 0.5, 3, t * 0.15);
+    this.particles.sparkle(px + DX[out] * t * 0.5, py + DY[out] * t * 0.5, 3, t * 0.15);
   }
 
   private tileState(i: number): TileState {
@@ -399,12 +528,14 @@ export class GardenRenderer {
     const rot = this.board!.rot[i];
     const existing = wet ? v.wet : v.dry;
     if (existing && (wet ? v.wetRot : v.dryRot) === rot) return existing;
-    const px = Math.ceil(this.tile * this.dpr);
+    // The cached image has a margin so tall props can rise above the tile.
+    const span = 1 + TILE_OVERFLOW * 2;
+    const px = Math.ceil(this.tile * this.dpr * span);
     const c = document.createElement('canvas');
     c.width = px;
     c.height = px;
     const ctx = c.getContext('2d')!;
-    ctx.setTransform(px, 0, 0, px, px / 2, px / 2);
+    ctx.setTransform(px / span, 0, 0, px / span, px / 2, px / 2);
     drawTile(ctx, { ...this.tileState(i), bloom: wet ? 1 : 0, water: wet ? 1 : 0, loop: 0 });
     if (wet) {
       v.wet = c;
@@ -427,6 +558,7 @@ export class GardenRenderer {
     const board = this.board;
     if (board) {
       if (this.bed) ctx.drawImage(this.bed, 0, 0, this.width, this.height);
+      if (board.grid.wrap) this.drawGhosts();
       for (const i of board.grid.cells) this.drawShadow(i);
       for (const i of board.grid.cells) this.drawCell(i);
       this.drawBridges();
@@ -443,12 +575,12 @@ export class GardenRenderer {
   }
 
   /** Where the top face of a tile is drawn: lifted by half its depth, pushed down when pressed. */
-  private facePos(i: number): [number, number] {
+  private facePos(i: number, dx = 0, dy = 0): [number, number] {
     const v = this.vis[i];
     const [cx, cy] = this.cellCenter(i);
     const depth = G.depth * this.tile * this.cellScale(v);
     const shakeX = v.shake > 0 ? Math.sin(this.time * 55) * v.shake * this.tile * 0.07 : 0;
-    return [cx + shakeX, cy - depth / 2 + depth * 0.65 * v.press];
+    return [cx + shakeX + dx, cy - depth / 2 + depth * 0.65 * v.press + dy];
   }
 
   private drawShadow(i: number) {
@@ -466,14 +598,15 @@ export class GardenRenderer {
     ctx.restore();
   }
 
-  private drawCell(i: number) {
+  /** Draw tile i (side, face, gloss), optionally shifted (ghost copies on joined-edge levels). */
+  private drawCell(i: number, dx = 0, dy = 0) {
     const ctx = this.ctx;
     const v = this.vis[i];
-    const cy = this.cellCenter(i)[1];
+    const cy = this.cellCenter(i)[1] + dy;
     const scale = this.cellScale(v);
     const t = this.tile * scale;
     const angle = (v.angle * Math.PI) / 2;
-    const [fx, fy] = this.facePos(i);
+    const [fx, fy] = this.facePos(i, dx, dy);
     const H = G.half;
     const depth = G.depth * t;
 
@@ -501,10 +634,11 @@ export class GardenRenderer {
     ctx.translate(fx, fy);
     ctx.rotate(angle);
     ctx.scale(t, t);
+    const o = 0.5 + TILE_OVERFLOW;
     if (st.loop === 0 && st.bloom === 0 && st.water === 0) {
-      ctx.drawImage(this.cached(i, false), -0.5, -0.5, 1, 1);
+      ctx.drawImage(this.cached(i, false), -o, -o, o * 2, o * 2);
     } else if (st.loop === 0 && st.bloom >= 1 && st.water >= 1) {
-      ctx.drawImage(this.cached(i, true), -0.5, -0.5, 1, 1);
+      ctx.drawImage(this.cached(i, true), -o, -o, o * 2, o * 2);
     } else {
       drawTile(ctx, st);
     }
@@ -537,10 +671,13 @@ export class GardenRenderer {
         if (!(an.linked[i] & (1 << d))) continue;
         const j = g.neighbor(i, d);
         const vj = this.vis[j];
-        if (Math.abs(g.x(i) - g.x(j)) + Math.abs(g.y(i) - g.y(j)) !== 1) continue; // wrapped edge
         if (Math.abs(this.cellScale(vi) - 1) > 0.01 || Math.abs(this.cellScale(vj) - 1) > 0.01) continue;
         if (vi.shake > 0 || vj.shake > 0 || vi.press > 0.02 || vj.press > 0.02) continue;
-        const [cx, cy] = this.facePos(i);
+        // A joined edge gets a bridge on both sides: into the ghost strip, and out of it.
+        const wrapped = Math.abs(g.x(i) - g.x(j)) + Math.abs(g.y(i) - g.y(j)) !== 1;
+        const [fx, fy] = this.facePos(i);
+        const spots: Array<[number, number]> = [[fx, fy]];
+        if (wrapped) spots.push(d === 1 ? [fx - g.width * t, fy] : [fx, fy - g.height * t]);
         const wet =
           (an.inflow[j] === opposite(d) && vj.water > 0.02) ||
           (an.inflow[i] === d && vi.water > 0.02) ||
@@ -557,16 +694,18 @@ export class GardenRenderer {
           layers.push([G.waterW - 0.045, loop > 0 ? mixColor(P.water, P.loop, loop * 0.75) : P.water]);
         }
         const len = t - edge * 2 + 2;
-        for (const [w, color] of layers) {
-          ctx.fillStyle = color;
-          if (d === 1) ctx.fillRect(cx + edge - 1, cy - (w * t) / 2, len, w * t);
-          else ctx.fillRect(cx - (w * t) / 2, cy + edge - 1, w * t, len);
-        }
-        if (d === 2) {
-          // The part running down the front of the upper tile is in the shade.
-          const w = (G.rimW + 0.04) * t;
-          ctx.fillStyle = 'rgba(150, 80, 60, 0.16)';
-          ctx.fillRect(cx - w / 2, cy + edge, w, G.depth * t);
+        for (const [cx, cy] of spots) {
+          for (const [w, color] of layers) {
+            ctx.fillStyle = color;
+            if (d === 1) ctx.fillRect(cx + edge - 1, cy - (w * t) / 2, len, w * t);
+            else ctx.fillRect(cx - (w * t) / 2, cy + edge - 1, w * t, len);
+          }
+          if (d === 2) {
+            // The part running down the front of the upper tile is in the shade.
+            const w = (G.rimW + 0.04) * t;
+            ctx.fillStyle = 'rgba(150, 80, 60, 0.16)';
+            ctx.fillRect(cx - w / 2, cy + edge, w, G.depth * t);
+          }
         }
       }
     }

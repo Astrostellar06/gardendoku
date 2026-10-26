@@ -169,7 +169,8 @@ export function generate(params: GenParams): Puzzle {
   const { width, height } = params;
   const maxDegree = params.maxDegree ?? 3;
   const depth = params.solverDepth ?? 0;
-  const maxRepairs = params.maxRepairs ?? 400;
+  // Joined edges remove the borders the deductions start from: allow more rewiring.
+  const maxRepairs = params.maxRepairs ?? (params.wrap ? 3000 : 400);
 
   const active = buildShape(params.shape, width, height, shapeRng);
   const grid = new Grid(width, height, active, params.wrap ?? false);
@@ -188,6 +189,8 @@ export function generate(params: GenParams): Puzzle {
     if (res.status !== 'stuck' || repairs === maxRepairs) break;
     if (!repair(grid, conn, res.undetermined, repairRng, source, maxDegree)) break;
   }
+  // Last resort: one level of trial can still prove the solution unique.
+  if (!unique && depth === 0) unique = solve(grid, conn, 1).status === 'solved';
 
   const tiles = new Uint8Array(grid.size);
   let scrambled = 0;

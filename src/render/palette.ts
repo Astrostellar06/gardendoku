@@ -1,12 +1,74 @@
-/** Pastel garden palette: soft, but saturated enough to read clearly. */
-export const P = {
+/**
+ * Colours of the current garden style. `P` is mutable: switching style copies
+ * the theme's palette into it, and every drawing function reads `P` at draw time.
+ */
+export interface Palette {
+  bgTop: string;
+  bgMid: string;
+  bgBottom: string;
+  /** Soft background blobs, as 'r,g,b'. */
+  bokeh: string[];
+
+  bed: string;
+  bedShadow: string;
+  tileShadow: string;
+  /** Joined-edge (hard) levels: lilac tray, dotted edge, mist over the ghost strips. */
+  hardBed: string;
+  hardEdge: string;
+  hardMist: string;
+
+  soil: string;
+  soilLight: string;
+  soilDark: string;
+  soilSide: string;
+  soilSideDark: string;
+  pebble: string;
+  pebbleShade: string;
+
+  grass: string;
+  grassLight: string;
+  grassDark: string;
+  grassDeep: string;
+  grassSide: string;
+  grassSideDark: string;
+
+  rim: string;
+  rimShade: string;
+  groove: string;
+  grooveDeep: string;
+
+  water: string;
+  waterDeep: string;
+  waterLight: string;
+
+  loop: string;
+
+  petals: string[];
+  centers: string[];
+  lotus: string[];
+  lily: string;
+  lilyDark: string;
+
+  lockRing: string;
+  lockBadge: string;
+  lockIcon: string;
+
+  ink: string;
+}
+
+/** The original pastel spring garden. Other styles start from it. */
+export const SPRING: Palette = {
   bgTop: '#FFD6E5',
   bgMid: '#FFF0DA',
   bgBottom: '#C9EED6',
+  bokeh: ['255,160,196', '255,214,110', '140,200,255', '150,226,170', '196,168,250'],
 
   bed: 'rgba(255, 255, 255, 0.72)',
   bedShadow: 'rgba(214, 120, 160, 0.3)',
   tileShadow: 'rgba(170, 90, 125, 0.4)',
+  hardBed: 'rgba(238, 226, 255, 0.85)',
+  hardEdge: '#A47EE6',
+  hardMist: 'rgba(238, 226, 255, 0.95)',
 
   soil: '#F8D7AE',
   soilLight: '#FFE7C6',
@@ -45,7 +107,13 @@ export const P = {
   lockIcon: '#8A5CD8',
 
   ink: '#7A6386',
-} as const;
+};
+
+export const P: Palette = { ...SPRING };
+
+export function applyPalette(palette: Palette): void {
+  Object.assign(P, palette);
+}
 
 export function mixColor(a: string, b: string, t: number): string {
   const pa = parseHex(a);

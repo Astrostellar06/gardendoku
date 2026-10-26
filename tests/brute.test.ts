@@ -59,3 +59,15 @@ it('solver uniqueness claims match brute force', () => {
   }
   console.log('unique puzzles verified:', checked);
 });
+
+it('solver uniqueness claims match brute force on joined-edge gardens', () => {
+  let checked = 0;
+  for (let s = 0; s < 40; s++) {
+    const size = 3 + (s % 2);
+    const p = generate({ width: size, height: size, shape: 'rect', seed: 'wrap' + s, windiness: (s % 10) / 10, maxRepairs: 0, wrap: true });
+    const n = countSolutions(p.grid, p.tiles, 2);
+    expect(n).toBeGreaterThanOrEqual(1);
+    if (p.unique) { expect(n, `seed ${s}`).toBe(1); checked++; }
+  }
+  console.log('unique wrap puzzles verified:', checked);
+});

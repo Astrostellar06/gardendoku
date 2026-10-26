@@ -81,3 +81,37 @@ describe('board analysis', () => {
     expect(an.loopCells).toBe(0);
   });
 });
+
+describe('hard levels (joined edges)', () => {
+  it('appear every 5 levels on square gardens', () => {
+    for (let n = 1; n <= 60; n++) {
+      const info = levelInfo(n);
+      expect(info.wrap, `level ${n}`).toBe(n % 5 === 0);
+      if (info.wrap) expect(info.width).toBe(info.height);
+    }
+  });
+
+  it('are uniquely solvable and solved by their own solution', () => {
+    for (let n = 5; n <= 150; n += 5) {
+      const p = buildLevel(n);
+      expect(p.grid.wrap).toBe(true);
+      expect(p.unique, `level ${n}`).toBe(true);
+      const board = new Board(p);
+      board.solveInstantly();
+      expect(board.analyze().solved).toBe(true);
+    }
+  });
+
+  it('lets water cross an edge', () => {
+    const grid = Grid.rect(3, 3, true);
+    // Source in the middle row sends water west, out of the garden and back from the east.
+    const tiles = new Uint8Array(9);
+    tiles[3] = W | E; // (0,1) straight
+    tiles[4] = W; // source (1,1) pointing west
+    tiles[5] = E; // (2,1) receives water through the joined edge
+    const puzzle: Puzzle = { grid, source: 4, solution: tiles, tiles, unique: false, repairs: 0 };
+    const an = new Board(puzzle).analyze();
+    expect(an.watered[5]).toBe(1);
+    expect(an.inflow[5]).toBe(1); // enters from its east side, i.e. across the edge
+  });
+});

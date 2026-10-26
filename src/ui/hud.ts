@@ -16,6 +16,8 @@ export class Hud {
   readonly win = $('win');
   readonly howto = $('howto');
   readonly levels = $('levels');
+  readonly hardIntro = $('hard-intro');
+  readonly styles = $('styles');
   readonly lockBtn = $('btn-lock');
   readonly soundBtn = $('btn-sound');
   readonly nextFloat = $('btn-next-float');
@@ -23,7 +25,7 @@ export class Hud {
   private toastTimer = 0;
 
   constructor() {
-    for (const overlay of [this.howto, this.levels]) {
+    for (const overlay of [this.howto, this.levels, this.hardIntro, this.styles]) {
       overlay.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
         if (target === overlay || target.closest('[data-close]')) overlay.classList.add('hidden');
@@ -38,7 +40,10 @@ export class Hud {
 
   setLevel(info: LevelInfo) {
     $('level-title').textContent = `Niveau ${info.index}`;
-    $('level-sub').textContent = `${info.shapeName} · ${info.cells} parcelles`;
+    $('level-sub').textContent = info.wrap
+      ? `★ Difficile · bords reliés`
+      : `${info.shapeName} · ${info.cells} parcelles`;
+    document.querySelector('.level-pill')!.classList.toggle('hard', info.wrap);
   }
 
   setLockMode(on: boolean) {
@@ -94,7 +99,43 @@ export class Hud {
 
   /** An overlay card is covering the game (the timer pauses meanwhile). */
   overlayOpen(): boolean {
-    return !this.howto.classList.contains('hidden') || !this.levels.classList.contains('hidden');
+    return [this.howto, this.levels, this.hardIntro, this.styles].some((o) => !o.classList.contains('hidden'));
+  }
+
+  /** Style menu: one card per style, with a rendered preview. */
+  openStyles(
+    styles: Array<{ id: string; name: string; blurb: string }>,
+    current: string,
+    preview: (id: string, size: number) => HTMLCanvasElement,
+    onPick: (id: string) => void,
+  ) {
+    const grid = $('styles-grid');
+    grid.textContent = '';
+    for (const style of styles) {
+      const b = document.createElement('button');
+      b.className = 'style-btn';
+      if (style.id === current) b.classList.add('current');
+      const canvas = preview(style.id, 112);
+      canvas.className = 'style-preview';
+      const name = document.createElement('span');
+      name.className = 'style-name';
+      name.textContent = style.name;
+      const blurb = document.createElement('span');
+      blurb.className = 'style-blurb';
+      blurb.textContent = style.blurb;
+      b.append(canvas, name, blurb);
+      b.addEventListener('click', () => {
+        grid.querySelector('.current')?.classList.remove('current');
+        b.classList.add('current');
+        onPick(style.id);
+      });
+      grid.appendChild(b);
+    }
+    this.styles.classList.remove('hidden');
+  }
+
+  openHardIntro() {
+    this.hardIntro.classList.remove('hidden');
   }
 
   openHowto() {

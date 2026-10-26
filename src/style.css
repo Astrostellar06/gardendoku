@@ -172,6 +172,15 @@ svg {
   color: var(--pink-deep);
 }
 
+.level-pill.hard {
+  box-shadow: 0 0 0 2.5px #d9c6fb, 0 4px 0 #cdb5f6, var(--shadow-soft);
+}
+
+.level-pill.hard .level-title,
+.level-pill.hard .level-sub {
+  color: #8f63dc;
+}
+
 .level-sub {
   font-size: 12.5px;
   color: var(--ink-soft);
@@ -325,6 +334,8 @@ h1 {
 
 .home-row {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 10px;
 }
 
@@ -581,8 +592,130 @@ h1 {
   background: #45b6ec;
 }
 
+.dot.lilac {
+  background: var(--lilac);
+}
+
 .dot.yellow {
   background: #f5bf2e;
+}
+
+.card .small {
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.wrap-illustration {
+  width: 100%;
+  max-width: 280px;
+}
+
+.wrap-illustration .tray {
+  fill: #eee2ff;
+  stroke: none;
+}
+
+.wrap-illustration .ghost {
+  fill: #fbd9b4;
+  opacity: 0.55;
+  stroke: none;
+}
+
+.wrap-illustration .edge {
+  fill: none;
+  stroke: var(--lilac);
+  stroke-width: 2;
+  stroke-dasharray: 4 5;
+}
+
+.wrap-illustration .tile {
+  fill: #f8d7ae;
+  stroke: none;
+}
+
+.wrap-illustration .canal {
+  stroke: #fffaf2;
+  stroke-width: 15;
+}
+
+.wrap-illustration .water {
+  stroke: #6ecdf7;
+  stroke-width: 7;
+}
+
+.wrap-illustration .spring {
+  fill: #6ecdf7;
+  stroke: #fffaf2;
+  stroke-width: 3;
+}
+
+.wrap-illustration .bloom {
+  fill: #ff97be;
+  stroke: #fffaf2;
+  stroke-width: 3;
+}
+
+.wrap-illustration .arrow,
+.wrap-illustration .arrow-head {
+  stroke: var(--lilac);
+  stroke-width: 3;
+  stroke-dasharray: 6 6;
+}
+
+.wrap-illustration .arrow-head {
+  stroke-dasharray: none;
+}
+
+.styles-card {
+  width: min(440px, 100%);
+}
+
+.styles-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-height: 62vh;
+  overflow: auto;
+  padding: 4px;
+}
+
+.style-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 6px 10px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 0 0 2px #f6e3ea, 0 4px 0 #f2cfdc;
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+
+.style-btn.current {
+  box-shadow: 0 0 0 3px var(--pink), 0 4px 0 var(--pink-edge);
+}
+
+.style-btn:active {
+  transform: translateY(3px);
+}
+
+.style-preview {
+  width: 112px;
+  height: 112px;
+  border-radius: 16px;
+  margin-bottom: 4px;
+}
+
+.style-name {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.style-blurb {
+  font-size: 12px;
+  line-height: 1.25;
+  color: var(--ink-soft);
 }
 
 .levels-card {

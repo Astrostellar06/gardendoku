@@ -2,6 +2,9 @@
  * Infinite level progression. A level is fully described by its index:
  * size, shape and generator settings are derived from a per-level seed,
  * then the garden itself is generated from that seed.
+ *
+ * Every fifth level is a "hard" one: a square garden whose opposite edges
+ * are joined (water leaving one side comes back on the other).
  */
 import { generate, Puzzle } from './generator';
 import { Rng } from './rng';
@@ -17,7 +20,24 @@ export interface LevelInfo {
   seed: string;
   /** Number of tiles in the garden. */
   cells: number;
+  /** Hard level: opposite edges are joined (torus). */
+  wrap: boolean;
 }
+
+/** Hard levels come back every HARD_EVERY levels. */
+export const HARD_EVERY = 5;
+
+export function isHardLevel(index: number): boolean {
+  return index % HARD_EVERY === 0;
+}
+
+/** Side of the square garden of a hard level. */
+const WRAP_SIZES: Array<{ upTo: number; size: number }> = [
+  { upTo: 10, size: 5 },
+  { upTo: 25, size: 6 },
+  { upTo: 50, size: 7 },
+  { upTo: Infinity, size: 8 },
+];
 
 interface Band {
   upTo: number;
@@ -65,6 +85,20 @@ function fitShape(shape: ShapeId, target: number, rng: Rng): [number, number, nu
 export function levelInfo(index: number): LevelInfo {
   const seed = `jardin-${index}`;
   const rng = new Rng(seed + ':params');
+  if (isHardLevel(index)) {
+    const size = WRAP_SIZES.find((b) => index <= b.upTo)!.size;
+    return {
+      index,
+      width: size,
+      height: size,
+      shape: 'rect',
+      shapeName: 'Bords reliés',
+      windiness: rng.float(0.3, 0.8),
+      seed,
+      cells: size * size,
+      wrap: true,
+    };
+  }
   const band = BANDS.find((b) => index <= b.upTo)!;
   const [bw, bh] = rng.pick(band.sizes);
   const windiness = rng.float(0.25, 0.85);
@@ -85,7 +119,7 @@ export function levelInfo(index: number): LevelInfo {
     }
   }
   const cells = buildShape(shape, width, height, new Rng(seed).fork('shape')).reduce((a, b) => a + b, 0);
-  return { index, width, height, shape, shapeName: SHAPE_NAMES[shape], windiness, seed, cells };
+  return { index, width, height, shape, shapeName: SHAPE_NAMES[shape], windiness, seed, cells, wrap: false };
 }
 
 const cache = new Map<number, Puzzle>();
@@ -100,6 +134,7 @@ export function buildLevel(index: number): Puzzle {
     shape: info.shape,
     seed: info.seed,
     windiness: info.windiness,
+    wrap: info.wrap,
   });
   cache.set(index, puzzle);
   if (cache.size > 8) cache.delete(cache.keys().next().value!);

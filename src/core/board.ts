@@ -66,6 +66,13 @@ export class Board {
     return this.locked[i] === 1;
   }
 
+  /** Lock or unlock tile i. Returns true if its state changed. */
+  setLock(i: number, on: boolean): boolean {
+    if (!this.grid.isActive(i) || (this.locked[i] === 1) === on) return false;
+    this.locked[i] = on ? 1 : 0;
+    return true;
+  }
+
   reset(): void {
     this.rot.fill(0);
     this.locked.fill(0);

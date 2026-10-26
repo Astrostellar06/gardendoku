@@ -64,6 +64,7 @@
           <button class="big-btn" id="btn-play">Jouer<small id="play-level">Niveau 1</small></button>
           <div class="home-row">
             <button class="soft-btn" id="btn-levels">Niveaux</button>
+            <button class="soft-btn" id="btn-styles">Styles</button>
             <button class="soft-btn" id="btn-howto">Comment jouer</button>
           </div>
         </div>
@@ -99,9 +100,44 @@
             <li><span class="dot pink">1</span><span>Touche une parcelle pour la faire <b>tourner</b>.</span></li>
             <li><span class="dot green">2</span><span>Relie <b>toutes les parcelles</b> à la source centrale : l'eau coule et le jardin fleurit.</span></li>
             <li><span class="dot blue">3</span><span>Évite les <b>boucles</b> : l'eau doit former un seul réseau, sans cercle.</span></li>
-            <li><span class="dot yellow">4</span><span><b>Appui long</b> (ou mode Verrou) pour verrouiller une parcelle que tu es sûr d'avoir bien placée.</span></li>
+            <li><span class="dot yellow">4</span><span><b>Appui long</b> (ou mode Verrou) pour verrouiller une parcelle bien placée. Glisse ensuite le doigt pour en verrouiller plusieurs d'un coup.</span></li>
+            <li><span class="dot lilac">5</span><span>Tous les 5 niveaux, un <b>niveau difficile</b> : les bords du jardin sont reliés, l'eau qui sort d'un côté revient par le côté opposé.</span></li>
           </ul>
           <button class="big-btn" data-close>C'est parti</button>
+        </div>
+      </section>
+
+      <section id="hard-intro" class="overlay hidden">
+        <div class="card">
+          <h2>Niveau difficile</h2>
+          <svg class="wrap-illustration" viewBox="0 0 220 132" aria-hidden="true">
+            <rect class="tray" x="14" y="44" width="192" height="70" rx="16" />
+            <rect class="ghost" x="20" y="52" width="16" height="54" rx="6" />
+            <rect class="ghost" x="184" y="52" width="16" height="54" rx="6" />
+            <rect class="edge" x="40" y="48" width="140" height="62" rx="10" />
+            <rect class="tile" x="44" y="56" width="40" height="46" rx="9" />
+            <rect class="tile" x="90" y="56" width="40" height="46" rx="9" />
+            <rect class="tile" x="136" y="56" width="40" height="46" rx="9" />
+            <path class="canal" d="M110 79 H196" />
+            <path class="canal" d="M24 79 H64" />
+            <path class="water" d="M110 79 H196" />
+            <path class="water" d="M24 79 H64" />
+            <circle class="spring" cx="110" cy="79" r="9" />
+            <circle class="bloom" cx="64" cy="79" r="7" />
+            <path class="arrow" d="M196 66 C196 14, 24 14, 24 66" />
+            <path class="arrow-head" d="M17 58 L24 68 L31 58" />
+          </svg>
+          <p>Ici, les <b>bords du jardin sont reliés</b> : l'eau qui sort d'un côté réapparaît du côté opposé.</p>
+          <p class="small">Les bandes pâles autour du jardin montrent les parcelles de l'autre côté. Tu peux aussi les toucher.</p>
+          <button class="big-btn" data-close>Compris !</button>
+        </div>
+      </section>
+
+      <section id="styles" class="overlay hidden">
+        <div class="card styles-card">
+          <h2>Style du jardin</h2>
+          <div class="styles-grid" id="styles-grid"></div>
+          <button class="soft-btn" data-close>Fermer</button>
         </div>
       </section>
 

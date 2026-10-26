@@ -102,6 +102,16 @@ export class Sound {
     this.tone(b, t + 0.06, 0.1, 'sine', 0.05);
   }
 
+  /** Soft rising note for each extra tile locked while sliding the finger. */
+  lockStep(on: boolean, step: number) {
+    const ctx = this.ready();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const semis = PENTA[step % 5] + 12 * Math.min(2, Math.floor(step / 5));
+    const base = on ? 660 : 520;
+    this.tone(base * 2 ** (semis / 12), t, 0.12, 'sine', 0.035);
+  }
+
   denied() {
     const ctx = this.ready();
     if (!ctx) return;

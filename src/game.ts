@@ -3,7 +3,10 @@ import { Sound } from './audio/sound';
 import { Analysis, Board } from './core/board';
 import { generate } from './core/generator';
 import { buildLevel, LevelInfo, levelInfo } from './core/levels';
+import { renderThemePreview } from './render/preview';
 import { GardenRenderer } from './render/renderer';
+import { setTheme, THEMES } from './render/themes';
+import type { ThemeId } from './render/themes';
 import { Hud } from './ui/hud';
 import { attachInput } from './ui/input';
 import { loadSave, SaveData, writeSave } from './ui/storage';
@@ -26,8 +29,11 @@ export class Game {
   private hints = 0;
   private saveTimer = 0;
   private resetArmedUntil = 0;
+  /** Lock state applied by the current finger stroke, and how many tiles it changed. */
+  private paint: { lock: boolean; count: number } | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
+    this.applyStyleColors(setTheme(this.save.settings.theme).id);
     this.renderer = new GardenRenderer(canvas);
     this.renderer.events.onWaterArrive = (_cell, dist) => this.sound.water(dist);
     this.sound.enabled = this.save.settings.sound;
@@ -35,9 +41,11 @@ export class Game {
 
     attachInput(canvas, {
       cellAt: (x, y) => (this.mode === 'play' ? this.renderer.cellAt(x, y) : -1),
+      lockMode: () => this.lockMode,
       tap: (cell) => this.onTap(cell),
-      longPress: (cell) => this.onLongPress(cell),
-      secondary: (cell) => this.onLongPress(cell),
+      paintStart: (cell) => this.paintStart(cell),
+      paintMove: (cell) => this.paintMove(cell),
+      paintEnd: () => this.paintEnd(),
       holdStart: (cell, ms) => {
         this.sound.unlock();
         this.renderer.setPressed(cell);
@@ -56,6 +64,14 @@ export class Game {
       });
     on('btn-play', () => this.play(this.save.level));
     on('btn-howto', () => this.hud.openHowto());
+    on('btn-styles', () =>
+      this.hud.openStyles(
+        THEMES,
+        this.save.settings.theme,
+        (id, size) => renderThemePreview(id as ThemeId, size, Math.min(window.devicePixelRatio || 1, 2.5)),
+        (id) => this.chooseTheme(id),
+      ),
+    );
     on('btn-help', () => this.hud.openHowto());
     on('btn-levels', () => this.hud.openLevels(this.save.maxLevel, this.save.level, (n) => this.play(n)));
     on('btn-home', () => this.showHome());
@@ -160,11 +176,14 @@ export class Game {
     requestAnimationFrame(() => this.relayout());
     this.persist();
 
-    if (!this.save.seenTutorial && n === 1) {
+    if (this.info.wrap && !this.save.seenHardIntro) {
+      this.save.seenHardIntro = true;
+      this.renderer.after(0.5, () => this.hud.openHardIntro());
+    } else if (!this.save.seenTutorial && n === 1) {
       this.renderer.after(0.8, () => this.hud.toast('Touche une parcelle pour la faire tourner', false, 4000));
     } else if (n === 3 && !this.save.seenLockTip) {
       this.save.seenLockTip = true;
-      this.renderer.after(0.8, () => this.hud.toast('Astuce : appui long pour verrouiller une parcelle', false, 4200));
+      this.renderer.after(0.8, () => this.hud.toast('Astuce : appui long puis glisse pour verrouiller', false, 4200));
     }
   }
 
@@ -179,10 +198,6 @@ export class Game {
   private onTap(cell: number) {
     const board = this.board;
     if (this.mode !== 'play' || this.won || !board) return;
-    if (this.lockMode) {
-      this.toggleLock(cell);
-      return;
-    }
     if (board.locked[cell]) {
       this.renderer.shake(cell);
       this.sound.denied();
@@ -194,16 +209,32 @@ export class Game {
     this.afterChange();
   }
 
-  private onLongPress(cell: number) {
-    if (this.mode !== 'play' || this.won) return;
-    this.toggleLock(cell);
+  /**
+   * Long press (or touch in lock mode): the first tile flips its lock, and
+   * every tile crossed afterwards by the same stroke takes that same state.
+   */
+  private paintStart(cell: number) {
+    const board = this.board;
+    if (this.mode !== 'play' || this.won || !board) return;
+    const lock = !board.locked[cell];
+    board.setLock(cell, lock);
+    this.paint = { lock, count: 0 };
+    this.sound.lock(lock);
+    this.vibrate(12);
   }
 
-  private toggleLock(cell: number) {
-    if (!this.board) return;
-    const on = this.board.toggleLock(cell);
-    this.sound.lock(on);
-    this.vibrate(12);
+  private paintMove(cell: number) {
+    const board = this.board;
+    if (!this.paint || !board || this.won) return;
+    if (!board.setLock(cell, this.paint.lock)) return;
+    this.paint.count++;
+    this.sound.lockStep(this.paint.lock, this.paint.count);
+    this.vibrate(6);
+  }
+
+  private paintEnd() {
+    if (!this.paint) return;
+    this.paint = null;
     this.persistSoon();
   }
 
@@ -211,7 +242,7 @@ export class Game {
     this.lockMode = on;
     this.renderer.lockMode = on;
     this.hud.setLockMode(on);
-    if (on && this.mode === 'play') this.hud.toast('Mode verrou : touche une parcelle pour la verrouiller', false, 2200);
+    if (on && this.mode === 'play') this.hud.toast('Mode verrou : touche ou glisse sur les parcelles', false, 2400);
   }
 
   private reset() {
@@ -256,6 +287,22 @@ export class Game {
     this.sound.lock(true);
     this.hints++;
     this.afterChange();
+  }
+
+  private chooseTheme(id: string) {
+    const theme = setTheme(id);
+    this.save.settings.theme = theme.id;
+    this.applyStyleColors(theme.id);
+    this.renderer.refreshTheme();
+    this.persist();
+  }
+
+  /** The page background behind the canvas follows the style's sky. */
+  private applyStyleColors(id: string) {
+    const theme = THEMES.find((t) => t.id === id);
+    if (!theme) return;
+    document.body.style.background = theme.palette.bgTop;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.palette.bgTop);
   }
 
   private toggleSound() {
