@@ -266,7 +266,7 @@ export const hiver: Theme = {
   creature: 'none',
   propChance: 0.8,
   extraChance: 0.4,
-  props: [snowman, fir, gift, candyCane, holly, penguin, snowyRock, sled, plankBridge('#C98A5A', '#B57846', '#FFFFFF'), iceFloe],
+  props: [snowman, fir, gift, candyCane, holly, penguin, snowyRock, sled, plankBridge('#C98A5A', '#B57846', '#8A5A3A', 1, { snow: true }), iceFloe],
   dryGround(ctx, g) {
     // Frozen ground: a few pale cracks.
     ctx.strokeStyle = 'rgba(255,255,255,0.55)';
@@ -327,7 +327,7 @@ export const hiver: Theme = {
   scenery(ctx, w, h) {
     hill(ctx, w, h, h * 0.88, 18, 'rgba(235, 243, 255, 0.95)', 0.6);
     for (let k = 0; k < 7; k++) {
-      pineSilhouette(ctx, w * (0.05 + k * 0.15), h * (0.885 + Math.sin(k * 2.3) * 0.01), 0.7 + (k % 3) * 0.2, 'rgba(140, 170, 205, 0.7)', 'rgba(255,255,255,0.9)');
+      pineSilhouette(ctx, w * (0.05 + k * 0.15), h * (0.885 + Math.sin(k * 2.3) * 0.01), 0.7 + (k % 3) * 0.2, '#A9C1DC', '#FFFFFF');
     }
     hill(ctx, w, h, h * 0.94, 12, '#FFFFFF', 2.4);
   },

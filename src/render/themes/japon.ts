@@ -1,6 +1,6 @@
 /** Japanese garden: raked gravel, moss, red bridges, stone lanterns, pagodas and koi. */
 import { SPRING } from '../palette';
-import { rockProp, swimOffset } from './common';
+import { bridgeProp, rockProp, swimOffset } from './common';
 import { circle, ellipse, glow, groundShadow, leaf, line, poly, rrect, TAU } from './kit';
 import { clouds, hill, mountain } from './scenery';
 import type { PropDef, Theme } from './types';
@@ -9,36 +9,15 @@ const RED = '#E8574F';
 const RED_DARK = '#C9443E';
 const ROOF = '#5E6B7A';
 
-const redBridge: PropDef = {
-  id: 'red-bridge',
-  place: 'canal',
-  size: [0.07, 0.085],
-  weight: 1,
-  when: 'always',
-  draw(ctx, { r }) {
-    const half = 0.23;
-    ellipse(ctx, 0.012, r * 0.25, half, r * 1.15, 0, 'rgba(60,30,30,0.2)');
-    // Arched deck: lighter in the middle.
-    const g = ctx.createLinearGradient(-half, 0, half, 0);
-    g.addColorStop(0, '#C9A27A');
-    g.addColorStop(0.5, '#F0D2A8');
-    g.addColorStop(1, '#C9A27A');
-    rrect(ctx, -half, -r * 0.85, half * 2, r * 1.7, r * 0.3, g);
-    // Rails bow outward in the middle, like an arched (taiko) bridge seen from above.
-    for (const side of [-1, 1]) {
-      const y = side * r * 0.9;
-      ctx.strokeStyle = RED;
-      ctx.lineWidth = 0.03;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(-half, y);
-      ctx.quadraticCurveTo(0, y + side * r * 0.45, half, y);
-      ctx.stroke();
-      for (const x of [-half + 0.01, half - 0.01]) circle(ctx, x, y, 0.028, RED_DARK);
-      circle(ctx, 0, y + side * r * 0.22, 0.022, '#F0C04A');
-    }
-  },
-};
+/** Arched red (taiko) bridge. */
+const redBridge = bridgeProp('red-bridge', {
+  deck: '#EBCFA6',
+  deckShade: '#C9A27A',
+  side: RED,
+  rail: RED,
+  cap: '#F0C04A',
+  hump: 0.085,
+});
 
 const lantern: PropDef = {
   id: 'stone-lantern',

@@ -345,6 +345,8 @@ export class Particles {
         ctx.scale(side * flap, 1);
         ctx.beginPath();
         ctx.ellipse(s * 0.5, -s * 0.25, s * 0.55, s * 0.42, -0.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
         ctx.ellipse(s * 0.38, s * 0.35, s * 0.36, s * 0.3, 0.4, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();

@@ -54,26 +54,211 @@ export function mushroomProp(caps: string[], when: 'always' | 'bloom' = 'bloom')
   };
 }
 
-/** Wooden plank footbridge across a canal (local x crosses the canal). */
-export function plankBridge(wood: string, woodDark: string, rail: string, weight = 1): PropDef {
+export interface BridgeLook {
+  /** Walking surface. */
+  deck: string;
+  /** Plank seams / far ramp shade. */
+  deckShade: string;
+  /** Side of the bridge (the arch body). */
+  side: string;
+  rail?: string;
+  /** Round caps on the posts. */
+  cap?: string;
+  planks?: boolean;
+  /** Arch height (tile units); 0 for a flat footbridge. */
+  hump: number;
+  snow?: boolean;
+  vines?: string;
+}
+
+/** Half span of a bridge: wide enough to rest on both canal banks. */
+const SPAN = 0.235;
+const RAIL_H = 0.05;
+
+/**
+ * Bridge seen in 2.5D, like the other upright props. It is drawn in screen
+ * orientation: across a vertical canal we see its side (arch, railings), across a
+ * horizontal canal we look along it (a ramp up and down between two railings).
+ */
+export function bridgeProp(id: string, look: BridgeLook, weight = 1): PropDef {
   return {
-    id: 'plank-bridge',
+    id,
     place: 'canal',
-    size: [0.06, 0.08],
+    screen: true,
+    size: [0.06, 0.075],
     weight,
     when: 'always',
-    draw(ctx, { r }) {
-      const half = 0.21;
-      ellipse(ctx, 0.01, r * 0.2, half, r * 1.05, 0, 'rgba(60,40,30,0.18)');
-      const n = 4;
-      for (let k = 0; k < n; k++) {
-        const y = -r + (k * 2 * r) / (n - 1);
-        rrect(ctx, -half, y - r * 0.28, half * 2, r * 0.5, r * 0.12, k % 2 ? wood : woodDark);
-      }
-      line(ctx, -half + 0.02, -r * 1.05, -half + 0.02, r * 1.05, 0.022, rail);
-      line(ctx, half - 0.02, -r * 1.05, half - 0.02, r * 1.05, 0.022, rail);
+    draw(ctx, { r, axis }) {
+      if (axis === 'h') drawBridgeAlong(ctx, r, look);
+      else drawBridgeSide(ctx, r, look);
     },
   };
+}
+
+/** Height of the deck at position t (-1..1 along the span). */
+const deckHeight = (look: BridgeLook, t: number) => 0.018 + look.hump * (1 - t * t);
+
+function drawBridgeSide(ctx: CanvasRenderingContext2D, r: number, look: BridgeLook) {
+  const D = r * 1.5;
+  const steps = 16;
+  const xs = Array.from({ length: steps + 1 }, (_, k) => -SPAN + (k / steps) * SPAN * 2);
+  const back = (x: number) => -D / 2 - deckHeight(look, x / SPAN);
+  const front = (x: number) => D / 2 - deckHeight(look, x / SPAN);
+  const waterY = D / 2 + 0.012;
+
+  ellipse(ctx, 0.01, waterY, SPAN, D * 0.35, 0, 'rgba(40, 60, 90, 0.18)');
+
+  const railing = (edge: (x: number) => number, color: string) => {
+    ctx.strokeStyle = color;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 0.016;
+    ctx.beginPath();
+    xs.forEach((x, k) => (k ? ctx.lineTo(x, edge(x) - RAIL_H) : ctx.moveTo(x, edge(x) - RAIL_H)));
+    ctx.stroke();
+    ctx.lineWidth = 0.013;
+    ctx.beginPath();
+    for (const x of [-SPAN + 0.012, -SPAN / 3, SPAN / 3, SPAN - 0.012]) {
+      ctx.moveTo(x, edge(x));
+      ctx.lineTo(x, edge(x) - RAIL_H);
+    }
+    ctx.stroke();
+    if (look.cap) for (const x of [-SPAN + 0.012, SPAN - 0.012]) circle(ctx, x, edge(x) - RAIL_H, 0.014, look.cap);
+    if (look.snow) {
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 0.012;
+      ctx.beginPath();
+      xs.forEach((x, k) => (k ? ctx.lineTo(x, edge(x) - RAIL_H - 0.008) : ctx.moveTo(x, edge(x) - RAIL_H - 0.008)));
+      ctx.stroke();
+    }
+  };
+
+  // Far railing, deck, near side with its arch, near railing.
+  if (look.rail) railing(back, look.rail);
+  ctx.fillStyle = look.deck;
+  ctx.beginPath();
+  xs.forEach((x, k) => (k ? ctx.lineTo(x, back(x)) : ctx.moveTo(x, back(x))));
+  for (let k = steps; k >= 0; k--) ctx.lineTo(xs[k], front(xs[k]));
+  ctx.closePath();
+  ctx.fill();
+  if (look.planks) {
+    ctx.strokeStyle = look.deckShade;
+    ctx.lineWidth = 0.008;
+    ctx.beginPath();
+    for (let x = -SPAN + 0.04; x < SPAN - 0.02; x += 0.045) {
+      ctx.moveTo(x, back(x));
+      ctx.lineTo(x, front(x));
+    }
+    ctx.stroke();
+  }
+  if (look.snow) {
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath();
+    xs.forEach((x, k) => (k ? ctx.lineTo(x, back(x)) : ctx.moveTo(x, back(x))));
+    for (let k = steps; k >= 0; k--) ctx.lineTo(xs[k], back(xs[k]) + D * 0.45);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  const archW = SPAN * 0.62;
+  const archH = Math.max(0, deckHeight(look, 0) - 0.03);
+  ctx.fillStyle = look.side;
+  ctx.beginPath();
+  xs.forEach((x, k) => (k ? ctx.lineTo(x, front(x)) : ctx.moveTo(x, front(x))));
+  if (archH > 0.01) {
+    ctx.lineTo(SPAN, waterY);
+    ctx.lineTo(archW, waterY);
+    for (let k = 0; k <= 12; k++) {
+      const x = archW - (k / 12) * archW * 2;
+      ctx.lineTo(x, waterY - archH * Math.sqrt(Math.max(0, 1 - (x / archW) ** 2)));
+    }
+    ctx.lineTo(-SPAN, waterY);
+  } else {
+    // Flat footbridge: only the thickness of the planks.
+    for (let k = steps; k >= 0; k--) ctx.lineTo(xs[k], front(xs[k]) + 0.03);
+  }
+  ctx.closePath();
+  ctx.fill();
+  if (look.rail) railing(front, look.rail);
+  if (look.vines) {
+    for (const x of [-SPAN * 0.6, -SPAN * 0.1, SPAN * 0.45]) {
+      ellipse(ctx, x, front(x) - RAIL_H * 0.5, 0.018, 0.026, 0.4, look.vines);
+      ellipse(ctx, x + 0.02, front(x) - RAIL_H * 0.15, 0.014, 0.02, -0.5, look.vines);
+    }
+  }
+}
+
+function drawBridgeAlong(ctx: CanvasRenderingContext2D, r: number, look: BridgeLook) {
+  const halfW = r * 1.25;
+  const steps = 16;
+  // Screen y of a point at position y along the span (raised by the hump).
+  const ys = Array.from({ length: steps + 1 }, (_, k) => -SPAN + (k / steps) * SPAN * 2);
+  const lift = (y: number) => y - deckHeight(look, y / SPAN);
+
+  ellipse(ctx, 0.01, 0.02, halfW * 1.3, SPAN * 0.9, 0, 'rgba(40, 60, 90, 0.16)');
+  // Deck: the near ramp faces us (light), the far one slopes away (shaded).
+  const crest = (lift(0) - lift(-SPAN)) / (lift(SPAN) - lift(-SPAN));
+  const shade = ctx.createLinearGradient(0, lift(-SPAN), 0, lift(SPAN));
+  shade.addColorStop(0, look.deckShade);
+  shade.addColorStop(Math.max(0, crest - 0.05), look.deckShade);
+  shade.addColorStop(crest, look.deck);
+  shade.addColorStop(1, look.deck);
+  ctx.fillStyle = shade;
+  ctx.beginPath();
+  ys.forEach((y, k) => (k ? ctx.lineTo(-halfW, lift(y)) : ctx.moveTo(-halfW, lift(y))));
+  for (let k = steps; k >= 0; k--) ctx.lineTo(halfW, lift(ys[k]));
+  ctx.closePath();
+  ctx.fill();
+  if (look.planks) {
+    ctx.strokeStyle = look.deckShade;
+    ctx.lineWidth = 0.008;
+    ctx.beginPath();
+    for (let y = -SPAN + 0.04; y < SPAN - 0.02; y += 0.045) {
+      ctx.moveTo(-halfW, lift(y));
+      ctx.lineTo(halfW, lift(y));
+    }
+    ctx.stroke();
+  }
+  if (look.snow) {
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath();
+    ys.forEach((y, k) => (k ? ctx.lineTo(-halfW * 0.6, lift(y)) : ctx.moveTo(-halfW * 0.6, lift(y))));
+    for (let k = steps; k >= 0; k--) ctx.lineTo(halfW * 0.6, lift(ys[k]));
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Light catching the crest of the arch.
+  if (look.hump > 0.02) rrect(ctx, -halfW, lift(0) - 0.006, halfW * 2, 0.012, 0.004, 'rgba(255,255,255,0.45)');
+  // Near end of the bridge, facing us.
+  rrect(ctx, -halfW, lift(SPAN) - 0.004, halfW * 2, 0.035, 0.008, look.side);
+
+  if (!look.rail) return;
+  for (const side of [-1, 1]) {
+    const x = side * halfW;
+    ctx.strokeStyle = look.rail;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 0.014;
+    ctx.beginPath();
+    for (const y of [-SPAN + 0.012, -SPAN / 3, SPAN / 3, SPAN - 0.012]) {
+      ctx.moveTo(x, lift(y));
+      ctx.lineTo(x, lift(y) - RAIL_H);
+    }
+    ctx.stroke();
+    ctx.lineWidth = 0.016;
+    ctx.beginPath();
+    ys.forEach((y, k) => (k ? ctx.lineTo(x, lift(y) - RAIL_H) : ctx.moveTo(x, lift(y) - RAIL_H)));
+    ctx.stroke();
+    if (look.cap) for (const y of [-SPAN + 0.012, SPAN - 0.012]) circle(ctx, x, lift(y) - RAIL_H, 0.014, look.cap);
+    if (look.snow) circle(ctx, x, lift(SPAN - 0.012) - RAIL_H - 0.006, 0.012, '#FFFFFF');
+    if (look.vines) {
+      ellipse(ctx, x, lift(SPAN * 0.4) - RAIL_H * 0.4, 0.016, 0.024, side * 0.4, look.vines);
+      ellipse(ctx, x, lift(-SPAN * 0.2) - RAIL_H * 0.4, 0.014, 0.02, -side * 0.4, look.vines);
+    }
+  }
+}
+
+/** Wooden plank footbridge. */
+export function plankBridge(wood: string, woodDark: string, rail: string, weight = 1, extra: Partial<BridgeLook> = {}): PropDef {
+  return bridgeProp('plank-bridge', { deck: wood, deckShade: woodDark, side: woodDark, rail, planks: true, hump: 0.035, ...extra }, weight);
 }
 
 /** Flat stones laid across the canal. */

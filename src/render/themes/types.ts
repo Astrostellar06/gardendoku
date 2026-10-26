@@ -18,6 +18,8 @@ export interface PropDraw {
   /** Two stable random numbers in [0, 1) for variations. */
   v: number;
   v2: number;
+  /** Screen-aligned canal props: the canal runs vertically ('v') or horizontally ('h') on screen. */
+  axis?: 'v' | 'h';
 }
 
 export interface PropDef {
@@ -37,6 +39,8 @@ export interface PropDef {
   upright?: boolean;
   /** Drawn every frame in the overlay (koi swimming...) instead of the cached tile. */
   animated?: boolean;
+  /** Canal props drawn in screen orientation (2.5D bridges), told the canal's axis. */
+  screen?: boolean;
   /**
    * Upright props are drawn bigger than their footprint, growing upward from
    * their base (default 1.5): trees and lanterns may rise over the canal behind them.

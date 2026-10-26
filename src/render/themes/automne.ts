@@ -42,6 +42,7 @@ const acorns: PropDef = {
       ctx.ellipse(0, -r * 0.18 * s, r * 0.42 * s, r * 0.24 * s, 0, Math.PI, TAU);
       ctx.fill();
       line(ctx, 0, -r * 0.4 * s, r * 0.06 * s, -r * 0.55 * s, r * 0.08 * s, '#6E452C');
+      ctx.restore();
     };
     one(-r * 0.35, r * 0.1, 1, -0.3);
     one(r * 0.4, r * 0.25, 0.85, 0.4);

@@ -325,8 +325,8 @@ export const savane: Theme = {
     ctx.fillStyle = 'rgba(232, 196, 120, 0.8)';
     ctx.fillRect(0, h * 0.9, w, h * 0.1);
     poly(ctx, [0, h * 0.9, w, h * 0.88, w, h, 0, h], 'rgba(226, 186, 108, 0.85)');
-    acaciaSilhouette(ctx, w * 0.15, h * 0.9, 1, 'rgba(160, 120, 80, 0.55)');
-    acaciaSilhouette(ctx, w * 0.62, h * 0.89, 0.7, 'rgba(160, 120, 80, 0.45)');
-    acaciaSilhouette(ctx, w * 0.9, h * 0.9, 0.85, 'rgba(160, 120, 80, 0.5)');
+    acaciaSilhouette(ctx, w * 0.15, h * 0.9, 1, '#CDAA7A');
+    acaciaSilhouette(ctx, w * 0.62, h * 0.89, 0.7, '#D8BA8C');
+    acaciaSilhouette(ctx, w * 0.9, h * 0.9, 0.85, '#D2B283');
   },
 };

@@ -220,6 +220,6 @@ export const sauvage: Theme = {
   scenery(ctx, w, h) {
     clouds(ctx, w, h);
     hill(ctx, w, h, h * 0.9, 16, 'rgba(160, 215, 160, 0.85)', 0.9);
-    reeds(ctx, w, h, 'rgba(100, 160, 100, 0.65)', 'rgba(140, 95, 60, 0.6)');
+    reeds(ctx, w, h, '#8CBD8C', '#A98466');
   },
 };

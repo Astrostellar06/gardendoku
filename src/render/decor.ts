@@ -64,6 +64,8 @@ export interface PropInstance {
   y: number;
   r: number;
   angle: number;
+  /** Canal arm (tile frame) for canal / water props, -1 on the ground. */
+  arm: number;
   delay: number;
   v: number;
   v2: number;
@@ -164,6 +166,7 @@ export function makeDecor(mask: number, seed: string, isSource: boolean, minProp
       let x = 0;
       let y = 0;
       let angle = 0;
+      let arm = -1;
       if (def.place === 'ground') {
         const [sx, sy, cap] = roomySpot();
         const minR = (d: PropDef) => d.size[0] * footprint(d) * 0.8;
@@ -187,8 +190,9 @@ export function makeDecor(mask: number, seed: string, isSource: boolean, minProp
         x = DX[d] * t;
         y = DY[d] * t;
         angle = Math.atan2(DY[d], DX[d]) - Math.PI / 2;
+        arm = d;
       }
-      props.push({ def, x, y, r, angle, delay: propRng.float(0.3, 0.6), v: propRng.next(), v2: propRng.next() });
+      props.push({ def, x, y, r, angle, arm, delay: propRng.float(0.3, 0.6), v: propRng.next(), v2: propRng.next() });
       break;
     }
   }

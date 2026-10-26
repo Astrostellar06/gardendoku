@@ -27,6 +27,8 @@ document.fonts?.ready.then(() => game.relayout());
 const IDLE_FRAME = 1 / 30 - 0.002;
 let last = performance.now();
 function frame(now: number) {
+  // Schedule first: an error in one frame must not stop the game loop.
+  requestAnimationFrame(frame);
   const dt = (now - last) / 1000;
   if (dt >= IDLE_FRAME || game.renderer.isBusy()) {
     last = now;
@@ -34,6 +36,5 @@ function frame(now: number) {
     game.renderer.update(dt);
     game.renderer.draw();
   }
-  requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

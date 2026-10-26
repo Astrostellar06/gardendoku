@@ -1,14 +1,24 @@
-/** Background pieces for the garden styles (pixel coordinates). */
+/**
+ * Background pieces for the garden styles (pixel coordinates).
+ * Silhouettes made of several overlapping shapes must use opaque colours:
+ * with transparency, branches would show through the foliage.
+ */
 import { circle } from './kit';
 
 type Ctx = CanvasRenderingContext2D;
 
 export function cloud(ctx: Ctx, cx: number, cy: number, s: number, color = 'rgba(255,255,255,0.7)') {
+  // Each puff is its own sub-path: chained arcs would be joined by stray segments.
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.arc(cx, cy, 22 * s, 0, Math.PI * 2);
-  ctx.arc(cx + 26 * s, cy - 10 * s, 28 * s, 0, Math.PI * 2);
-  ctx.arc(cx + 56 * s, cy, 20 * s, 0, Math.PI * 2);
+  for (const [x, y, r] of [
+    [cx, cy, 22 * s],
+    [cx + 26 * s, cy - 10 * s, 28 * s],
+    [cx + 56 * s, cy, 20 * s],
+  ]) {
+    ctx.moveTo(x + r, y);
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+  }
   ctx.rect(cx, cy, 56 * s, 20 * s);
   ctx.fill();
 }
@@ -71,14 +81,17 @@ export function mountain(ctx: Ctx, cx: number, baseY: number, width: number, hei
   ctx.fill();
 }
 
+/** Smooth rolling dunes, back to front. */
 export function dunes(ctx: Ctx, w: number, h: number, colors: string[]) {
   colors.forEach((color, k) => {
     const base = h * (0.82 + k * 0.06);
+    const amp = 34 - k * 8;
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.moveTo(0, h);
-    for (let x = 0; x <= w + 8; x += 8) {
-      const y = base - Math.max(0, Math.sin((x / w) * Math.PI * (1.2 + k * 0.5) + k * 1.7)) * (40 - k * 10);
+    for (let x = 0; x <= w + 8; x += 6) {
+      const u = (x / w) * Math.PI;
+      const y = base - amp * (0.5 + 0.5 * Math.sin(u * (1.3 + k * 0.45) + k * 1.9)) - amp * 0.2 * Math.sin(u * 3.1 + k);
       ctx.lineTo(x, y);
     }
     ctx.lineTo(w, h);
@@ -99,11 +112,15 @@ export function acaciaSilhouette(ctx: Ctx, x: number, baseY: number, s: number, 
   ctx.lineTo(x + 16 * s, baseY - 46 * s);
   ctx.stroke();
   ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.ellipse(x, baseY - 50 * s, 34 * s, 9 * s, 0, 0, Math.PI * 2);
-  ctx.ellipse(x - 18 * s, baseY - 47 * s, 18 * s, 7 * s, 0, 0, Math.PI * 2);
-  ctx.ellipse(x + 20 * s, baseY - 48 * s, 18 * s, 7 * s, 0, 0, Math.PI * 2);
-  ctx.fill();
+  for (const [ex, ey, rx, ry] of [
+    [x, baseY - 50 * s, 34 * s, 9 * s],
+    [x - 18 * s, baseY - 47 * s, 18 * s, 7 * s],
+    [x + 20 * s, baseY - 48 * s, 18 * s, 7 * s],
+  ]) {
+    ctx.beginPath();
+    ctx.ellipse(ex, ey, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 export function pineSilhouette(ctx: Ctx, x: number, baseY: number, s: number, color: string, snow?: string) {
@@ -150,6 +167,8 @@ export function jungleLeaf(ctx: Ctx, x: number, y: number, len: number, angle: n
   ctx.quadraticCurveTo(len * 0.45, -len * 0.35, 0, -len);
   ctx.quadraticCurveTo(-len * 0.45, -len * 0.35, 0, 0);
   ctx.fill();
+  // Veins stay inside the leaf.
+  ctx.clip();
   ctx.strokeStyle = vein;
   ctx.lineWidth = 2;
   ctx.beginPath();

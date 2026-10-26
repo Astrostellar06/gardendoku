@@ -1,6 +1,6 @@
 /** Desert & oasis: rippled sand, cacti, palm trees, clay jars and camels. */
 import { SPRING } from '../palette';
-import { lilyPadsProp, rockProp } from './common';
+import { bridgeProp, lilyPadsProp, rockProp } from './common';
 import { circle, ellipse, groundShadow, leaf, line, rrect, TAU } from './kit';
 import { dunes, sun } from './scenery';
 import type { PropDef, Theme } from './types';
@@ -193,20 +193,7 @@ const succulent: PropDef = {
   },
 };
 
-const stoneSlab: PropDef = {
-  id: 'stone-slab',
-  place: 'canal',
-  size: [0.06, 0.075],
-  weight: 1,
-  when: 'always',
-  draw(ctx, { r }) {
-    const half = 0.22;
-    ellipse(ctx, 0.01, r * 0.2, half, r * 1.05, 0, 'rgba(90,60,30,0.2)');
-    rrect(ctx, -half, -r * 0.8, half * 2, r * 1.6, r * 0.25, '#E9C894');
-    rrect(ctx, -half, r * 0.5, half * 2, r * 0.3, r * 0.15, '#D4AE76');
-    line(ctx, -half * 0.5, -r * 0.2, half * 0.3, -r * 0.1, 0.008, 'rgba(160,110,60,0.4)');
-  },
-};
+const stoneSlab = bridgeProp('stone-slab', { deck: '#EFD3A0', deckShade: '#D4AE76', side: '#D9B27A', hump: 0.03 });
 
 export const desert: Theme = {
   id: 'desert',

@@ -294,17 +294,17 @@ export const jungle: Theme = {
     banana,
     dartFrog,
     rockProp('#B8B09A', '#948A74', '#DCD6C6', '#5DBA6A'),
-    plankBridge('#B8875A', '#A67648', '#6EA84A'),
+    plankBridge('#B8875A', '#A67648', '#8A6A48', 1, { vines: '#5DB05A' }),
     turtle,
   ],
   tuft(ctx, s) {
     for (const a of [-0.7, 0, 0.7]) leaf(ctx, 0, s * 0.4, s * 1.1, s * 0.22, a, '#2F9450');
   },
   scenery(ctx, w, h) {
-    jungleLeaf(ctx, -10, h * 0.25, h * 0.22, 1.2, 'rgba(70, 160, 100, 0.55)', 'rgba(140, 210, 160, 0.5)');
-    jungleLeaf(ctx, w + 10, h * 0.18, h * 0.2, -1.3, 'rgba(60, 150, 95, 0.5)', 'rgba(140, 210, 160, 0.5)');
+    jungleLeaf(ctx, -10, h * 0.25, h * 0.22, 1.2, '#8FCFA3', '#B4E2C2');
+    jungleLeaf(ctx, w + 10, h * 0.18, h * 0.2, -1.3, '#86C99B', '#B4E2C2');
     for (let k = 0; k < 7; k++) {
-      jungleLeaf(ctx, w * (k / 6), h + 10, h * (0.16 + (k % 3) * 0.03), (k - 3) * 0.3, k % 2 ? 'rgba(70, 165, 100, 0.8)' : 'rgba(52, 145, 88, 0.85)', 'rgba(150, 220, 170, 0.5)');
+      jungleLeaf(ctx, w * (k / 6), h + 10, h * (0.16 + (k % 3) * 0.03), (k - 3) * 0.3, k % 2 ? '#5DB37C' : '#4CA46D', '#8ED3A6');
     }
   },
 };

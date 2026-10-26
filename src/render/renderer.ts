@@ -549,6 +549,9 @@ export class GardenRenderer {
 
   draw() {
     const ctx = this.ctx;
+    // Start every frame from a clean state, so one unbalanced save() in a
+    // drawing can never pile up clips frame after frame.
+    (ctx as CanvasRenderingContext2D & { reset?: () => void }).reset?.();
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';

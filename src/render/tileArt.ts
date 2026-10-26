@@ -194,6 +194,8 @@ function drawSprout(ctx: CanvasRenderingContext2D, s: number) {
   ctx.fillStyle = P.grassDark;
   ctx.beginPath();
   ctx.ellipse(-0.035, -0.05, 0.04, 0.022, -0.5, 0, TAU);
+  ctx.fill();
+  ctx.beginPath();
   ctx.ellipse(0.035, -0.055, 0.04, 0.022, 0.5, 0, TAU);
   ctx.fill();
   ctx.restore();
@@ -355,9 +357,9 @@ export function drawTile(ctx: CanvasRenderingContext2D, st: TileState) {
     }
   }
 
-  // Bridges over the canals, then things floating on the water.
+  // Things floating on the water (flat canal props too).
   for (const p of decor.props) {
-    if (p.def.place !== 'ground' && !p.def.animated) drawProp(ctx, p, st, upright, 0);
+    if (p.def.place !== 'ground' && !p.def.animated && !p.def.screen) drawProp(ctx, p, st, upright, 0);
   }
 
   // Tufts and flowers (plants stand upright once the tile is at rest).
@@ -368,9 +370,9 @@ export function drawTile(ctx: CanvasRenderingContext2D, st: TileState) {
 
   ctx.restore();
 
-  // Ground props, back to front as seen on screen. They are not clipped to the
-  // tile face: a tree may rise a little above it, over the tile behind.
-  const ground = decor.props.filter((p) => p.def.place === 'ground' && !p.def.animated);
+  // Ground props and 2.5D bridges, back to front as seen on screen. They are not
+  // clipped to the tile face: a tree may rise a little above it, over the tile behind.
+  const ground = decor.props.filter((p) => (p.def.place === 'ground' || p.def.screen) && !p.def.animated);
   if (ground.length > 1) {
     const a = (st.rot * Math.PI) / 2;
     const screenY = (p: PropInstance) => p.x * Math.sin(a) + p.y * Math.cos(a);
@@ -393,7 +395,12 @@ function drawProp(ctx: CanvasRenderingContext2D, p: PropInstance, st: TileState,
   }
   ctx.save();
   ctx.translate(p.x, p.y);
-  if (def.place !== 'ground') ctx.rotate(p.angle);
+  let axis: 'v' | 'h' | undefined;
+  if (def.screen) {
+    // Drawn as seen on screen: knows whether its canal runs up-down or left-right there.
+    ctx.rotate(upright);
+    axis = ((p.arm + st.rot) & 1) === 0 ? 'v' : 'h';
+  } else if (def.place !== 'ground') ctx.rotate(p.angle);
   else if (def.upright) ctx.rotate(upright);
   // Upright props stand on their base and grow upward from it.
   const k = scale * (def.upright ? def.drawScale ?? 1.5 : 1);
@@ -403,7 +410,7 @@ function drawProp(ctx: CanvasRenderingContext2D, p: PropInstance, st: TileState,
     ctx.scale(k, k);
     ctx.translate(0, -base);
   }
-  def.draw(ctx, { r: p.r, bloom: st.bloom, water: st.water, time, v: p.v, v2: p.v2 });
+  def.draw(ctx, { r: p.r, bloom: st.bloom, water: st.water, time, v: p.v, v2: p.v2, axis });
   ctx.restore();
 }
 
