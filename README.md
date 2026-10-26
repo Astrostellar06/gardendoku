@@ -49,7 +49,7 @@ Au premier lancement, un mini-jardin 3×3 explique le jeu en 5 étapes. Un proje
 | --- | --- |
 | Rectangle | Parterre |
 | Rectangle avec quelques trous | Étangs |
-| Cadre évidé au centre (cour vide), source sur la galerie intérieure | Cloître |
+| Cadre évidé au centre (cour vide), galerie de 3 parcelles d'épaisseur (2 pour un cloître de moins de 8 de large), source sur la galerie | Cloître |
 | Cercle | Rond-point |
 | Losange | Losange |
 | Croix | Croisée |
@@ -97,14 +97,41 @@ Seul le printemps est disponible au départ ; chaque autre style se débloque pa
 | Style | Défi |
 | --- | --- |
 | Japon | Atteindre le niveau 8 |
+| Roseraie | Finir un jardin en forme de cœur |
+| Jardin de l'amitié | Partager le résultat d'un défi du jour |
+| Été | Réussir 3 défis du jour |
 | Automne | Finir un jardin d'au moins 40 parcelles sans verrou ni indice |
 | Hiver | Réussir 3 niveaux difficiles |
+| Champs | Finir 5 niveaux d'affilée sans indice |
 | Savane | Atteindre le niveau 25 |
 | Désert | Finir un niveau plus vite que 80 % des joueurs |
+| Verger | Atteindre le niveau 40 |
+| Jardin à la française | Finir un jardin d'au moins 80 parcelles sans indice |
 | Jungle | Réussir 10 niveaux difficiles |
+| Parc urbain | Finir un jardin d'au moins 100 parcelles |
+| Montagne | Réussir le défi du jour 7 jours de suite |
 | Sauvage | Finir un niveau plus vite que 95 % des joueurs |
+| Canyon | Réussir 20 niveaux difficiles |
+| Grands parcs | Finir un jardin de chaque forme (les 9 formes) |
 
 Le choix **Aléatoire** donne à chaque niveau un style tiré parmi ceux débloqués. Le tirage est stable : rejouer un niveau redonne le même style.
+
+### Défi du jour
+
+Le bouton **Défi du jour** de l'accueil ouvre un jardin commun à tous les joueurs pour la journée (`src/core/daily.ts`). Sa seed vient de la date (`jour-AAAA-MM-JJ`) et sa difficulté du jour de la semaine : doux le lundi, de plus en plus grand et riche en déductions avancées jusqu'au vendredi, bords reliés le samedi, grand jardin le dimanche. Le style du jour est tiré au sort parmi tous les styles, y compris ceux qui ne sont pas encore débloqués : c'est l'occasion de les essayer.
+
+- La partie en cours est sauvegardée à part, sans toucher à la progression des niveaux.
+- Une fois réussi, le bouton affiche le temps ; le toucher ouvre le résultat avec le compte à rebours jusqu'au prochain défi.
+- La **série** compte les jours consécutifs réussis (et la meilleure série).
+- **Partager** envoie un texte court sans rien dévoiler du jardin : date, temps, rang, une barre de 1 à 5 fleurs, indices utilisés et série. Sur téléphone, c'est la feuille de partage du système ; ailleurs, le texte est copié dans le presse-papiers.
+
+```
+🌸 Jardin des Sources · défi du 26/10
+⏱️ 1:42 · plus rapide que 73 % des joueurs
+🌸🌸🌸🌸🌱
+💧 Sans indice
+🔥 4 jours de suite
+```
 
 ### Indices
 
@@ -112,7 +139,7 @@ On commence avec 5 indices ; le compteur est affiché sur le bouton. À 0, une f
 
 ## Styles de jardin
 
-Huit styles, choisis depuis l'écran d'accueil (bouton **Styles**, avec un aperçu dessiné de chacun) :
+Dix-huit styles, choisis depuis l'écran d'accueil (bouton **Styles**, avec un aperçu dessiné de chacun) :
 
 | Style | Ambiance et détails |
 | --- | --- |
@@ -124,8 +151,18 @@ Huit styles, choisis depuis l'écran d'accueil (bouton **Styles**, avec un aper�
 | Désert | Sable ondulé, oasis verte, saguaros (qui fleurissent), cactus tonneaux, palmiers, jarres, chameaux, lézards |
 | Jungle | Monsteras, fougères, hibiscus, bambous, toucans, statues tiki, bananiers, grenouilles, tortues |
 | Sauvage | Roseaux et massettes, fleurs des champs, bûches moussues, grenouilles sur nénuphar, canards, libellules |
+| Jardin de l'amitié | Topiaires en cœur, pique-niques, lapins câlins, ballons en cœur, lettres d'amour, lampadaires en cœur, bateaux en papier, pluie de petits cœurs, arc-en-ciel |
+| Été | Tournesols, parasols, pastèques, stand de limonade, transats, châteaux de sable, bouées et canards en plastique, plage et voilier au fond |
+| Roseraie | Rosiers qui fleurissent avec l'eau, arches de roses, bains d'oiseaux, topiaires, bancs blancs, vasques, pétales sur l'eau, kiosque |
+| Verger | Pommiers et cerisiers chargés de fruits, potager, carottes, tomates, épouvantails, brouettes, ruches, poules, grange rouge |
+| Champs | Bottes de foin, moulins (ailes qui tournent), coquelicots, lavande, gerbes de blé, lapins, tracteurs, collines en patchwork |
+| Jardin à la française | Gravier ratissé, pelouse tondue en bandes, ifs taillés en cône, orangers en caisse, statues, vasques, broderies de buis, fontaines, cygnes, château au fond |
+| Parc urbain | Pavés, lampadaires, bancs, vélos, chariot de hot-dogs, pigeons, bouches à incendie, fontaine, barques, pont de pierre, gratte-ciel au fond |
+| Montagne | Sapins, chalets fleuris, marmottes, bouquetins, vaches à cloche, cairns, edelweiss et gentianes, sommets enneigés |
+| Canyon | Cheminées de fées, arches de roche, genévriers, armoise, mouflons, campement (le feu s'allume avec l'eau), canoës, buttes en strates |
+| Grands parcs | Grands pins, bisons, ours, geysers qui jaillissent, sources chaudes arc-en-ciel, cabane de ranger, wapitis, truites |
 
-Chaque style a sa palette, son paysage de fond, ses particules d'ambiance (sakura, feuilles, neige, pollen, sable, lucioles, aigrettes) et son catalogue de détails. Environ 80 % des parcelles reçoivent un ou deux détails tirés au hasard (de façon déterministe : un même niveau garde les mêmes détails). Certains sont là dès le départ (lanternes, rochers…), d'autres apparaissent quand l'eau arrive (animaux, fleurs). Les éléments debout restent droits quelle que soit la rotation de la tuile.
+Chaque style a sa palette, son paysage de fond, ses particules d'ambiance (sakura, feuilles, neige, pollen, sable, lucioles, aigrettes, cœurs) et son catalogue de détails. Environ 80 % des parcelles reçoivent un ou deux détails tirés au hasard (de façon déterministe : un même niveau garde les mêmes détails). Certains sont là dès le départ (lanternes, rochers…), d'autres apparaissent quand l'eau arrive (animaux, fleurs). Les éléments debout restent droits quelle que soit la rotation de la tuile.
 
 Ajouter un style = un fichier dans `src/render/themes/` (palette, décor de fond, liste de détails), à déclarer dans `themes/index.ts`.
 
@@ -142,18 +179,20 @@ src/
     board.ts       État de jeu : rotations, verrous, eau, boucles, victoire
     levels.ts      Progression infinie : niveau n → taille, forme, seed
     timing.ts      Temps médian estimé d'un niveau et rang du joueur
+    daily.ts       Défi du jour : seed par date, difficulté selon le jour de la semaine
   render/          Rendu Canvas 2D
     tileArt.ts     Dessin procédural d'une parcelle (sol, canal, eau, herbe, fleurs, lotus, détails)
     decor.ts       Décor de chaque parcelle, déterministe (placé hors des canaux)
-    themes/        Les 8 styles (palette, paysage, détails), kit de dessin partagé
+    themes/        Les 18 styles (palette, paysage, détails), kit de dessin et décors partagés
     preview.ts     Aperçu d'un style pour le menu
     renderer.ts    Animations (ressort de rotation, eau qui avance, floraison), cache des parcelles
-    particles.ts   Pétales, étincelles, papillons
+    particles.ts   Pétales, cœurs, étincelles, papillons
     background.ts  Ciel pastel, nuages, collines
   audio/sound.ts   Sons synthétisés en WebAudio (aucun fichier audio)
-  ui/              HUD (DOM), saisie tactile, sauvegarde localStorage
+  ui/              HUD (DOM), saisie tactile, sauvegarde localStorage, partage
   tutorial.ts      Mini-jardin et étapes du tutoriel
   progress.ts      Défis qui débloquent les styles
+  daily.ts         Résultat du défi du jour, série, texte à partager
   game.ts          Contrôleur qui relie le tout
 ```
 
@@ -175,4 +214,5 @@ La victoire ne compare pas avec la solution d'origine : elle est déclarée dès
 - **Application native** : empaqueter avec [Capacitor](https://capacitorjs.com/) (iOS / Android), ajouter un service worker pour jouer hors ligne, et des icônes PNG.
 - Zoom par pincement pour les très grandes grilles.
 - Variantes exotiques : tuiles hexagonales.
-- Musique d'ambiance, réglage des vibrations, statistiques et défi quotidien (seed = date du jour).
+- Musique d'ambiance, réglage des vibrations, écran de statistiques.
+- Défi du jour : un classement réel demandera un petit serveur (aujourd'hui, le rang est estimé localement).

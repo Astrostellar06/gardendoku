@@ -138,3 +138,13 @@ export function eyes(ctx: Ctx, x: number, y: number, gap: number, r: number) {
   circle(ctx, x - gap, y, r, '#4A3A44');
   circle(ctx, x + gap, y, r, '#4A3A44');
 }
+
+/** Heart centred on (x, y), about 2s wide. */
+export function heart(ctx: Ctx, x: number, y: number, s: number, color: Paint) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y + s * 0.9);
+  ctx.bezierCurveTo(x - s * 1.4, y - s * 0.1, x - s * 0.6, y - s * 1.1, x, y - s * 0.35);
+  ctx.bezierCurveTo(x + s * 0.6, y - s * 1.1, x + s * 1.4, y - s * 0.1, x, y + s * 0.9);
+  ctx.fill();
+}

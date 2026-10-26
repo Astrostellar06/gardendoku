@@ -43,15 +43,45 @@ const noHelp = (tiles: number): Challenge => ({
   }),
 });
 
+const counted = (text: string, value: (s: SaveData) => number, goal: number): Challenge => ({
+  text,
+  state: (s) => ({ done: value(s) >= goal, progress: `${Math.min(value(s), goal)} / ${goal}` }),
+});
+
+const bigGarden = (text: string, value: (s: SaveData) => number, tiles: number): Challenge => ({
+  text,
+  state: (s) => ({ done: value(s) >= tiles, progress: value(s) > 0 ? `Meilleur : ${value(s)} parcelles` : 'Pas encore réussi' }),
+});
+
+/** Every garden shape, for the "one of each" challenge. */
+export const ALL_SHAPES = ['rect', 'ponds', 'cloister', 'circle', 'diamond', 'plus', 'heart', 'flower', 'hourglass'];
+
 /** The challenge that unlocks each style (the spring garden is free). */
 export const STYLE_CHALLENGES: Partial<Record<ThemeId, Challenge>> = {
   japon: reachLevel(8),
   automne: noHelp(40),
   hiver: hardLevels(3),
+  ete: counted('Réussir 3 défis du jour', (s) => s.stats.dailyDone, 3),
+  amitie: counted("Partager le résultat d'un défi du jour", (s) => s.stats.shared, 1),
+  roseraie: {
+    text: 'Finir un jardin en forme de cœur',
+    state: (s) => ({ done: s.stats.shapesSolved.includes('heart'), progress: s.stats.shapesSolved.includes('heart') ? 'Fait' : 'Pas encore' }),
+  },
+  champs: counted("Finir 5 niveaux d'affilée sans indice", (s) => s.stats.noHintBestStreak, 5),
   savane: reachLevel(25),
   desert: fasterThan(80),
+  verger: reachLevel(40),
+  francais: bigGarden("Finir un jardin d'au moins 80 parcelles sans indice", (s) => s.stats.noHintBest, 80),
   jungle: hardLevels(10),
+  urbain: bigGarden("Finir un jardin d'au moins 100 parcelles", (s) => s.stats.biggestSolved, 100),
+  montagne: counted('Réussir le défi du jour 7 jours de suite', (s) => s.streak.best, 7),
   sauvage: fasterThan(95),
+  canyon: hardLevels(20),
+  parcs: counted(
+    'Finir un jardin de chaque forme',
+    (s) => ALL_SHAPES.filter((shape) => s.stats.shapesSolved.includes(shape)).length,
+    ALL_SHAPES.length,
+  ),
 };
 
 export const RANDOM_STYLE = 'aleatoire';

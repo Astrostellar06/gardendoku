@@ -1,6 +1,6 @@
 /** Props shared by several garden styles (parameterised by colours). */
 import { P } from '../palette';
-import { circle, ellipse, groundShadow, line, rrect, TAU } from './kit';
+import { circle, ellipse, groundShadow, line, poly, rrect, TAU } from './kit';
 import type { PropDef } from './types';
 
 export function rockProp(base: string, shade: string, light: string, moss?: string): PropDef {
@@ -350,4 +350,106 @@ export function snailProp(shell: string, swirl: string): PropDef {
 export function swimOffset(time: number, v: number, amp = 0.07): { y: number; dir: number } {
   const ph = time * 0.55 + v * 20;
   return { y: Math.sin(ph) * amp, dir: Math.cos(ph) >= 0 ? 1 : -1 };
+}
+
+export interface TreeLook {
+  foliage: string[];
+  trunk: string;
+  /** Fruits dotted on the foliage once the tile is watered (apples, cherries...). */
+  fruit?: string;
+  /** round: ball canopy; cone: clipped cone; ball: topiary ball on a stem. */
+  shape?: 'round' | 'cone' | 'ball';
+  /** Pot or planter box under topiaries. */
+  pot?: string;
+}
+
+/** Generic upright tree (orchards, parks, formal gardens). */
+export function treeProp(id: string, look: TreeLook, weight = 2, when: 'always' | 'bloom' = 'always'): PropDef {
+  return {
+    id,
+    place: 'ground',
+    size: [0.1, 0.12],
+    weight,
+    when,
+    upright: true,
+    draw(ctx, { r, v, bloom }) {
+      const c0 = look.foliage[0];
+      const c1 = look.foliage[1] ?? c0;
+      const c2 = look.foliage[2] ?? c0;
+      groundShadow(ctx, 0, r * 0.95, r * 0.55);
+      if (look.pot) {
+        rrect(ctx, -r * 0.3, r * 0.55, r * 0.6, r * 0.4, r * 0.06, look.pot);
+        rrect(ctx, -r * 0.35, r * 0.5, r * 0.7, r * 0.1, r * 0.04, look.pot);
+      }
+      const base = look.pot ? r * 0.55 : r * 0.95;
+      if (look.shape === 'cone') {
+        rrect(ctx, -r * 0.07, base - r * 0.2, r * 0.14, r * 0.2, r * 0.03, look.trunk);
+        poly(ctx, [-r * 0.42, base - r * 0.15, 0, -r * 0.95, r * 0.42, base - r * 0.15], c0);
+        poly(ctx, [-r * 0.1, base - r * 0.3, 0, -r * 0.9, r * 0.12, base - r * 0.35], c1);
+        return;
+      }
+      if (look.shape === 'ball') {
+        line(ctx, 0, base, 0, -r * 0.1, r * 0.1, look.trunk);
+        circle(ctx, 0, -r * 0.4, r * 0.5, c0);
+        circle(ctx, -r * 0.15, -r * 0.55, r * 0.18, c1);
+      } else {
+        line(ctx, 0, base, 0, -r * 0.05, r * 0.15, look.trunk);
+        line(ctx, 0, r * 0.2, r * 0.28, -r * 0.1, r * 0.08, look.trunk);
+        circle(ctx, 0, -r * 0.42, r * 0.5, c0);
+        circle(ctx, -r * 0.38, -r * 0.18, r * 0.32, c1);
+        circle(ctx, r * 0.4, -r * 0.2, r * 0.33, c2);
+        circle(ctx, -r * 0.16, -r * 0.6, r * 0.13, 'rgba(255,255,255,0.22)');
+      }
+      if (look.fruit && bloom > 0.4) {
+        ctx.globalAlpha = Math.min(1, (bloom - 0.4) * 2);
+        for (let k = 0; k < 6; k++) {
+          const a = k * 2.3 + v * 5;
+          circle(ctx, Math.cos(a) * r * 0.42, -r * 0.35 + Math.sin(a) * r * 0.3, r * 0.08, look.fruit);
+        }
+        ctx.globalAlpha = 1;
+      }
+    },
+  };
+}
+
+/** Upright pine tree in layers, optionally snowy. */
+export function pineProp(id: string, dark: string, light: string, weight = 2, snow = false): PropDef {
+  return {
+    id,
+    place: 'ground',
+    size: [0.1, 0.12],
+    weight,
+    when: 'always',
+    upright: true,
+    draw(ctx, { r }) {
+      groundShadow(ctx, 0, r * 0.95, r * 0.5);
+      rrect(ctx, -r * 0.08, r * 0.65, r * 0.16, r * 0.3, r * 0.03, '#7A5547');
+      for (let k = 0; k < 3; k++) {
+        const base = r * 0.72 - k * r * 0.48;
+        const half = r * (0.62 - k * 0.14);
+        poly(ctx, [-half, base, 0, base - r * 0.75, half, base], k % 2 ? light : dark);
+        if (snow) poly(ctx, [-half * 0.5, base - r * 0.38, 0, base - r * 0.75, half * 0.5, base - r * 0.38], '#FFFFFF');
+      }
+    },
+  };
+}
+
+/** Park bench seen from the front. */
+export function benchProp(id: string, wood: string, metal: string, weight = 1): PropDef {
+  return {
+    id,
+    place: 'ground',
+    size: [0.09, 0.11],
+    weight,
+    when: 'always',
+    upright: true,
+    draw(ctx, { r }) {
+      groundShadow(ctx, 0, r * 0.8, r * 0.9);
+      for (const x of [-0.75, 0.65]) rrect(ctx, x * r, -r * 0.1, r * 0.1, r * 0.9, r * 0.03, metal);
+      rrect(ctx, -r * 0.9, -r * 0.55, r * 1.8, r * 0.16, r * 0.05, wood);
+      rrect(ctx, -r * 0.9, -r * 0.3, r * 1.8, r * 0.16, r * 0.05, wood);
+      rrect(ctx, -r * 0.95, r * 0.05, r * 1.9, r * 0.2, r * 0.06, wood);
+      rrect(ctx, -r * 0.95, r * 0.05, r * 1.9, r * 0.06, r * 0.03, 'rgba(255,255,255,0.25)');
+    },
+  };
 }

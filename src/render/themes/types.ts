@@ -1,9 +1,27 @@
 /** Garden styles: palette, scenery, ambient particles and the little props scattered on tiles. */
 import type { Palette } from '../palette';
 
-export type ThemeId = 'printemps' | 'japon' | 'automne' | 'hiver' | 'savane' | 'desert' | 'jungle' | 'sauvage';
+export type ThemeId =
+  | 'printemps'
+  | 'japon'
+  | 'automne'
+  | 'hiver'
+  | 'savane'
+  | 'desert'
+  | 'jungle'
+  | 'sauvage'
+  | 'amitie'
+  | 'ete'
+  | 'roseraie'
+  | 'verger'
+  | 'champs'
+  | 'francais'
+  | 'urbain'
+  | 'montagne'
+  | 'canyon'
+  | 'parcs';
 
-export type AmbientKind = 'petals' | 'sakura' | 'leaves' | 'snow' | 'pollen' | 'sand' | 'fireflies' | 'seeds';
+export type AmbientKind = 'petals' | 'sakura' | 'leaves' | 'snow' | 'pollen' | 'sand' | 'fireflies' | 'seeds' | 'hearts';
 
 /** What a prop drawer receives. It draws around (0, 0); "up" is -y. */
 export interface PropDraw {

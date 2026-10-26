@@ -1,13 +1,12 @@
 /** DOM overlay: bars, toasts, home screen and cards. */
 import { isHardLevel, LevelInfo } from '../core/levels';
+import { formatTime } from '../core/timing';
+
+export { formatTime };
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
-export function formatTime(seconds: number): string {
-  const s = Math.max(0, Math.round(seconds));
-  const m = Math.floor(s / 60);
-  return `${m}:${String(s % 60).padStart(2, '0')}`;
-}
+
 
 export interface StyleCard {
   id: string;
@@ -30,6 +29,8 @@ export class Hud {
   readonly styles = $('styles');
   readonly coach = $('coach');
   readonly hintShop = $('hint-shop');
+  readonly dailyResult = $('daily-result');
+  private countdownTimer = 0;
   readonly ad = $('ad');
   readonly lockBtn = $('btn-lock');
   readonly soundBtn = $('btn-sound');
@@ -38,7 +39,7 @@ export class Hud {
   private toastTimer = 0;
 
   constructor() {
-    for (const overlay of [this.howto, this.levels, this.hardIntro, this.styles, this.hintShop]) {
+    for (const overlay of [this.howto, this.levels, this.hardIntro, this.styles, this.hintShop, this.dailyResult]) {
       overlay.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
         if (target === overlay || target.closest('[data-close]')) this.close(overlay);
@@ -70,7 +71,39 @@ export class Hud {
     $('level-sub').textContent = info.wrap
       ? `★ Difficile · bords reliés`
       : `${info.shapeName} · ${info.cells} parcelles`;
-    document.querySelector('.level-pill')!.classList.toggle('hard', info.wrap);
+    const pill = document.querySelector('.level-pill')!;
+    pill.classList.toggle('hard', info.wrap);
+    pill.classList.remove('daily');
+  }
+
+  /** Level pill during the daily challenge. */
+  setDaily(info: LevelInfo, label: string, styleName: string) {
+    $('level-title').textContent = 'Défi du jour';
+    $('level-sub').textContent = `${label.charAt(0).toUpperCase()}${label.slice(1)} · ${styleName}`;
+    const pill = document.querySelector('.level-pill')!;
+    pill.classList.toggle('hard', info.wrap);
+    pill.classList.add('daily');
+  }
+
+  /** Home screen daily button: today's status. */
+  setHomeDaily(text: string, done: boolean) {
+    $('daily-sub').textContent = text;
+    $('btn-daily').classList.toggle('done', done);
+  }
+
+  /** Card shown when today's challenge is already won: result, streak, time until the next one. */
+  openDailyResult(text: string, rank: string, streak: string, untilNext: () => string) {
+    $('daily-result-text').textContent = text;
+    $('daily-result-rank').textContent = rank;
+    $('daily-result-streak').textContent = streak;
+    const tick = () => {
+      $('daily-countdown').textContent = untilNext();
+      if (this.dailyResult.classList.contains('hidden')) clearInterval(this.countdownTimer);
+    };
+    clearInterval(this.countdownTimer);
+    tick();
+    this.countdownTimer = window.setInterval(tick, 1000);
+    this.open(this.dailyResult);
   }
 
   setLockMode(on: boolean) {
@@ -81,11 +114,12 @@ export class Hud {
     this.soundBtn.classList.toggle('muted', !on);
   }
 
-  /** Swap the tool buttons for a single "next level" button (after a win). */
-  setWonBar(won: boolean) {
+  /** Swap the tool buttons for a single "next" button (after a win). */
+  setWonBar(won: boolean, label = 'Niveau suivant') {
     for (const el of Array.from(this.bottombar.querySelectorAll<HTMLElement>('.tool-btn'))) {
       el.classList.toggle('hidden', won);
     }
+    this.nextFloat.textContent = label;
     this.nextFloat.classList.toggle('hidden', !won);
   }
 
@@ -123,8 +157,12 @@ export class Hud {
     this.open(this.hintShop);
   }
 
-  showWin(level: number, seconds: number, moves: number, rank: number | null = null, unlocked: string[] = []) {
-    $('win-text').textContent = `Niveau ${level} terminé`;
+  showWin(level: number, seconds: number, moves: number, rank: number | null = null, unlocked: string[] = [], daily?: { streak: number }) {
+    $('win-text').textContent = daily ? 'Défi du jour réussi' : `Niveau ${level} terminé`;
+    $('win-streak').textContent = daily && daily.streak >= 2 ? `${daily.streak} jours de suite !` : '';
+    $('btn-share').classList.toggle('hidden', !daily);
+    $('btn-next').textContent = daily ? "Retour à l'accueil" : 'Niveau suivant';
+    $('btn-next').classList.toggle('soft', !!daily);
     $('win-rank').textContent = rank === null ? '' : `Plus rapide que ${rank} % des joueurs !`;
     const list = $('win-unlocks');
     list.textContent = '';
@@ -146,7 +184,7 @@ export class Hud {
 
   /** An overlay card is covering the game (the timer pauses meanwhile). */
   overlayOpen(): boolean {
-    return [this.howto, this.levels, this.hardIntro, this.styles, this.hintShop, this.ad].some(
+    return [this.howto, this.levels, this.hardIntro, this.styles, this.hintShop, this.ad, this.dailyResult].some(
       (o) => !o.classList.contains('hidden') && !o.classList.contains('closing'),
     );
   }

@@ -1,5 +1,6 @@
 /** Progress persistence (localStorage). Levels themselves are never stored: only the seed index. */
 import type { BoardSnapshot } from '../core/board';
+import type { DailyResult, Streak } from '../daily';
 
 const KEY = 'jardin-des-sources:v1';
 
@@ -20,6 +21,24 @@ export interface Stats {
   noHelpBest: number;
   /** Best time (seconds) per level index. */
   bestTimes: Record<string, number>;
+  /** Biggest garden (tiles) solved without hint (locks allowed). */
+  noHintBest: number;
+  /** Levels in a row solved without hint, and the best such run. */
+  noHintStreak: number;
+  noHintBestStreak: number;
+  /** Biggest garden (tiles) solved. */
+  biggestSolved: number;
+  /** Shapes of the gardens solved. */
+  shapesSolved: string[];
+  /** Daily challenges won, and results shared. */
+  dailyDone: number;
+  shared: number;
+}
+
+export interface DailyState {
+  key: string;
+  snapshot: LevelSnapshot | null;
+  result: DailyResult | null;
 }
 
 /** In-progress level: rotations and locks, plus what the challenges need to know. */
@@ -42,6 +61,9 @@ export interface SaveData {
   /** Styles unlocked so far. */
   unlocked: string[];
   stats: Stats;
+  /** Today's (or the last played) daily challenge. */
+  daily: DailyState | null;
+  streak: Streak;
 }
 
 /** Hints a new player starts with. */
@@ -58,8 +80,27 @@ const DEFAULTS: SaveData = {
   seenHardIntro: false,
   hints: STARTING_HINTS,
   unlocked: ['printemps'],
-  stats: { hardSolved: [], bestFasterThan: 0, noHelpBest: 0, bestTimes: {} },
+  stats: {
+    hardSolved: [],
+    bestFasterThan: 0,
+    noHelpBest: 0,
+    bestTimes: {},
+    noHintBest: 0,
+    noHintStreak: 0,
+    noHintBestStreak: 0,
+    biggestSolved: 0,
+    shapesSolved: [],
+    dailyDone: 0,
+    shared: 0,
+  },
+  daily: null,
+  streak: { last: '', count: 0, best: 0 },
 };
+
+/** A brand new save (first launch). */
+export function newSave(): SaveData {
+  return structuredClone(DEFAULTS);
+}
 
 export function loadSave(): SaveData {
   try {
@@ -71,6 +112,7 @@ export function loadSave(): SaveData {
       ...data,
       settings: { ...DEFAULTS.settings, ...(data.settings ?? {}) },
       stats: { ...structuredClone(DEFAULTS.stats), ...(data.stats ?? {}) },
+      streak: { ...DEFAULTS.streak, ...(data.streak ?? {}) },
     };
   } catch {
     return structuredClone(DEFAULTS);

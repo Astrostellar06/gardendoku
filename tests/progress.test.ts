@@ -2,21 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { buildLevel } from '../src/core/levels';
 import { fasterThan, normalCdf, timeModel } from '../src/core/timing';
 import { isUnlocked, refreshUnlocks, STYLE_CHALLENGES } from '../src/progress';
-import type { SaveData } from '../src/ui/storage';
+import { THEMES } from '../src/render/themes';
+import { newSave } from '../src/ui/storage';
 
-const freshSave = (): SaveData => ({
-  level: 1,
-  maxLevel: 1,
-  snapshot: null,
-  settings: { sound: true, haptics: true, theme: 'printemps' },
-  solved: 0,
-  seenTutorial: true,
-  seenLockTip: true,
-  seenHardIntro: true,
-  hints: 5,
-  unlocked: ['printemps'],
-  stats: { hardSolved: [], bestFasterThan: 0, noHelpBest: 0, bestTimes: {} },
-});
+const freshSave = newSave;
 
 describe('rank against other players', () => {
   it('uses a sound normal distribution', () => {
@@ -66,5 +55,28 @@ describe('style unlocks', () => {
     save.stats.noHelpBest = 45;
     expect(refreshUnlocks(save)).toEqual(['automne']);
     expect(STYLE_CHALLENGES.jungle!.state(save).progress).toBe('3 / 10');
+  });
+
+  it('unlocks the garden styles tied to the daily challenge, shapes and big gardens', () => {
+    const save = freshSave();
+    save.stats.shared = 1;
+    save.stats.dailyDone = 3;
+    save.stats.shapesSolved = ['heart'];
+    expect(refreshUnlocks(save).sort()).toEqual(['amitie', 'ete', 'roseraie']);
+    save.stats.biggestSolved = 120;
+    save.stats.noHintBest = 79;
+    save.streak.best = 7;
+    expect(refreshUnlocks(save).sort()).toEqual(['montagne', 'urbain']);
+    expect(STYLE_CHALLENGES.francais!.state(save).progress).toBe('Meilleur : 79 parcelles');
+    expect(STYLE_CHALLENGES.parcs!.state(save).progress).toBe('1 / 9');
+    save.stats.shapesSolved = ['rect', 'ponds', 'cloister', 'circle', 'diamond', 'plus', 'heart', 'flower', 'hourglass'];
+    expect(refreshUnlocks(save)).toEqual(['parcs']);
+  });
+
+  it('has a challenge for every style but the free one', () => {
+    for (const theme of THEMES) {
+      if (theme.id === 'printemps') expect(STYLE_CHALLENGES[theme.id]).toBeUndefined();
+      else expect(STYLE_CHALLENGES[theme.id], theme.id).toBeDefined();
+    }
   });
 });

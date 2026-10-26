@@ -1,10 +1,12 @@
 /** Game controller: ties the board, the renderer, the HUD, sounds and saving together. */
 import { Sound } from './audio/sound';
 import { Analysis, Board } from './core/board';
-import { generate } from './core/generator';
+import { buildDaily, DailyInfo, dailyInfo, dayKey, msUntilTomorrow } from './core/daily';
+import { generate, Puzzle } from './core/generator';
 import { buildLevel, GENERATOR_VERSION, LevelInfo, levelInfo } from './core/levels';
 import { hashString } from './core/rng';
-import { fasterThan, timeModel } from './core/timing';
+import { fasterThan, formatTime, timeModel } from './core/timing';
+import { advanceStreak, dailyThemeId, liveStreak, shareText } from './daily';
 import { isUnlocked, RANDOM_STYLE, refreshUnlocks, STYLE_CHALLENGES } from './progress';
 import { renderRandomPreview, renderThemePreview } from './render/preview';
 import { GardenRenderer } from './render/renderer';
@@ -13,7 +15,8 @@ import type { ThemeId } from './render/themes';
 import { showRewardedAd } from './ui/ads';
 import { Hud, StyleCard } from './ui/hud';
 import { attachInput } from './ui/input';
-import { loadSave, SaveData, writeSave } from './ui/storage';
+import { shareOrCopy } from './ui/share';
+import { LevelSnapshot, loadSave, SaveData, writeSave } from './ui/storage';
 import {
   buildTutorialBoard,
   LAST_CELL,
@@ -53,6 +56,8 @@ export class Game {
   /** Seconds spent on the current tutorial step, and whether the last tile has been turned. */
   private tutorialClock = 0;
   private tutorialSolved = false;
+  /** Set while playing the daily challenge. */
+  private daily: DailyInfo | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     // `?debloquer` unlocks every style and tops up hints (testing).
@@ -100,6 +105,9 @@ export class Game {
         fn();
       });
     on('btn-play', () => this.play(this.save.level));
+    on('btn-daily', () => this.playDaily());
+    on('btn-share', () => this.shareDaily());
+    on('btn-daily-share', () => this.shareDaily());
     on('btn-howto', () => this.hud.openHowto());
     on('btn-styles', () => this.openStyles());
     on('btn-watch-ad', () => this.watchAdForHints());
@@ -117,7 +125,7 @@ export class Game {
     on('btn-next-float', () => this.next());
     on('btn-admire', () => {
       this.hud.hideWin();
-      this.hud.setWonBar(true);
+      this.hud.setWonBar(true, this.daily ? "Retour à l'accueil" : 'Niveau suivant');
     });
 
     document.addEventListener('visibilitychange', () => {
@@ -178,7 +186,8 @@ export class Game {
       this.vibrate([18, 40, 18]);
       this.renderer.celebrate(() => {
         if (this.mode === 'play' && this.won) {
-          this.hud.showWin(this.info!.index, this.elapsed, this.board!.moves, this.lastWin?.rank ?? null, this.lastWin?.unlocked ?? []);
+          const daily = this.daily ? { streak: this.save.streak.count } : undefined;
+          this.hud.showWin(this.info!.index, this.elapsed, this.board!.moves, this.lastWin?.rank ?? null, this.lastWin?.unlocked ?? [], daily);
         }
       });
     }
@@ -197,6 +206,8 @@ export class Game {
     this.hud.hideToast();
     this.hud.showGameBars(false);
     this.hud.showHome(this.save.level);
+    this.daily = null;
+    this.updateHomeDaily();
     // A small decorative garden blooms behind the title.
     const demo = new Board(generate({ width: 7, height: 7, shape: 'flower', seed: 'accueil', windiness: 0.5 }));
     demo.solveInstantly();
@@ -216,35 +227,15 @@ export class Game {
   }
 
   private loadLevel(n: number) {
+    this.daily = null;
     if (this.save.settings.theme === RANDOM_STYLE) this.applyStyle(this.pickStyle(n));
-    this.info = levelInfo(n);
-    const board = new Board(buildLevel(n));
-    this.board = board;
-    this.won = false;
-    this.celebrated = false;
-    this.elapsed = 0;
-    this.hints = 0;
-    this.setLockMode(false);
-    this.hud.hideWin();
-    this.hud.setWonBar(false);
-    this.hud.hideToast();
-
-    const snap = this.save.snapshot;
-    if (snap && snap.level === n && snap.version === GENERATOR_VERSION && board.restore(snap)) {
-      this.elapsed = snap.time;
-      this.hints = snap.hints ?? 0;
-    }
-    this.usedLock = (snap?.level === n && snap.usedLock) || board.locked.some((l) => l === 1);
+    const info = levelInfo(n);
+    const snap = this.save.snapshot?.level === n ? this.save.snapshot : null;
     this.save.level = n;
+    this.startGarden(info, buildLevel(n), snap);
+    this.hud.setLevel(info);
 
-    this.renderer.setBoard(board, this.info.seed);
-    this.analysis = board.analyze();
-    this.renderer.setAnalysis(this.analysis);
-    this.hud.setLevel(this.info);
-    requestAnimationFrame(() => this.relayout());
-    this.persist();
-
-    if (this.info.wrap && !this.save.seenHardIntro) {
+    if (info.wrap && !this.save.seenHardIntro) {
       this.save.seenHardIntro = true;
       this.renderer.after(0.5, () => this.hud.openHardIntro());
     } else if (!this.save.seenTutorial && n === 1) {
@@ -255,10 +246,114 @@ export class Game {
     }
   }
 
+  /** Show a garden (level or daily), restoring the player's progress on it. */
+  private startGarden(info: LevelInfo, puzzle: Puzzle, snap: LevelSnapshot | null) {
+    this.info = info;
+    const board = new Board(puzzle);
+    this.board = board;
+    this.won = false;
+    this.celebrated = false;
+    this.elapsed = 0;
+    this.hints = 0;
+    this.setLockMode(false);
+    this.hud.hideWin();
+    this.hud.setWonBar(false);
+    this.hud.hideToast();
+    if (snap && snap.version === GENERATOR_VERSION && board.restore(snap)) {
+      this.elapsed = snap.time;
+      this.hints = snap.hints ?? 0;
+    }
+    this.usedLock = !!snap?.usedLock || board.locked.some((l) => l === 1);
+    this.renderer.setBoard(board, info.seed);
+    this.analysis = board.analyze();
+    this.renderer.setAnalysis(this.analysis);
+    requestAnimationFrame(() => this.relayout());
+    this.persist();
+  }
+
   private next() {
     if (!this.info) return;
     this.hud.hideWin();
+    if (this.daily) {
+      this.showHome();
+      return;
+    }
     this.loadLevel(this.info.index + 1);
+  }
+
+  // ---------- Daily challenge ----------
+
+  private todayDone(): boolean {
+    const d = this.save.daily;
+    return !!d && d.key === dayKey() && !!d.result;
+  }
+
+  private updateHomeDaily() {
+    const today = dayKey();
+    const d = this.save.daily;
+    const streak = liveStreak(this.save.streak, today);
+    if (d && d.key === today && d.result) {
+      this.hud.setHomeDaily(`Réussi en ${formatTime(d.result.time)}${streak >= 2 ? ` · ${streak} jours de suite` : ''}`, true);
+    } else {
+      const style = THEMES.find((t) => t.id === dailyThemeId(today, THEMES))!.name;
+      this.hud.setHomeDaily(`Style du jour : ${style}${streak >= 1 ? ` · série de ${streak}` : ''}`, false);
+    }
+  }
+
+  private playDaily() {
+    if (this.todayDone()) {
+      this.openDailyResult();
+      return;
+    }
+    this.leaveTutorial();
+    this.mode = 'play';
+    this.hud.hideHome();
+    this.hud.showGameBars(true);
+    this.loadDaily(dayKey());
+  }
+
+  private loadDaily(key: string) {
+    const info = dailyInfo(key);
+    this.daily = info;
+    const styleId = dailyThemeId(key, THEMES);
+    this.applyStyle(styleId);
+    if (this.save.daily?.key !== key) this.save.daily = { key, snapshot: null, result: null };
+    this.startGarden(info, buildDaily(key), this.save.daily.snapshot);
+    this.hud.setDaily(info, info.label, THEMES.find((t) => t.id === styleId)!.name);
+    if (info.wrap && !this.save.seenHardIntro) {
+      this.save.seenHardIntro = true;
+      this.renderer.after(0.5, () => this.hud.openHardIntro());
+    }
+  }
+
+  private openDailyResult() {
+    const d = this.save.daily;
+    if (!d?.result) return;
+    const streak = liveStreak(this.save.streak, dayKey());
+    this.hud.openDailyResult(
+      `Réussi en ${formatTime(d.result.time)}${d.result.hints ? `, avec ${d.result.hints} indice${d.result.hints > 1 ? 's' : ''}` : ', sans indice'}`,
+      `Plus rapide que ${d.result.rank} % des joueurs`,
+      streak >= 2 ? `${streak} jours de suite !` : '',
+      () => {
+        const min = Math.ceil(msUntilTomorrow() / 60000);
+        return `Prochain défi dans ${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}`;
+      },
+    );
+  }
+
+  /** Share today's result (system share sheet, or copied to the clipboard). */
+  private async shareDaily() {
+    const d = this.save.daily;
+    if (!d?.result) return;
+    const outcome = await shareOrCopy(shareText(d.key, d.result, liveStreak(this.save.streak, dayKey())));
+    if (outcome === 'failed') return;
+    this.save.stats.shared++;
+    const fresh = refreshUnlocks(this.save);
+    const names = fresh.map((id) => THEMES.find((t) => t.id === id)!.name);
+    const copied = outcome === 'copied' ? 'Résultat copié : colle-le à tes amis !' : '';
+    if (names.length) this.hud.toast(`${copied ? 'Résultat copié. ' : ''}Nouveau style débloqué : ${names.join(', ')} !`, false, 4200);
+    else if (copied) this.hud.toast(copied, false, 3000);
+    this.persist();
   }
 
   // ---------- Tutorial ----------
@@ -556,9 +651,16 @@ export class Game {
     this.hud.hideToast();
     this.save.solved++;
     this.save.seenTutorial = true;
-    this.save.maxLevel = Math.max(this.save.maxLevel, this.info.index + 1);
-    this.save.level = this.info.index + 1;
-    this.save.snapshot = null;
+    if (this.daily && this.save.daily) {
+      this.save.daily.result = { time: Math.round(this.elapsed), moves: this.board.moves, hints: this.hints, rank: this.lastWin!.rank };
+      this.save.daily.snapshot = null;
+      this.save.streak = advanceStreak(this.save.streak, this.daily.key);
+      this.save.stats.dailyDone++;
+    } else {
+      this.save.maxLevel = Math.max(this.save.maxLevel, this.info.index + 1);
+      this.save.level = this.info.index + 1;
+      this.save.snapshot = null;
+    }
     const fresh = refreshUnlocks(this.save);
     if (this.lastWin) this.lastWin.unlocked = fresh.map((id) => THEMES.find((t) => t.id === id)!.name);
     writeSave(this.save);
@@ -568,11 +670,21 @@ export class Game {
   private recordWin(info: LevelInfo, board: Board) {
     const rank = fasterThan(this.elapsed, timeModel(board.puzzle), this.hints);
     const stats = this.save.stats;
-    const key = String(info.index);
+    const key = this.daily ? this.daily.key : String(info.index);
     stats.bestTimes[key] = Math.min(stats.bestTimes[key] ?? Infinity, Math.round(this.elapsed));
     stats.bestFasterThan = Math.max(stats.bestFasterThan, rank);
-    if (info.wrap && !stats.hardSolved.includes(info.index)) stats.hardSolved.push(info.index);
-    if (!this.usedLock && this.hints === 0) stats.noHelpBest = Math.max(stats.noHelpBest, board.grid.cells.length);
+    const tiles = board.grid.cells.length;
+    if (info.wrap && !this.daily && !stats.hardSolved.includes(info.index)) stats.hardSolved.push(info.index);
+    if (!this.usedLock && this.hints === 0) stats.noHelpBest = Math.max(stats.noHelpBest, tiles);
+    if (this.hints === 0) {
+      stats.noHintBest = Math.max(stats.noHintBest, tiles);
+      stats.noHintStreak++;
+      stats.noHintBestStreak = Math.max(stats.noHintBestStreak, stats.noHintStreak);
+    } else {
+      stats.noHintStreak = 0;
+    }
+    stats.biggestSolved = Math.max(stats.biggestSolved, tiles);
+    if (!stats.shapesSolved.includes(info.shape)) stats.shapesSolved.push(info.shape);
     this.lastWin = { rank, unlocked: [] };
   }
 
@@ -598,13 +710,15 @@ export class Game {
 
   private persist() {
     if (this.mode === 'play' && this.board && this.info && !this.won) {
-      this.save.snapshot = {
+      const snapshot: LevelSnapshot = {
         level: this.info.index,
         ...this.board.snapshot(this.elapsed),
         version: GENERATOR_VERSION,
         hints: this.hints,
         usedLock: this.usedLock,
       };
+      if (this.daily && this.save.daily) this.save.daily.snapshot = snapshot;
+      else this.save.snapshot = snapshot;
     }
     writeSave(this.save);
   }

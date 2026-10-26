@@ -245,6 +245,8 @@ svg {
 
 .toast {
   position: absolute;
+  /* Above the menus: a locked style explains itself over the style menu. */
+  z-index: 40;
   left: 50%;
   bottom: calc(max(16px, env(safe-area-inset-bottom)) + 92px);
   transform: translate(-50%, 12px);
@@ -432,6 +434,71 @@ h1 {
   animation: float-in 0.9s 0.15s cubic-bezier(0.2, 1.3, 0.4, 1) both;
 }
 
+/* Daily challenge button on the home screen. */
+.daily-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 260px;
+  padding: 10px 18px;
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: 0 4px 0 #f6c9a6, var(--shadow-soft);
+  text-align: left;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.daily-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #f6c9a6, var(--shadow-soft);
+}
+
+.daily-btn svg {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  color: #f2925c;
+}
+
+.daily-btn svg .tick {
+  display: none;
+  stroke: #6fca62;
+  stroke-width: 2.4;
+}
+
+.daily-btn.done svg .tick {
+  display: inline;
+}
+
+.daily-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.daily-text b {
+  font-size: 17px;
+  font-weight: 600;
+  color: #e07a43;
+}
+
+.daily-text small {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.win-streak {
+  font-weight: 600;
+  color: #f2925c;
+}
+
+.win-streak:empty {
+  display: none;
+}
+
+.level-pill.daily .level-title {
+  color: #e07a43;
+}
+
 .home-row {
   display: flex;
   flex-wrap: wrap;
@@ -469,6 +536,16 @@ h1 {
     0 14px 28px rgba(240, 108, 156, 0.4);
   text-shadow: 0 1px 2px rgba(200, 70, 120, 0.35);
   transition: transform 0.12s, box-shadow 0.12s;
+}
+
+/* Secondary action next to a main one (e.g. "Retour" under "Partager"). */
+.big-btn.soft {
+  background: var(--card);
+  color: var(--pink-deep);
+  text-shadow: none;
+  box-shadow:
+    0 5px 0 var(--card-edge),
+    0 10px 20px rgba(240, 108, 156, 0.2);
 }
 
 .big-btn small {

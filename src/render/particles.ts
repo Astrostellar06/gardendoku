@@ -1,13 +1,13 @@
 /**
  * Light-weight particles: the style's ambient drift (petals, leaves, snow,
- * pollen, sand, fireflies, dandelion seeds), celebration bursts, sparkles
+ * pollen, sand, fireflies, dandelion seeds, hearts), celebration bursts, sparkles
  * and butterflies.
  */
 import { P } from './palette';
-import { mapleLeaf, snowflake } from './themes/kit';
+import { heart, mapleLeaf, snowflake } from './themes/kit';
 import type { AmbientKind } from './themes/types';
 
-type Shape = 'petal' | 'leaf' | 'snow' | 'flake' | 'dot' | 'glow' | 'seed';
+type Shape = 'petal' | 'leaf' | 'snow' | 'flake' | 'dot' | 'glow' | 'seed' | 'heart';
 
 interface Mote {
   x: number;
@@ -51,7 +51,7 @@ const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const pick = <T>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 /** Kinds that float around instead of falling. */
-const FLOATING: AmbientKind[] = ['pollen', 'sand', 'fireflies', 'seeds'];
+const FLOATING: AmbientKind[] = ['pollen', 'sand', 'fireflies', 'seeds', 'hearts'];
 
 export class Particles {
   private motes: Mote[] = [];
@@ -113,6 +113,9 @@ export class Particles {
         return { ...base, shape: 'glow', size: rand(1.6, 2.8), vx: rand(-8, 8), vy: rand(-8, 8), y: rand(0, this.height) };
       case 'seeds':
         return { ...base, shape: 'seed', size: rand(3.5, 5.5), vx: rand(8, 18), vy: rand(-4, 6), y: rand(0, this.height) };
+      case 'hearts':
+        // Little hearts rising slowly.
+        return { ...base, shape: 'heart', size: rand(3, 5.5), vx: rand(-4, 4), vy: rand(-16, -7), vr: rand(-0.4, 0.4), y: rand(0, this.height) };
       default:
         return base;
     }
@@ -276,6 +279,11 @@ export class Particles {
         ctx.fill();
         break;
       }
+      case 'heart':
+        ctx.rotate(Math.sin(time * 1.4 + p.phase) * 0.3);
+        ctx.scale(0.75 + 0.25 * Math.abs(Math.sin(time * 1.1 + p.phase)), 1);
+        heart(ctx, 0, 0, p.size, p.color);
+        break;
       case 'seed': {
         ctx.rotate(Math.sin(time + p.phase) * 0.4);
         ctx.strokeStyle = 'rgba(255,255,255,0.9)';

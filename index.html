@@ -77,6 +77,10 @@
         </div>
         <div class="home-bottom">
           <button class="big-btn" id="btn-play">Jouer<small id="play-level">Niveau 1</small></button>
+          <button class="daily-btn" id="btn-daily">
+            <svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14" rx="3" /><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" /><path d="M9.5 14.5l1.8 1.8 3.4-3.6" class="tick" /></svg>
+            <span class="daily-text"><b>Défi du jour</b><small id="daily-sub">Une grille par jour, la même pour tous</small></span>
+          </button>
           <div class="home-row">
             <button class="soft-btn" id="btn-levels">Niveaux</button>
             <button class="soft-btn" id="btn-styles">Styles</button>
@@ -100,11 +104,13 @@
           <h2>Jardin fleuri !</h2>
           <p id="win-text">Niveau 1 terminé</p>
           <p class="win-rank" id="win-rank"></p>
+          <p class="win-streak" id="win-streak"></p>
           <div class="stats">
             <div><b id="win-time">0:00</b><span>temps</span></div>
             <div><b id="win-moves">0</b><span id="win-moves-label">rotations</span></div>
           </div>
           <div class="win-unlocks" id="win-unlocks"></div>
+          <button class="big-btn hidden" id="btn-share">Partager</button>
           <button class="big-btn" id="btn-next">Niveau suivant</button>
           <button class="link-btn" id="btn-admire">Admirer le jardin</button>
         </div>
@@ -148,6 +154,18 @@
           <p>Ici, les <b>bords du jardin sont reliés</b> : l'eau qui sort d'un côté réapparaît du côté opposé.</p>
           <p class="small">Les bandes pâles autour du jardin montrent les parcelles de l'autre côté. Tu peux aussi les toucher.</p>
           <button class="big-btn" data-close>Compris !</button>
+        </div>
+      </section>
+
+      <section id="daily-result" class="overlay hidden">
+        <div class="card">
+          <h2>Défi du jour</h2>
+          <p id="daily-result-text"></p>
+          <p class="win-rank" id="daily-result-rank"></p>
+          <p class="win-streak" id="daily-result-streak"></p>
+          <p class="small" id="daily-countdown"></p>
+          <button class="big-btn" id="btn-daily-share">Partager</button>
+          <button class="link-btn" data-close>Fermer</button>
         </div>
       </section>
 

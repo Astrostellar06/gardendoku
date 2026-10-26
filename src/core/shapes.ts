@@ -159,9 +159,9 @@ function heartMask(width: number, height: number): Uint8Array {
   return active;
 }
 
-/** Thickness of a cloister's galleries: 2 tiles, 3 for the tallest ones (9x13 and up). */
+/** Thickness of a cloister's galleries: 3 tiles (2 only for small cloisters, under 8 tiles wide). */
 export function cloisterThickness(width: number, height: number): number {
-  return width >= 9 && height >= 13 ? 3 : 2;
+  return Math.min(width, height) >= 8 ? 3 : 2;
 }
 
 /** A cloister: a square or rectangular frame of galleries around an empty courtyard. */

@@ -15,6 +15,12 @@ export interface TimeModel {
   sigma: number;
 }
 
+export function formatTime(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  const m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2, '0')}`;
+}
+
 /** Seconds added to the player's time for each hint used. */
 export const HINT_PENALTY = 25;
 

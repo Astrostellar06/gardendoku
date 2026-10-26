@@ -3,7 +3,7 @@
  * Silhouettes made of several overlapping shapes must use opaque colours:
  * with transparency, branches would show through the foliage.
  */
-import { circle } from './kit';
+import { circle, poly } from './kit';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -183,6 +183,223 @@ export function jungleLeaf(ctx: Ctx, x: number, y: number, len: number, angle: n
   }
   ctx.stroke();
   ctx.restore();
+}
+
+/** City skyline along the bottom, with a few lit windows. */
+export function skyline(ctx: Ctx, w: number, baseY: number, color: string, windows?: string, seed = 0) {
+  let x = -10 - seed * 7;
+  let k = seed;
+  while (x < w + 10) {
+    const bw = 26 + ((k * 37) % 23);
+    const bh = 40 + ((k * 53) % 70);
+    ctx.fillStyle = color;
+    ctx.fillRect(x, baseY - bh, bw, bh + 2);
+    if (k % 4 === 1) {
+      // Spire or water tower on some roofs.
+      ctx.fillRect(x + bw / 2 - 1.5, baseY - bh - 14, 3, 14);
+    } else if (k % 4 === 3) {
+      ctx.fillRect(x + 4, baseY - bh - 6, bw - 8, 6);
+    }
+    if (windows) {
+      ctx.fillStyle = windows;
+      for (let wy = baseY - bh + 8; wy < baseY - 8; wy += 11) {
+        for (let wx = x + 5; wx < x + bw - 6; wx += 8) {
+          if ((Math.floor(wx * 7 + wy * 3) % 5) < 2) ctx.fillRect(wx, wy, 3.5, 5);
+        }
+      }
+    }
+    x += bw + 3;
+    k++;
+  }
+}
+
+/** Buttes of each mesa layer, back to front: [left, right] as fractions of the width, and height in px. */
+const BUTTES: Array<Array<[number, number, number]>> = [
+  [
+    [0.04, 0.3, 100],
+    [0.52, 0.68, 125],
+    [0.8, 1.08, 85],
+  ],
+  [
+    [-0.12, 0.1, 60],
+    [0.34, 0.47, 78],
+    [0.7, 0.8, 50],
+  ],
+  [[0.18, 0.24, 34]],
+];
+
+/** Flat-topped buttes in layered rock, with scree flaring at their feet, back to front. */
+export function mesas(ctx: Ctx, w: number, h: number, colors: string[], stripe: string) {
+  const u = h / 812;
+  colors.forEach((color, k) => {
+    const base = h * (0.875 + k * 0.04);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+    ctx.lineTo(0, base);
+    let tallest = 0;
+    for (const [x0, x1, height] of BUTTES[k % BUTTES.length]) {
+      const a = x0 * w;
+      const b = x1 * w;
+      const hh = height * u;
+      const top = base - hh;
+      tallest = Math.max(tallest, hh);
+      ctx.lineTo(a - 15 * u, base);
+      ctx.quadraticCurveTo(a - 1 * u, base - 3 * u, a, base - hh * 0.22);
+      ctx.lineTo(a + 3 * u, top + hh * 0.3);
+      ctx.lineTo(a + 1 * u, top + hh * 0.22);
+      ctx.lineTo(a + 6 * u, top + 3 * u);
+      ctx.lineTo(a + 10 * u, top);
+      ctx.lineTo(b - 10 * u, top);
+      ctx.lineTo(b - 5 * u, top + 4 * u);
+      ctx.lineTo(b - 2 * u, top + hh * 0.35);
+      ctx.lineTo(b, base - hh * 0.22);
+      ctx.quadraticCurveTo(b + 1 * u, base - 3 * u, b + 15 * u, base);
+    }
+    ctx.lineTo(w, base);
+    ctx.lineTo(w, h);
+    ctx.closePath();
+    ctx.fill();
+    // Pale strata bands across the rock.
+    ctx.save();
+    ctx.clip();
+    ctx.fillStyle = stripe;
+    for (let y = base - tallest + 8 * u, n = 0; y < base - 6 * u; y += 13 * u, n++) {
+      ctx.fillRect(0, y, w, (n % 2 ? 2 : 4) * u);
+    }
+    // Shaded right flank of each butte.
+    for (const [x0, x1, height] of BUTTES[k % BUTTES.length]) {
+      const span = (x1 - x0) * w;
+      const shade = ctx.createLinearGradient(0, base - height * u, 0, base - height * u * 0.15);
+      shade.addColorStop(0, 'rgba(150, 60, 40, 0.14)');
+      shade.addColorStop(1, 'rgba(150, 60, 40, 0)');
+      ctx.fillStyle = shade;
+      ctx.fillRect(x1 * w - span * 0.28, base - height * u, span * 0.28, height * u);
+    }
+    ctx.restore();
+  });
+}
+
+/** Rolling fields rising to the horizon: each hill is split into coloured plots with furrows. */
+export function fields(ctx: Ctx, w: number, h: number, horizon: number, colors: string[]) {
+  const layers = 4;
+  for (let k = 0; k < layers; k++) {
+    const base = horizon + (h - horizon) * (k / layers) * 0.85;
+    const amp = 9 - k * 1.5;
+    const top = (x: number) => base + Math.sin((x / w) * Math.PI * 1.4 + k * 1.7) * amp;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+    for (let x = 0; x <= w + 8; x += 8) ctx.lineTo(x, top(x));
+    ctx.lineTo(w, h);
+    ctx.closePath();
+    ctx.clip();
+    const plots = 3 + k;
+    const shift = k % 2 ? 18 : -12;
+    for (let p = 0; p < plots; p++) {
+      const x0 = (w * p) / plots + shift;
+      const x1 = (w * (p + 1)) / plots + shift;
+      ctx.fillStyle = colors[(k * 2 + p) % colors.length];
+      ctx.beginPath();
+      ctx.moveTo(p === 0 ? -40 : x0 - 30, h);
+      ctx.lineTo(p === 0 ? -40 : x0 + 12, base - amp - 4);
+      ctx.lineTo(p === plots - 1 ? w + 40 : x1 + 12, base - amp - 4);
+      ctx.lineTo(p === plots - 1 ? w + 40 : x1 - 30, h);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+    ctx.lineWidth = 1.2 + k * 0.4;
+    ctx.beginPath();
+    for (let j = 1; j < 7; j++) {
+      const dy = j * (4 + k * 3);
+      for (let x = 0; x <= w + 8; x += 8) {
+        if (x === 0) ctx.moveTo(x, top(x) + dy);
+        else ctx.lineTo(x, top(x) + dy);
+      }
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/** Classical palace on the horizon: mansard roofs, end pavilions and a domed centre. */
+export function palace(ctx: Ctx, cx: number, baseY: number, s: number, wall: string, roof: string) {
+  const half = 110 * s;
+  const body = 28 * s;
+  const top = baseY - body;
+  const glass = 'rgba(110, 130, 165, 0.6)';
+  const gold = '#E8C060';
+  ctx.fillStyle = wall;
+  ctx.fillRect(cx - half, top, half * 2, body);
+  poly(ctx, [cx - half - 2 * s, top, cx - half + 6 * s, top - 10 * s, cx + half - 6 * s, top - 10 * s, cx + half + 2 * s, top], roof);
+  for (const side of [-1, 1]) {
+    const px = cx + side * (half - 16 * s);
+    ctx.fillStyle = wall;
+    ctx.fillRect(px - 16 * s, top - 8 * s, 32 * s, body + 8 * s);
+    poly(ctx, [px - 18 * s, top - 8 * s, px - 12 * s, top - 22 * s, px + 12 * s, top - 22 * s, px + 18 * s, top - 8 * s], roof);
+    ctx.fillStyle = gold;
+    ctx.fillRect(px - 12 * s, top - 23 * s, 24 * s, 1.5 * s);
+  }
+  // Central pavilion: pediment and dome.
+  ctx.fillStyle = wall;
+  ctx.fillRect(cx - 22 * s, top - 12 * s, 44 * s, body + 12 * s);
+  poly(ctx, [cx - 25 * s, top - 12 * s, cx, top - 24 * s, cx + 25 * s, top - 12 * s], '#F8F1E6');
+  ctx.fillStyle = roof;
+  ctx.beginPath();
+  ctx.arc(cx, top - 24 * s, 11 * s, Math.PI, 0);
+  ctx.fill();
+  ctx.fillStyle = gold;
+  ctx.fillRect(cx - 1.5 * s, top - 42 * s, 3 * s, 8 * s);
+  circle(ctx, cx, top - 43 * s, 2.5 * s, gold);
+  // Two rows of tall windows, and a golden ridge.
+  ctx.fillStyle = glass;
+  for (let x = cx - half + 5 * s; x < cx + half - 8 * s; x += 9 * s) {
+    ctx.fillRect(x, top + 5 * s, 4 * s, 8 * s);
+    ctx.fillRect(x, top + 17 * s, 4 * s, 8 * s);
+  }
+  ctx.fillStyle = gold;
+  ctx.fillRect(cx - half + 6 * s, top - 10.5 * s, half * 2 - 12 * s, 1.5 * s);
+}
+
+/** Soft rainbow arc. */
+export function rainbow(ctx: Ctx, cx: number, cy: number, r: number, alpha: number) {
+  const bands = ['255,140,170', '255,190,120', '255,230,130', '160,225,150', '140,200,255', '196,168,250'];
+  ctx.lineWidth = r * 0.06;
+  bands.forEach((rgb, k) => {
+    ctx.strokeStyle = `rgba(${rgb},${alpha})`;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r - k * r * 0.06, Math.PI, 0);
+    ctx.stroke();
+  });
+}
+
+/** Windmill on the horizon. */
+export function windmillSilhouette(ctx: Ctx, x: number, baseY: number, s: number, color: string) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x - 9 * s, baseY);
+  ctx.lineTo(x - 5 * s, baseY - 36 * s);
+  ctx.lineTo(x + 5 * s, baseY - 36 * s);
+  ctx.lineTo(x + 9 * s, baseY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x - 7 * s, baseY - 36 * s);
+  ctx.lineTo(x, baseY - 44 * s);
+  ctx.lineTo(x + 7 * s, baseY - 36 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.5 * s;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  for (let k = 0; k < 4; k++) {
+    const a = 0.4 + (k * Math.PI) / 2;
+    ctx.moveTo(x, baseY - 38 * s);
+    ctx.lineTo(x + Math.cos(a) * 22 * s, baseY - 38 * s + Math.sin(a) * 22 * s);
+  }
+  ctx.stroke();
 }
 
 export function reeds(ctx: Ctx, w: number, h: number, color: string, head: string) {
