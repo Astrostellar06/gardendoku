@@ -17,6 +17,10 @@ Sur téléphone : lancer `npm run dev`, puis ouvrir l'adresse « Network » affi
 
 Ajouter `?niveau=N` à l'adresse, par exemple `http://localhost:5173/?niveau=60`. Le jeu s'ouvre directement sur ce niveau, et tous les niveaux jusqu'à N deviennent accessibles dans l'écran **Niveaux**.
 
+### Repartir de zéro (simuler un premier lancement)
+
+Ajouter `?reset` à l'adresse, par exemple `http://localhost:5173/?reset` : la sauvegarde (progression, réglages, tutoriel vu) est effacée et le jeu redémarre comme au tout premier lancement, tutoriel compris. Le tutoriel peut aussi être relancé depuis l'aide (« Revoir le tutoriel »).
+
 En mode dev, la console du navigateur expose aussi `__game` : `__game.debugSolve(5)` résout tout sauf 5 parcelles (pratique pour voir la victoire).
 
 ## Commandes de jeu
@@ -30,6 +34,36 @@ En mode dev, la console du navigateur expose aussi `__game` : `__game.debugSolve
 | Recommencer | Bouton **Recommencer**, à toucher deux fois |
 | Aide | Bouton **?** en jeu |
 | Changer de style | Bouton **Styles** sur l'écran d'accueil |
+
+## Tutoriel
+
+Au premier lancement, un mini-jardin 3×3 explique le jeu en 5 étapes. Un projecteur met en valeur la parcelle à tourner, puis la parcelle à verrouiller (appui long). On peut le passer, et le revoir depuis l'aide.
+
+## Formes de jardin
+
+| Forme | Nom affiché |
+| --- | --- |
+| Rectangle | Parterre |
+| Rectangle avec quelques trous | Étangs |
+| Octogone | Cloître |
+| Cercle | Rond-point |
+| Losange | Losange |
+| Croix | Croisée |
+| Cœur | Cœur |
+| Trèfle à quatre lobes | Trèfle |
+| Sablier | Sablier |
+| Carré aux bords reliés (niveaux difficiles) | Bords reliés |
+
+Les formes rondes (cœur, cercle, trèfle) ne s'allongent que de 2 lignes au plus en hauteur, pour ne pas paraître étirées.
+
+## Difficulté : déductions avancées
+
+Le solveur connaît deux niveaux de raisonnement :
+
+1. **Déductions directes** : accord entre voisins, pas de canal vers le bord, interdiction des boucles, un groupe de parcelles qui n'a plus qu'une sortie doit la prendre, deux groupes ne doivent pas s'enfermer l'un l'autre.
+2. **Raisonnement par hypothèse** : « si cette parcelle était orientée ainsi, on aboutirait à une contradiction ». Par exemple, un cul-de-sac, une ligne droite puis un autre cul-de-sac formeraient un système fermé. Ou deux culs-de-sac voisins se retrouveraient face à face. L'orientation fautive est éliminée.
+
+Jusqu'au niveau 20, chaque jardin se résout par déductions directes. À partir du niveau 21, le générateur retouche le jardin jusqu'à ce qu'une partie des parcelles (de 6 % à 12 %, croissant jusqu'au niveau 80) exige le raisonnement par hypothèse. La solution reste toujours unique, vérifiée par force brute dans les tests. Les niveaux difficiles à bords reliés en exigent eux aussi à partir du niveau 50.
 
 ## Niveaux difficiles : bords reliés
 
@@ -81,6 +115,7 @@ src/
     background.ts  Ciel pastel, nuages, collines
   audio/sound.ts   Sons synthétisés en WebAudio (aucun fichier audio)
   ui/              HUD (DOM), saisie tactile, sauvegarde localStorage
+  tutorial.ts      Mini-jardin et étapes du tutoriel
   game.ts          Contrôleur qui relie le tout
 ```
 
@@ -95,7 +130,7 @@ Aucun niveau n'est stocké : le niveau `n` est entièrement reconstruit à parti
 
 La victoire ne compare pas avec la solution d'origine : elle est déclarée dès que toutes les parcelles sont reliées à la source et qu'il n'y a aucune boucle (les boucles sont détectées en cherchant les arêtes qui ne sont pas des ponts, avec l'algorithme de Tarjan).
 
-> Modifier l'algorithme de génération (ou les tableaux de `levels.ts`) change les niveaux existants. Il faudra donc le figer avant une sortie publique.
+> Modifier l'algorithme de génération (ou les tableaux de `levels.ts`) change les niveaux existants. Il faudra donc le figer avant une sortie publique. En attendant, `GENERATOR_VERSION` (dans `levels.ts`) est enregistré avec la partie en cours : une partie sauvegardée avec une autre version n'est pas restaurée.
 
 ## Pistes pour la suite
 

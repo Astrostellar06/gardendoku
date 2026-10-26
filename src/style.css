@@ -157,10 +157,12 @@ svg {
 }
 
 .level-pill {
+  flex: 1 1 auto;
+  max-width: 260px;
   background: var(--card);
   box-shadow: var(--edge), var(--shadow-soft);
   border-radius: 999px;
-  padding: 7px 22px 8px;
+  padding: 6px 12px 7px;
   text-align: center;
   min-width: 0;
 }
@@ -182,11 +184,9 @@ svg {
 }
 
 .level-sub {
-  font-size: 12.5px;
+  font-size: 12px;
+  line-height: 1.2;
   color: var(--ink-soft);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .tool-btn {
@@ -224,17 +224,17 @@ svg {
   transform: translate(-50%, 12px);
   background: var(--card);
   box-shadow: var(--shadow);
-  border-radius: 999px;
+  border-radius: 22px;
   padding: 10px 20px;
   font-size: 15px;
   font-weight: 500;
+  line-height: 1.3;
+  text-align: center;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.35s, transform 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
-  white-space: nowrap;
+  width: max-content;
   max-width: calc(100vw - 32px);
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .toast.show {
@@ -244,6 +244,80 @@ svg {
 
 .toast.warn {
   color: #e2708f;
+}
+
+/* ---------- Tutorial coach ---------- */
+
+.coach {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  padding: 0 16px max(16px, env(safe-area-inset-bottom));
+  pointer-events: none;
+}
+
+.coach-card {
+  pointer-events: auto;
+  width: min(420px, 100%);
+  background: var(--card);
+  border-radius: 26px;
+  box-shadow: var(--edge), var(--shadow);
+  padding: 14px 18px 14px;
+  animation: sheet-in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.coach-card.swap {
+  animation: coach-swap 0.35s ease both;
+}
+
+@keyframes coach-swap {
+  from {
+    opacity: 0.2;
+    transform: translateY(8px);
+  }
+}
+
+.coach-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.coach-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--lilac);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.coach-step {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.coach-card p {
+  margin: 0 0 10px;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.coach-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.coach-next {
+  min-width: 0;
+  padding: 9px 22px 8px;
+  font-size: 18px;
 }
 
 /* ---------- Home ---------- */
@@ -459,6 +533,23 @@ h1 {
 @keyframes fade-in {
   from {
     opacity: 0;
+  }
+}
+
+/* Closing: the same motion as opening, played backwards. */
+.overlay.closing {
+  animation: fade-out 0.26s ease forwards;
+  pointer-events: none;
+}
+
+.overlay.closing .card {
+  animation: card-out 0.26s ease forwards;
+}
+
+@keyframes card-out {
+  to {
+    opacity: 0;
+    transform: scale(0.88) translateY(14px);
   }
 }
 

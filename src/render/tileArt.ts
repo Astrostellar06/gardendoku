@@ -26,8 +26,9 @@ const TAU = Math.PI * 2;
 /** Canals are drawn a bit past the tile edge; the tile clip trims them. */
 const REACH = 0.56;
 
-export function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
+/** Rounded rectangle path; with `append`, added to the current path (e.g. to cut a hole). */
+export function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, append = false) {
+  if (!append) ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.arcTo(x + w, y, x + w, y + h, r);
   ctx.arcTo(x + w, y + h, x, y + h, r);
@@ -330,17 +331,13 @@ export function drawTile(ctx: CanvasRenderingContext2D, st: TileState) {
     }
   }
 
-  // Spring pond details.
+  // Spring pond glint (its lotus floats in the animated water layer, above the ripples).
   if (isSource) {
     ctx.strokeStyle = 'rgba(255,255,255,0.55)';
     ctx.lineWidth = 0.018;
     ctx.beginPath();
     ctx.arc(0, 0, G.pondR - 0.04, Math.PI * 1.05, Math.PI * 1.45);
     ctx.stroke();
-    ctx.save();
-    ctx.translate(G.pondR * 0.3, G.pondR * 0.28);
-    drawLotus(ctx, 0.13, decor.bloomColor, 8, decor.padAngle, 0.4 + bloom * 0.6);
-    ctx.restore();
   }
 
   // End of a canal: a seedling becomes a lotus (or the style's own bloom).
@@ -357,11 +354,6 @@ export function drawTile(ctx: CanvasRenderingContext2D, st: TileState) {
     }
   }
 
-  // Things floating on the water (flat canal props too).
-  for (const p of decor.props) {
-    if (p.def.place !== 'ground' && !p.def.animated && !p.def.screen) drawProp(ctx, p, st, upright, 0);
-  }
-
   // Tufts and flowers (plants stand upright once the tile is at rest).
   if (bloom > 0) {
     for (const t of decor.tufts) drawTuft(ctx, t.x, t.y, t.s, t.rot + upright, sub(bloom, t.delay, 0.35));
@@ -369,20 +361,48 @@ export function drawTile(ctx: CanvasRenderingContext2D, st: TileState) {
   }
 
   ctx.restore();
-
-  // Ground props and 2.5D bridges, back to front as seen on screen. They are not
-  // clipped to the tile face: a tree may rise a little above it, over the tile behind.
-  const ground = decor.props.filter((p) => (p.def.place === 'ground' || p.def.screen) && !p.def.animated);
-  if (ground.length > 1) {
-    const a = (st.rot * Math.PI) / 2;
-    const screenY = (p: PropInstance) => p.x * Math.sin(a) + p.y * Math.cos(a);
-    ground.sort((p, q) => screenY(p) - screenY(q));
-  }
-  for (const p of ground) drawProp(ctx, p, st, upright, 0);
 }
 
 /** How far (in tiles) drawings may spill outside the tile, e.g. tall props. */
 export const TILE_OVERFLOW = 0.2;
+
+/** Static props of the foreground layer (cacheable). */
+export function hasForeground(st: TileState): boolean {
+  return st.decor.props.some((p) => !p.def.animated);
+}
+
+/** Animated props flying or crawling above the tile (bees, dragonflies). */
+export function hasCritters(st: TileState): boolean {
+  return st.decor.props.some((p) => p.def.animated && p.def.place === 'ground');
+}
+
+/**
+ * Foreground layer of a tile, drawn after every tile and canal so nothing cuts
+ * it: things floating on the water, 2.5D bridges and the style's props, back to
+ * front as seen on screen. Not clipped: a tree may rise above its tile.
+ */
+export function drawTileProps(ctx: CanvasRenderingContext2D, st: TileState) {
+  const upright = (-st.rot * Math.PI) / 2;
+  const props = st.decor.props;
+  for (const p of props) {
+    if (!p.def.animated && (p.def.place === 'water' || (p.def.place === 'canal' && !p.def.screen))) drawProp(ctx, p, st, upright, 0);
+  }
+  const standing = props.filter((p) => (p.def.place === 'ground' || p.def.screen) && !p.def.animated);
+  if (standing.length > 1) {
+    const a = (st.rot * Math.PI) / 2;
+    const screenY = (p: PropInstance) => p.x * Math.sin(a) + p.y * Math.cos(a);
+    standing.sort((p, q) => screenY(p) - screenY(q));
+  }
+  for (const p of standing) drawProp(ctx, p, st, upright, 0);
+}
+
+/** Animated ground props, drawn live above everything else of the tile. */
+export function drawTileCritters(ctx: CanvasRenderingContext2D, st: TileState, time: number) {
+  const upright = (-st.rot * Math.PI) / 2;
+  for (const p of st.decor.props) {
+    if (p.def.animated && p.def.place === 'ground') drawProp(ctx, p, st, upright, time);
+  }
+}
 
 /** Draw one style prop in its own frame, scaled in when it belongs to the bloom. */
 function drawProp(ctx: CanvasRenderingContext2D, p: PropInstance, st: TileState, upright: number, time: number) {
@@ -415,23 +435,24 @@ function drawProp(ctx: CanvasRenderingContext2D, p: PropInstance, st: TileState,
 }
 
 /**
- * Animated details drawn every frame on top of the (possibly cached) tile:
- * glints flowing down the canals and ripples in the spring.
+ * Animated water layer, drawn every frame over the (possibly cached) tile and
+ * under its foreground props: glints flowing down the canals, ripples and the
+ * lotus of the spring, and the creatures swimming in the canals.
  */
-export function drawTileOverlay(ctx: CanvasRenderingContext2D, st: TileState, time: number) {
+export function drawTileWater(ctx: CanvasRenderingContext2D, st: TileState, time: number) {
   const { mask, isSource } = st;
-  for (const p of st.decor.props) {
-    if (p.def.animated) drawProp(ctx, p, st, (-st.rot * Math.PI) / 2, time);
-  }
+  const arms = popcount4(mask);
+  const isLeaf = arms === 1 && !isSource;
   if (st.water >= 1) {
     // Two lanes of irregular glints drifting downstream.
     ctx.save();
     ctx.lineCap = 'round';
-    const arms = popcount4(mask);
     const lanes: Array<[number, number[], number, number, string]> = [
       [0.026, [0.035, 0.11, 0.07, 0.19], 0.3, 0.018, 'rgba(255,255,255,0.7)'],
       [-0.022, [0.05, 0.23, 0.02, 0.09], 0.22, 0.013, 'rgba(255,255,255,0.45)'],
     ];
+    // The current stops at the edge of a basin, leaving its lotus alone.
+    const inEnd = isLeaf ? G.basinR + 0.03 : 0;
     for (const [offset, dash, speed, width, color] of lanes) {
       ctx.strokeStyle = color;
       ctx.lineWidth = width;
@@ -447,8 +468,8 @@ export function drawTileOverlay(ctx: CanvasRenderingContext2D, st: TileState, ti
         const start = isSource ? G.pondR * 0.9 : 0;
         if (d === st.inflow) {
           ctx.moveTo(ex + ox, ey + oy);
-          ctx.lineTo(ox, oy);
-        } else if (!(arms === 1 && !isSource)) {
+          ctx.lineTo(DX[d] * inEnd + ox, DY[d] * inEnd + oy);
+        } else if (!isLeaf) {
           ctx.moveTo(DX[d] * start + ox, DY[d] * start + oy);
           ctx.lineTo(ex + ox, ey + oy);
         }
@@ -467,7 +488,16 @@ export function drawTileOverlay(ctx: CanvasRenderingContext2D, st: TileState, ti
       ctx.arc(-0.06, -0.05, 0.03 + ph * (G.pondR - 0.08), 0, TAU);
       ctx.stroke();
     }
-    // Tiny bubbling spout.
+    // Tiny bubbling spout, then the lotus floating above the ripples.
     disc(ctx, -0.06, -0.05, 0.022 + Math.sin(time * 5) * 0.004, 'rgba(255,255,255,0.85)');
+    ctx.save();
+    ctx.translate(G.pondR * 0.3, G.pondR * 0.28);
+    drawLotus(ctx, 0.13, st.decor.bloomColor, 8, st.decor.padAngle, 0.4 + st.bloom * 0.6);
+    ctx.restore();
+  }
+  // Swimmers glide along the canals, above the glints.
+  const upright = (-st.rot * Math.PI) / 2;
+  for (const p of st.decor.props) {
+    if (p.def.animated && p.def.place === 'water') drawProp(ctx, p, st, upright, time);
   }
 }

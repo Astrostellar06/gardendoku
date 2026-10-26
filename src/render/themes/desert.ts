@@ -193,7 +193,8 @@ const succulent: PropDef = {
   },
 };
 
-const stoneSlab = bridgeProp('stone-slab', { deck: '#EFD3A0', deckShade: '#D4AE76', side: '#D9B27A', hump: 0.03 });
+/** Dark wood, so the bridge never blends with the sand around the canal. */
+const stoneSlab = bridgeProp('desert-bridge', { deck: '#B9774A', deckShade: '#94603C', side: '#8E5634', rail: '#6E4028', planks: true, hump: 0.04 });
 
 export const desert: Theme = {
   id: 'desert',

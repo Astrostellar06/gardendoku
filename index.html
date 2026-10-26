@@ -52,6 +52,20 @@
 
       <div id="toast" class="toast"></div>
 
+      <section id="coach" class="coach hidden" aria-live="polite">
+        <div class="coach-card">
+          <div class="coach-head">
+            <span class="coach-badge">Tutoriel</span>
+            <span class="coach-step" id="coach-step">1 / 5</span>
+          </div>
+          <p id="coach-text"></p>
+          <div class="coach-actions">
+            <button class="link-btn" id="coach-skip">Passer</button>
+            <button class="big-btn coach-next" id="coach-next">Suivant</button>
+          </div>
+        </div>
+      </section>
+
       <section id="home" class="screen">
         <div class="home-top">
           <div class="logo">
@@ -104,6 +118,7 @@
             <li><span class="dot lilac">5</span><span>Tous les 5 niveaux, un <b>niveau difficile</b> : les bords du jardin sont reliés, l'eau qui sort d'un côté revient par le côté opposé.</span></li>
           </ul>
           <button class="big-btn" data-close>C'est parti</button>
+          <button class="link-btn" id="btn-replay-tutorial" data-close>Revoir le tutoriel</button>
         </div>
       </section>
 

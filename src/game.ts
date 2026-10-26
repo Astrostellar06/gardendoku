@@ -2,7 +2,7 @@
 import { Sound } from './audio/sound';
 import { Analysis, Board } from './core/board';
 import { generate } from './core/generator';
-import { buildLevel, LevelInfo, levelInfo } from './core/levels';
+import { buildLevel, GENERATOR_VERSION, LevelInfo, levelInfo } from './core/levels';
 import { renderThemePreview } from './render/preview';
 import { GardenRenderer } from './render/renderer';
 import { setTheme, THEMES } from './render/themes';
@@ -10,8 +10,9 @@ import type { ThemeId } from './render/themes';
 import { Hud } from './ui/hud';
 import { attachInput } from './ui/input';
 import { loadSave, SaveData, writeSave } from './ui/storage';
+import { buildTutorialBoard, LOCK_CELL, STEPS, stepNumber, TURN_CELL, TutorialStep } from './tutorial';
 
-type Mode = 'home' | 'play';
+type Mode = 'home' | 'play' | 'tutorial';
 
 export class Game {
   readonly renderer: GardenRenderer;
@@ -31,6 +32,7 @@ export class Game {
   private resetArmedUntil = 0;
   /** Lock state applied by the current finger stroke, and how many tiles it changed. */
   private paint: { lock: boolean; count: number } | null = null;
+  private tutorialStep: TutorialStep = 'intro';
 
   constructor(canvas: HTMLCanvasElement) {
     this.applyStyleColors(setTheme(this.save.settings.theme).id);
@@ -40,7 +42,7 @@ export class Game {
     this.hud.setSound(this.sound.enabled);
 
     attachInput(canvas, {
-      cellAt: (x, y) => (this.mode === 'play' ? this.renderer.cellAt(x, y) : -1),
+      cellAt: (x, y) => (this.mode === 'home' ? -1 : this.renderer.cellAt(x, y)),
       lockMode: () => this.lockMode,
       tap: (cell) => this.onTap(cell),
       paintStart: (cell) => this.paintStart(cell),
@@ -49,7 +51,8 @@ export class Game {
       holdStart: (cell, ms) => {
         this.sound.unlock();
         this.renderer.setPressed(cell);
-        if (!this.lockMode && !this.won) this.renderer.hold = { cell, start: performance.now() / 1000, duration: ms / 1000 };
+        const holdable = this.mode === 'tutorial' ? this.tutorialStep === 'lock' && cell === LOCK_CELL : !this.lockMode && !this.won;
+        if (holdable) this.renderer.hold = { cell, start: performance.now() / 1000, duration: ms / 1000 };
       },
       holdEnd: () => {
         this.renderer.setPressed(-1);
@@ -73,6 +76,9 @@ export class Game {
       ),
     );
     on('btn-help', () => this.hud.openHowto());
+    on('btn-replay-tutorial', () => this.startTutorial());
+    on('coach-next', () => this.advanceTutorial());
+    on('coach-skip', () => this.finishTutorial());
     on('btn-levels', () => this.hud.openLevels(this.save.maxLevel, this.save.level, (n) => this.play(n)));
     on('btn-home', () => this.showHome());
     on('btn-sound', () => this.toggleSound());
@@ -102,17 +108,33 @@ export class Game {
       this.play(requested);
       return;
     }
+    if (!this.save.seenTutorial && this.save.maxLevel <= 1 && !this.save.snapshot) {
+      this.startTutorial();
+      return;
+    }
     this.showHome();
   }
 
   /** Re-fit the garden between the HUD elements. */
   relayout() {
     const h = this.renderer.height;
+    if (this.mode === 'tutorial') {
+      this.renderer.setInsets(Math.max(40, h * 0.08), this.hud.coachInset(h));
+      return;
+    }
     const [top, bottom] = this.mode === 'play' ? this.hud.gameInsets(h) : this.hud.homeInsets(h);
     this.renderer.setInsets(top, bottom);
   }
 
   tick(dt: number) {
+    if (this.mode === 'tutorial') {
+      if (this.tutorialStep === 'flowing' && this.renderer.waterComplete()) {
+        this.sound.win();
+        this.renderer.celebrate(() => undefined);
+        this.setTutorialStep('bloom');
+      }
+      return;
+    }
     if (this.mode === 'play' && !this.won && !document.hidden && !this.hud.overlayOpen()) this.elapsed += dt;
     if (this.won && !this.celebrated && this.renderer.waterComplete()) {
       this.celebrated = true;
@@ -128,6 +150,7 @@ export class Game {
 
   private showHome() {
     this.persist();
+    this.leaveTutorial();
     this.mode = 'home';
     this.won = false;
     this.setLockMode(false);
@@ -146,6 +169,7 @@ export class Game {
   }
 
   private play(level: number) {
+    this.leaveTutorial();
     this.mode = 'play';
     this.hud.hideHome();
     this.hud.showGameBars(true);
@@ -166,7 +190,7 @@ export class Game {
     this.hud.hideToast();
 
     const snap = this.save.snapshot;
-    if (snap && snap.level === n && board.restore(snap)) this.elapsed = snap.time;
+    if (snap && snap.level === n && snap.version === GENERATOR_VERSION && board.restore(snap)) this.elapsed = snap.time;
     this.save.level = n;
 
     this.renderer.setBoard(board, this.info.seed);
@@ -193,10 +217,72 @@ export class Game {
     this.loadLevel(this.info.index + 1);
   }
 
+  // ---------- Tutorial ----------
+
+  private startTutorial() {
+    this.persist();
+    this.mode = 'tutorial';
+    this.won = false;
+    this.setLockMode(false);
+    this.hud.hideWin();
+    this.hud.hideToast();
+    this.hud.hideHome();
+    this.hud.showGameBars(false);
+    const board = buildTutorialBoard();
+    this.board = board;
+    this.renderer.setBoard(board, 'tutoriel');
+    this.analysis = board.analyze();
+    this.renderer.setAnalysis(this.analysis);
+    this.setTutorialStep('intro');
+  }
+
+  private setTutorialStep(step: TutorialStep) {
+    this.tutorialStep = step;
+    const info = STEPS[step];
+    this.hud.showCoach(info.text, stepNumber(step), info.button);
+    this.renderer.spotlight = info.focus;
+    requestAnimationFrame(() => this.relayout());
+  }
+
+  /** The coach's button: move on to the next explanation. */
+  private advanceTutorial() {
+    if (this.mode !== 'tutorial') return;
+    if (this.tutorialStep === 'intro') this.setTutorialStep('turn');
+    else if (this.tutorialStep === 'bloom') this.setTutorialStep('lock');
+    else if (this.tutorialStep === 'done') this.finishTutorial();
+  }
+
+  private finishTutorial() {
+    if (this.mode !== 'tutorial') return;
+    this.save.seenTutorial = true;
+    this.save.seenLockTip = true;
+    writeSave(this.save);
+    this.play(this.save.level);
+  }
+
+  private leaveTutorial() {
+    this.renderer.spotlight = null;
+    this.hud.hideCoach();
+  }
+
   // ---------- Actions ----------
 
   private onTap(cell: number) {
     const board = this.board;
+    if (this.mode === 'tutorial' && board) {
+      // Only the highlighted tile turns; the rest of the little garden is a picture.
+      if (this.tutorialStep !== 'turn' || cell !== TURN_CELL) {
+        this.renderer.shake(cell);
+        return;
+      }
+      board.rotate(cell, 1);
+      this.renderer.rotate(cell, 1);
+      this.sound.rotate();
+      this.analysis = board.analyze();
+      this.renderer.setAnalysis(this.analysis);
+      if (this.analysis.solved) this.setTutorialStep('flowing');
+      return;
+    }
     if (this.mode !== 'play' || this.won || !board) return;
     if (board.locked[cell]) {
       this.renderer.shake(cell);
@@ -215,6 +301,15 @@ export class Game {
    */
   private paintStart(cell: number) {
     const board = this.board;
+    if (this.mode === 'tutorial' && board) {
+      if (this.tutorialStep === 'lock' && cell === LOCK_CELL) {
+        board.setLock(cell, true);
+        this.sound.lock(true);
+        this.vibrate(12);
+        this.setTutorialStep('done');
+      }
+      return;
+    }
     if (this.mode !== 'play' || this.won || !board) return;
     const lock = !board.locked[cell];
     board.setLock(cell, lock);
@@ -363,7 +458,7 @@ export class Game {
 
   private persist() {
     if (this.mode === 'play' && this.board && this.info && !this.won) {
-      this.save.snapshot = { level: this.info.index, ...this.board.snapshot(this.elapsed) };
+      this.save.snapshot = { level: this.info.index, ...this.board.snapshot(this.elapsed), version: GENERATOR_VERSION };
     }
     writeSave(this.save);
   }

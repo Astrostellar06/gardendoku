@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { E, N, S, W } from '../src/core/grid';
 import { makeDecor } from '../src/render/decor';
 import { THEMES, setTheme } from '../src/render/themes';
-import { drawTile, drawTileOverlay } from '../src/render/tileArt';
+import { drawTile, drawTileCritters, drawTileProps, drawTileWater } from '../src/render/tileArt';
 
 /** Canvas stand-in that only tracks the save()/restore() balance. */
 function mockContext() {
@@ -54,7 +54,9 @@ describe('garden styles', () => {
             const { ctx, state } = mockContext();
             const st = { mask, decor, isSource: seed === 0, bloom, water: bloom > 0 ? 1 : 0.4, inflow: 0, loop: 0, rot };
             drawTile(ctx, st);
-            drawTileOverlay(ctx, st, 2.1);
+            drawTileWater(ctx, st, 2.1);
+            drawTileProps(ctx, st);
+            drawTileCritters(ctx, st, 2.1);
             expect(state.depth, `${id} mask=${mask} seed=${seed} bloom=${bloom}`).toBe(0);
           }
         }

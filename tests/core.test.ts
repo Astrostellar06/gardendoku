@@ -44,7 +44,8 @@ describe('generator', () => {
     for (let n = 1; n <= 150; n++) {
       const p: Puzzle = buildLevel(n);
       if (!p.unique) failures.push(n);
-      const res = solve(p.grid, p.tiles);
+      // Advanced levels need hypothesis reasoning (depth 1); it also settles the others.
+      const res = solve(p.grid, p.tiles, 1);
       if (p.unique) {
         expect(res.status).toBe('solved');
         expect(Array.from(res.solution!)).toEqual(Array.from(p.solution));
@@ -79,6 +80,23 @@ describe('board analysis', () => {
     expect(Array.from(an.watered)).toEqual([1, 1, 0]);
     expect(an.inflow[1]).toBe(3); // water enters from the west
     expect(an.loopCells).toBe(0);
+  });
+});
+
+describe('advanced levels', () => {
+  it('ask for hypothesis reasoning from level 21 on', () => {
+    expect(levelInfo(20).advanced).toBe(0);
+    expect(levelInfo(21).advanced).toBeGreaterThan(0);
+    let needing = 0;
+    let total = 0;
+    for (let n = 21; n <= 60; n++) {
+      if (n % 5 === 0) continue;
+      const p = buildLevel(n);
+      expect(p.unique, `level ${n}`).toBe(true);
+      total++;
+      if ((p.deepCells ?? 0) > 0) needing++;
+    }
+    expect(needing).toBeGreaterThan(total * 0.7);
   });
 });
 

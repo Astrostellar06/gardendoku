@@ -192,14 +192,23 @@ export function reeds(ctx: Ctx, w: number, h: number, color: string, head: strin
     ctx.strokeStyle = color;
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
+    const cx = x + 4;
+    const cy = (h + top) / 2;
+    const tx = x + Math.sin(k) * 8;
     ctx.beginPath();
     ctx.moveTo(x, h);
-    ctx.quadraticCurveTo(x + 4, (h + top) / 2, x + Math.sin(k) * 8, top);
+    ctx.quadraticCurveTo(cx, cy, tx, top);
     ctx.stroke();
     if (k % 3 === 0) {
+      // The brown head sits on the stem just below its tip, along the stem.
+      const t = 0.9;
+      const px = (1 - t) ** 2 * x + 2 * (1 - t) * t * cx + t * t * tx;
+      const py = (1 - t) ** 2 * h + 2 * (1 - t) * t * cy + t * t * top;
+      const dx = 2 * (1 - t) * (cx - x) + 2 * t * (tx - cx);
+      const dy = 2 * (1 - t) * (cy - h) + 2 * t * (top - cy);
       ctx.fillStyle = head;
       ctx.beginPath();
-      ctx.ellipse(x + Math.sin(k) * 8, top + 8, 3.5, 9, 0, 0, Math.PI * 2);
+      ctx.ellipse(px, py, 3.5, 9, Math.atan2(dy, dx) + Math.PI / 2, 0, Math.PI * 2);
       ctx.fill();
     }
   }

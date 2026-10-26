@@ -3,6 +3,13 @@ import '@fontsource/fredoka/500.css';
 import '@fontsource/fredoka/600.css';
 import './style.css';
 import { Game } from './game';
+import { clearSave } from './ui/storage';
+
+// `?reset` in the address starts over as on a first launch (progress, settings, tutorial).
+if (new URLSearchParams(location.search).has('reset')) {
+  clearSave();
+  history.replaceState(null, '', location.pathname);
+}
 
 const canvas = document.getElementById('garden') as HTMLCanvasElement;
 const game = new Game(canvas);

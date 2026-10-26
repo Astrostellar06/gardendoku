@@ -18,6 +18,7 @@ export class Hud {
   readonly levels = $('levels');
   readonly hardIntro = $('hard-intro');
   readonly styles = $('styles');
+  readonly coach = $('coach');
   readonly lockBtn = $('btn-lock');
   readonly soundBtn = $('btn-sound');
   readonly nextFloat = $('btn-next-float');
@@ -28,9 +29,23 @@ export class Hud {
     for (const overlay of [this.howto, this.levels, this.hardIntro, this.styles]) {
       overlay.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
-        if (target === overlay || target.closest('[data-close]')) overlay.classList.add('hidden');
+        if (target === overlay || target.closest('[data-close]')) this.close(overlay);
       });
     }
+  }
+
+  /** Fade an overlay out, then hide it. */
+  close(overlay: HTMLElement) {
+    if (overlay.classList.contains('hidden') || overlay.classList.contains('closing')) return;
+    overlay.classList.add('closing');
+    window.setTimeout(() => {
+      overlay.classList.remove('closing');
+      overlay.classList.add('hidden');
+    }, 260);
+  }
+
+  private open(overlay: HTMLElement) {
+    overlay.classList.remove('closing', 'hidden');
   }
 
   showGameBars(on: boolean) {
@@ -90,16 +105,16 @@ export class Hud {
     $('win-time').textContent = formatTime(seconds);
     $('win-moves').textContent = String(moves);
     $('win-moves-label').textContent = moves > 1 ? 'rotations' : 'rotation';
-    this.win.classList.remove('hidden');
+    this.open(this.win);
   }
 
   hideWin() {
-    this.win.classList.add('hidden');
+    this.close(this.win);
   }
 
   /** An overlay card is covering the game (the timer pauses meanwhile). */
   overlayOpen(): boolean {
-    return [this.howto, this.levels, this.hardIntro, this.styles].some((o) => !o.classList.contains('hidden'));
+    return [this.howto, this.levels, this.hardIntro, this.styles].some((o) => !o.classList.contains('hidden') && !o.classList.contains('closing'));
   }
 
   /** Style menu: one card per style, with a rendered preview. */
@@ -131,15 +146,41 @@ export class Hud {
       });
       grid.appendChild(b);
     }
-    this.styles.classList.remove('hidden');
+    this.open(this.styles);
+  }
+
+  /** Tutorial bubble at the bottom of the screen. */
+  showCoach(text: string, step: [number, number], button: string | null) {
+    const card = this.coach.querySelector('.coach-card') as HTMLElement;
+    $('coach-text').textContent = text;
+    $('coach-step').textContent = `${step[0]} / ${step[1]}`;
+    const next = $('coach-next');
+    next.textContent = button ?? '';
+    next.classList.toggle('hidden', !button);
+    if (!this.coach.classList.contains('hidden')) {
+      card.classList.remove('swap');
+      void card.offsetWidth;
+      card.classList.add('swap');
+    }
+    this.coach.classList.remove('hidden');
+  }
+
+  hideCoach() {
+    this.coach.classList.add('hidden');
+  }
+
+  /** Space under the garden left free by the tutorial bubble. */
+  coachInset(height: number): number {
+    const card = this.coach.querySelector('.coach-card') as HTMLElement;
+    return height - (this.coach.offsetTop + card.offsetTop) + 24;
   }
 
   openHardIntro() {
-    this.hardIntro.classList.remove('hidden');
+    this.open(this.hardIntro);
   }
 
   openHowto() {
-    this.howto.classList.remove('hidden');
+    this.open(this.howto);
   }
 
   openLevels(maxLevel: number, current: number, onPick: (level: number) => void) {
@@ -156,26 +197,32 @@ export class Hud {
         b.disabled = true;
       } else {
         b.addEventListener('click', () => {
-          this.levels.classList.add('hidden');
+          this.close(this.levels);
           onPick(n);
         });
       }
       grid.appendChild(b);
     }
-    this.levels.classList.remove('hidden');
+    this.open(this.levels);
     grid.querySelector('.current')?.scrollIntoView({ block: 'center' });
   }
 
-  /** Space (px) the bars take, so the garden fits between them. */
+  /**
+   * Space (px) the bars take, so the garden fits between them. Layout offsets
+   * are used rather than bounding boxes, which entrance animations shift.
+   */
   gameInsets(height: number): [number, number] {
-    const top = this.topbar.getBoundingClientRect().bottom + 14;
-    const bottom = height - this.bottombar.getBoundingClientRect().top + 14;
+    const top = this.topbar.offsetTop + this.topbar.offsetHeight + 14;
+    const bottom = height - (this.bottombar.offsetTop - 8);
     return [top, bottom];
   }
 
   homeInsets(height: number): [number, number] {
-    const top = (this.home.querySelector('.home-top') as HTMLElement).getBoundingClientRect().bottom + 18;
-    const bottom = height - (this.home.querySelector('.home-bottom') as HTMLElement).getBoundingClientRect().top + 18;
+    const head = this.home.querySelector('.home-top') as HTMLElement;
+    const foot = this.home.querySelector('.home-bottom') as HTMLElement;
+    const top = head.offsetTop + head.offsetHeight + 16;
+    // Extra room under the garden for the tiles' depth and shadow.
+    const bottom = height - foot.offsetTop + 40;
     return [top, bottom];
   }
 }

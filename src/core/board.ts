@@ -28,6 +28,8 @@ export interface BoardSnapshot {
   locked: string;
   moves: number;
   time: number;
+  /** Generator version the garden came from. */
+  version?: number;
 }
 
 export class Board {

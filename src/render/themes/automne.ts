@@ -156,6 +156,51 @@ const apples: PropDef = {
   },
 };
 
+/** Forest mushrooms: a plump cep next to a red fly agaric. */
+const forestMushrooms: PropDef = {
+  id: 'forest-mushrooms',
+  place: 'ground',
+  size: [0.07, 0.09],
+  weight: 3,
+  when: 'always',
+  upright: true,
+  draw(ctx, { r, v }) {
+    const flip = v > 0.5 ? 1 : -1;
+    groundShadow(ctx, 0, r * 0.82, r * 0.9);
+    // Cep: thick cream stem, round brown cap.
+    const cx = -flip * r * 0.32;
+    ellipse(ctx, cx, r * 0.45, r * 0.26, r * 0.4, 0, '#F4E3C3');
+    ctx.fillStyle = '#9A5E34';
+    ctx.beginPath();
+    ctx.ellipse(cx, r * 0.12, r * 0.48, r * 0.38, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+    ellipse(ctx, cx, r * 0.12, r * 0.48, r * 0.07, 0, '#7E4A28');
+    ellipse(ctx, cx - r * 0.15, -r * 0.1, r * 0.13, r * 0.06, -0.3, 'rgba(255,255,255,0.3)');
+    // Fly agaric: slim white stem with a ring, red cap with white dots.
+    const ax = flip * r * 0.4;
+    ellipse(ctx, ax, r * 0.45, r * 0.11, r * 0.4, 0, '#FFF8EE');
+    ellipse(ctx, ax, r * 0.32, r * 0.17, r * 0.05, 0, '#F1E4D2');
+    ctx.fillStyle = '#E8473F';
+    ctx.beginPath();
+    ctx.ellipse(ax, r * 0.08, r * 0.36, r * 0.32, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+    for (const [dx, dy, s] of [
+      [-0.15, -0.05, 0.06],
+      [0.12, -0.12, 0.05],
+      [0.0, -0.18, 0.045],
+      [0.22, 0.0, 0.04],
+    ]) {
+      circle(ctx, ax + dx * r, r * 0.08 + dy * r, s * r, '#FFFFFF');
+    }
+    // A tiny one in front.
+    ellipse(ctx, 0, r * 0.75, r * 0.06, r * 0.14, 0, '#F4E3C3');
+    ctx.fillStyle = '#C97A44';
+    ctx.beginPath();
+    ctx.ellipse(0, r * 0.66, r * 0.16, r * 0.13, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+  },
+};
+
 const floatingLeaf: PropDef = {
   id: 'floating-leaf',
   place: 'water',
@@ -243,6 +288,7 @@ export const automne: Theme = {
     leafPile,
     apples,
     squirrelTail,
+    forestMushrooms,
     mushroomProp(['#E9564A', '#C96A3A', '#F2A65A']),
     rockProp('#D9C3AE', '#B49A82', '#F3E6D8', '#C9A64A'),
     plankBridge('#C98A5A', '#B57846', '#8A5A3A'),

@@ -14,7 +14,17 @@ import { Decor, G, makeDecor } from './decor';
 import { clamp01, easeOutBack } from './easing';
 import { mixColor, P } from './palette';
 import { currentTheme } from './themes';
-import { drawTile, drawTileOverlay, roundRectPath, TILE_OVERFLOW, TileState } from './tileArt';
+import {
+  drawTile,
+  drawTileCritters,
+  drawTileProps,
+  drawTileWater,
+  hasCritters,
+  hasForeground,
+  roundRectPath,
+  TILE_OVERFLOW,
+  TileState,
+} from './tileArt';
 
 interface CellVis {
   angle: number;
@@ -29,12 +39,16 @@ interface CellVis {
   popAt: number;
   arrived: boolean;
   decor: Decor;
-  dry: HTMLCanvasElement | null;
-  wet: HTMLCanvasElement | null;
+  /** Cached images of the tile (base and foreground layers), dry and fully grown. */
+  cache: Record<CacheKey, HTMLCanvasElement | null>;
   /** Rotation each cached image was drawn for (plants are drawn upright). */
-  dryRot: number;
-  wetRot: number;
+  cacheRot: Record<CacheKey, number>;
 }
+
+type CacheKey = 'dry' | 'wet' | 'dryFg' | 'wetFg';
+
+const emptyCache = (): Record<CacheKey, HTMLCanvasElement | null> => ({ dry: null, wet: null, dryFg: null, wetFg: null });
+const emptyRots = (): Record<CacheKey, number> => ({ dry: -1, wet: -1, dryFg: -1, wetFg: -1 });
 
 export interface RendererEvents {
   /** Water just filled a tile (used for the little melody). */
@@ -79,6 +93,8 @@ export class GardenRenderer {
   time = 0;
   lockMode = false;
   hold: { cell: number; start: number; duration: number } | null = null;
+  /** Tutorial: tile under the spotlight, and the gesture it asks for. */
+  spotlight: { cell: number; kind: 'tap' | 'hold' } | null = null;
 
   private decorSeed = '';
 
@@ -145,10 +161,8 @@ export class GardenRenderer {
         popAt: -10,
         arrived: false,
         decor: makeDecor(active ? board.base[i] : 0, `${decorSeed}:${i}`, i === board.source),
-        dry: null,
-        wet: null,
-        dryRot: -1,
-        wetRot: -1,
+        cache: emptyCache(),
+        cacheRot: emptyRots(),
       });
     }
     this.layout();
@@ -258,8 +272,8 @@ export class GardenRenderer {
     this.ox = Math.round((this.width - this.tile * g.width) / 2);
     this.oy = Math.round(this.insets.top + (availH - this.tile * g.height) / 2);
     for (const v of this.vis) {
-      v.dry = null;
-      v.wet = null;
+      v.cache = emptyCache();
+      v.cacheRot = emptyRots();
     }
     this.renderBed();
     this.renderSprites();
@@ -523,11 +537,12 @@ export class GardenRenderer {
     };
   }
 
-  private cached(i: number, wet: boolean): HTMLCanvasElement {
+  private cached(i: number, wet: boolean, fg = false): HTMLCanvasElement {
     const v = this.vis[i];
     const rot = this.board!.rot[i];
-    const existing = wet ? v.wet : v.dry;
-    if (existing && (wet ? v.wetRot : v.dryRot) === rot) return existing;
+    const key: CacheKey = fg ? (wet ? 'wetFg' : 'dryFg') : wet ? 'wet' : 'dry';
+    const existing = v.cache[key];
+    if (existing && v.cacheRot[key] === rot) return existing;
     // The cached image has a margin so tall props can rise above the tile.
     const span = 1 + TILE_OVERFLOW * 2;
     const px = Math.ceil(this.tile * this.dpr * span);
@@ -536,14 +551,11 @@ export class GardenRenderer {
     c.height = px;
     const ctx = c.getContext('2d')!;
     ctx.setTransform(px / span, 0, 0, px / span, px / 2, px / 2);
-    drawTile(ctx, { ...this.tileState(i), bloom: wet ? 1 : 0, water: wet ? 1 : 0, loop: 0 });
-    if (wet) {
-      v.wet = c;
-      v.wetRot = rot;
-    } else {
-      v.dry = c;
-      v.dryRot = rot;
-    }
+    const st = { ...this.tileState(i), bloom: wet ? 1 : 0, water: wet ? 1 : 0, loop: 0 };
+    if (fg) drawTileProps(ctx, st);
+    else drawTile(ctx, st);
+    v.cache[key] = c;
+    v.cacheRot[key] = rot;
     return c;
   }
 
@@ -565,7 +577,9 @@ export class GardenRenderer {
       for (const i of board.grid.cells) this.drawShadow(i);
       for (const i of board.grid.cells) this.drawCell(i);
       this.drawBridges();
+      for (const i of board.grid.cells) this.drawCellProps(i);
       for (const i of board.grid.cells) this.drawCellOverlay(i);
+      this.drawSpotlight();
     }
     this.particles.draw(ctx, this.time);
   }
@@ -645,7 +659,7 @@ export class GardenRenderer {
     } else {
       drawTile(ctx, st);
     }
-    drawTileOverlay(ctx, st, this.time);
+    drawTileWater(ctx, st, this.time);
     ctx.restore();
 
     // Gloss stays lit from above, so it fades out while the face is turning.
@@ -657,6 +671,90 @@ export class GardenRenderer {
       ctx.drawImage(gloss, fx - t / 2, fy - t / 2, t, t);
       ctx.restore();
     }
+  }
+
+  /** Tutorial focus: the rest of the garden is dimmed, the tile pulses and an arrow points at it. */
+  private drawSpotlight() {
+    const s = this.spotlight;
+    if (!s || !this.board) return;
+    const ctx = this.ctx;
+    const t = this.tile;
+    const [cx, cy] = this.facePos(s.cell);
+    const half = t * 0.56;
+    ctx.save();
+    ctx.fillStyle = 'rgba(70, 45, 70, 0.32)';
+    ctx.beginPath();
+    ctx.rect(0, 0, this.width, this.height);
+    roundRectPath(ctx, cx - half, cy - half, half * 2, half * 2 + G.depth * t, t * 0.2, true);
+    ctx.fill('evenodd');
+
+    // Pulse around the tile.
+    const pulse = (this.time * 0.9) % 1;
+    const grow = half + pulse * t * 0.22;
+    ctx.globalAlpha = 1 - pulse;
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = Math.max(2, t * 0.04);
+    roundRectPath(ctx, cx - grow, cy - grow, grow * 2, grow * 2 + G.depth * t, t * 0.22);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    if (s.kind === 'hold') {
+      // A ring that fills up: keep the finger down.
+      const p = (this.time * 0.6) % 1;
+      ctx.strokeStyle = P.lockRing;
+      ctx.lineWidth = Math.max(3, t * 0.07);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(cx, cy, t * 0.38, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Bouncing arrow above the tile.
+    const bob = Math.sin(this.time * 5) * t * 0.06;
+    const ay = cy - half - t * 0.12 + bob;
+    const aw = t * 0.18;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.shadowColor = 'rgba(120, 70, 110, 0.4)';
+    ctx.shadowBlur = t * 0.1;
+    ctx.beginPath();
+    ctx.moveTo(cx, ay);
+    ctx.lineTo(cx - aw, ay - aw);
+    ctx.lineTo(cx - aw * 0.4, ay - aw);
+    ctx.lineTo(cx - aw * 0.4, ay - aw * 2);
+    ctx.lineTo(cx + aw * 0.4, ay - aw * 2);
+    ctx.lineTo(cx + aw * 0.4, ay - aw);
+    ctx.lineTo(cx + aw, ay - aw);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /** Foreground layer of a tile: its props, above every tile and canal. */
+  private drawCellProps(i: number) {
+    const st = this.tileState(i);
+    const statics = hasForeground(st);
+    const critters = hasCritters(st);
+    if (!statics && !critters) return;
+    const ctx = this.ctx;
+    const v = this.vis[i];
+    const t = this.tile * this.cellScale(v);
+    const [fx, fy] = this.facePos(i);
+    ctx.save();
+    ctx.translate(fx, fy);
+    ctx.rotate((v.angle * Math.PI) / 2);
+    ctx.scale(t, t);
+    if (statics) {
+      const o = 0.5 + TILE_OVERFLOW;
+      if (st.loop === 0 && st.bloom === 0 && st.water === 0) {
+        ctx.drawImage(this.cached(i, false, true), -o, -o, o * 2, o * 2);
+      } else if (st.loop === 0 && st.bloom >= 1 && st.water >= 1) {
+        ctx.drawImage(this.cached(i, true, true), -o, -o, o * 2, o * 2);
+      } else {
+        drawTileProps(ctx, st);
+      }
+    }
+    if (critters) drawTileCritters(ctx, st, this.time);
+    ctx.restore();
   }
 
   /** Short canal pieces bridging the gap between two joined, resting tiles. */
@@ -804,7 +902,7 @@ export class GardenRenderer {
    * main loop drops to a lower frame rate otherwise, to spare the battery.
    */
   isBusy(): boolean {
-    if (this.timers.length || this.hold || this.pressed >= 0 || this.particles.hasEffects()) return true;
+    if (this.timers.length || this.hold || this.spotlight || this.pressed >= 0 || this.particles.hasEffects()) return true;
     if (!this.board) return false;
     for (const i of this.board.grid.cells) {
       const v = this.vis[i];

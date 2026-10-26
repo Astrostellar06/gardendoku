@@ -4,7 +4,7 @@ import { G, makeDecor } from './decor';
 import { P } from './palette';
 import { withTheme } from './themes';
 import type { ThemeId } from './themes/types';
-import { drawTile, drawTileOverlay, roundRectPath } from './tileArt';
+import { drawTile, drawTileProps, drawTileWater, roundRectPath } from './tileArt';
 
 /** A tiny 2x2 watered network: corner, end, corner, end. */
 const SAMPLE: Array<{ x: number; y: number; mask: number; inflow: number }> = [
@@ -47,7 +47,18 @@ export function renderThemePreview(id: ThemeId, size: number, dpr: number): HTML
       ctx.translate(cx, cy - depth / 2);
       ctx.scale(t, t);
       drawTile(ctx, st);
-      drawTileOverlay(ctx, st, 0.6);
+      drawTileWater(ctx, st, 0.6);
+      ctx.restore();
+    });
+    // Props go on top of everything (they may rise above their tile).
+    SAMPLE.forEach((tile, k) => {
+      const [cx, cy] = center(tile.x, tile.y);
+      const decor = makeDecor(tile.mask, 'preview:' + k, false, k === 1 ? 0 : 1);
+      const st = { mask: tile.mask, decor, isSource: false, bloom: 1, water: 1, inflow: tile.inflow, loop: 0, rot: 0 };
+      ctx.save();
+      ctx.translate(cx, cy - (G.depth * t) / 2);
+      ctx.scale(t, t);
+      drawTileProps(ctx, st);
       ctx.restore();
     });
     // Join the canals across the gaps.

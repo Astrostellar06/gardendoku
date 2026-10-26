@@ -7,7 +7,11 @@
  *    While some tiles stay ambiguous, locally rewire the tree around them
  *    (add an edge next to an ambiguous tile, remove another one on the loop
  *    it creates) and try again.
- * 3. Scramble every tile with a random rotation.
+ * 3. Advanced levels: keep rewiring at random, accepting only gardens that
+ *    stay uniquely solvable with hypothesis reasoning ("if this tile pointed
+ *    there, these two dead ends would close on themselves") but leave more and
+ *    more tiles that plain deductions cannot settle.
+ * 4. Scramble every tile with a random rotation.
  *
  * Everything is driven by the seed, so a level never needs to be stored.
  */
@@ -29,6 +33,12 @@ export interface GenParams {
   solverDepth?: 0 | 1;
   maxRepairs?: number;
   wrap?: boolean;
+  /**
+   * Share of tiles (0..1) that plain deductions must leave open, so that the
+   * garden needs hypothesis reasoning. 0 or undefined: a "direct" garden.
+   */
+  advanced?: number;
+  maxHarden?: number;
 }
 
 export interface Puzzle {
@@ -41,6 +51,8 @@ export interface Puzzle {
   /** True when the solver proved the solution unique. */
   unique: boolean;
   repairs: number;
+  /** Tiles plain deductions cannot settle (they need hypothesis reasoning). */
+  deepCells?: number;
 }
 
 function link(conn: Uint8Array, grid: Grid, i: number, d: number): void {
@@ -192,6 +204,29 @@ export function generate(params: GenParams): Puzzle {
   // Last resort: one level of trial can still prove the solution unique.
   if (!unique && depth === 0) unique = solve(grid, conn, 1).status === 'solved';
 
+  const openAfterBasics = () => {
+    const res = solve(grid, conn, 0);
+    return res.status === 'solved' ? 0 : res.undetermined.length;
+  };
+  let deepCells = unique ? openAfterBasics() : 0;
+  if (params.advanced && unique) {
+    const hardenRng = rng.fork('harden');
+    const target = Math.max(2, Math.round(grid.cells.length * params.advanced));
+    // Too many open tiles would turn the garden into a chain of guesses.
+    const ceiling = target * 2;
+    const maxHarden = params.maxHarden ?? 1200;
+    for (let k = 0; k < maxHarden && deepCells < target; k++) {
+      const saved = conn.slice();
+      if (!repair(grid, conn, grid.cells, hardenRng, source, maxDegree)) break;
+      const open = openAfterBasics();
+      if (open < deepCells || open > ceiling || (open > 0 && solve(grid, conn, 1).status !== 'solved')) {
+        conn.set(saved);
+        continue;
+      }
+      deepCells = open;
+    }
+  }
+
   const tiles = new Uint8Array(grid.size);
   let scrambled = 0;
   for (const i of grid.cells) {
@@ -203,5 +238,5 @@ export function generate(params: GenParams): Puzzle {
     for (const i of grid.cells) tiles[i] = rotateMask(conn[i], 1);
   }
 
-  return { grid, source, solution: conn, tiles, unique, repairs };
+  return { grid, source, solution: conn, tiles, unique, repairs, deepCells };
 }

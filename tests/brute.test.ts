@@ -71,3 +71,18 @@ it('solver uniqueness claims match brute force on joined-edge gardens', () => {
   }
   console.log('unique wrap puzzles verified:', checked);
 });
+
+it('gardens that need hypothesis reasoning are still unique (brute force)', () => {
+  let checked = 0;
+  let deep = 0;
+  for (let s = 0; s < 24; s++) {
+    const size = 5 + (s % 2);
+    const p = generate({ width: size, height: size, shape: 'rect', seed: 'adv' + s, windiness: (s % 10) / 10, advanced: 0.2 });
+    expect(p.unique).toBe(true);
+    expect(countSolutions(p.grid, p.tiles, 2), `seed ${s}`).toBe(1);
+    checked++;
+    if ((p.deepCells ?? 0) > 0) deep++;
+  }
+  console.log('advanced gardens verified:', checked, '- needing hypotheses:', deep);
+  expect(deep).toBeGreaterThan(checked / 2);
+});

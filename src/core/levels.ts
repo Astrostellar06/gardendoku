@@ -22,6 +22,25 @@ export interface LevelInfo {
   cells: number;
   /** Hard level: opposite edges are joined (torus). */
   wrap: boolean;
+  /** Share of tiles that need hypothesis reasoning (0: plain deductions are enough). */
+  advanced: number;
+}
+
+/**
+ * Bump whenever generation changes: saved games from another version are not
+ * restored (they would land on a different garden).
+ */
+export const GENERATOR_VERSION = 2;
+
+/** From these levels on, gardens require hypothesis reasoning on part of the tiles. */
+export const ADVANCED_FROM = 21;
+export const ADVANCED_HARD_FROM = 50;
+
+function advancedShare(index: number, wrap: boolean): number {
+  if (wrap) return index >= ADVANCED_HARD_FROM ? 0.05 : 0;
+  if (index < ADVANCED_FROM) return 0;
+  const t = Math.min(1, (index - ADVANCED_FROM) / (80 - ADVANCED_FROM));
+  return 0.06 + t * 0.06;
 }
 
 /** Hard levels come back every HARD_EVERY levels. */
@@ -62,15 +81,29 @@ const FIXED_SHAPES: Record<number, ShapeId> = { 9: 'heart', 14: 'circle', 17: 'p
 
 const SHAPES: ShapeId[] =['circle', 'octagon', 'diamond', 'plus', 'heart', 'flower', 'hourglass', 'ponds'];
 
+/** How many rows taller than wide a shape may get before it looks stretched. */
+const MAX_EXTRA_ROWS: Record<ShapeId, number> = {
+  rect: 6,
+  ponds: 6,
+  octagon: 4,
+  circle: 2,
+  diamond: 6,
+  plus: 6,
+  heart: 2,
+  flower: 2,
+  hourglass: 6,
+};
+
 /**
  * Pick an odd box whose shape holds roughly `target` cells. Boxes stay at
- * most 9 columns wide (phones in portrait) and grow in height instead.
+ * most 9 columns wide (phones in portrait) and grow in height instead, as far
+ * as the shape still looks right.
  */
 function fitShape(shape: ShapeId, target: number, rng: Rng): [number, number, number] {
   let best: [number, number, number] = [5, 5, 0];
   let bestScore = Infinity;
   for (let w = 5; w <= 9; w += 2) {
-    for (let h = w; h <= w + 6 && h <= 15; h += 2) {
+    for (let h = w; h <= w + MAX_EXTRA_ROWS[shape] && h <= 15; h += 2) {
       const count = buildShape(shape, w, h, rng.fork('probe')).reduce((a, b) => a + b, 0);
       const score = Math.abs(count - target) + (h - w) * 0.6;
       if (score < bestScore) {
@@ -97,6 +130,7 @@ export function levelInfo(index: number): LevelInfo {
       seed,
       cells: size * size,
       wrap: true,
+      advanced: advancedShare(index, true),
     };
   }
   const band = BANDS.find((b) => index <= b.upTo)!;
@@ -119,7 +153,7 @@ export function levelInfo(index: number): LevelInfo {
     }
   }
   const cells = buildShape(shape, width, height, new Rng(seed).fork('shape')).reduce((a, b) => a + b, 0);
-  return { index, width, height, shape, shapeName: SHAPE_NAMES[shape], windiness, seed, cells, wrap: false };
+  return { index, width, height, shape, shapeName: SHAPE_NAMES[shape], windiness, seed, cells, wrap: false, advanced: advancedShare(index, false) };
 }
 
 const cache = new Map<number, Puzzle>();
@@ -135,6 +169,7 @@ export function buildLevel(index: number): Puzzle {
     seed: info.seed,
     windiness: info.windiness,
     wrap: info.wrap,
+    advanced: info.advanced,
   });
   cache.set(index, puzzle);
   if (cache.size > 8) cache.delete(cache.keys().next().value!);
