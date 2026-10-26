@@ -46,6 +46,7 @@
         <button class="tool-btn" id="btn-hint">
           <svg viewBox="0 0 24 24"><path d="M12 3.5c2.6 3.1 5.5 6.3 5.5 9.6a5.5 5.5 0 0 1-11 0c0-3.3 2.9-6.5 5.5-9.6Z" /><path d="M9.8 14.2a2.3 2.3 0 0 0 2.2 2.2" /></svg>
           <span>Indice</span>
+          <span class="count" id="hint-count">5</span>
         </button>
         <button class="big-btn hidden" id="btn-next-float">Niveau suivant</button>
       </footer>
@@ -98,10 +99,12 @@
           </svg>
           <h2>Jardin fleuri !</h2>
           <p id="win-text">Niveau 1 terminé</p>
+          <p class="win-rank" id="win-rank"></p>
           <div class="stats">
             <div><b id="win-time">0:00</b><span>temps</span></div>
             <div><b id="win-moves">0</b><span id="win-moves-label">rotations</span></div>
           </div>
+          <div class="win-unlocks" id="win-unlocks"></div>
           <button class="big-btn" id="btn-next">Niveau suivant</button>
           <button class="link-btn" id="btn-admire">Admirer le jardin</button>
         </div>
@@ -145,6 +148,25 @@
           <p>Ici, les <b>bords du jardin sont reliés</b> : l'eau qui sort d'un côté réapparaît du côté opposé.</p>
           <p class="small">Les bandes pâles autour du jardin montrent les parcelles de l'autre côté. Tu peux aussi les toucher.</p>
           <button class="big-btn" data-close>Compris !</button>
+        </div>
+      </section>
+
+      <section id="hint-shop" class="overlay hidden">
+        <div class="card">
+          <svg class="shop-drop" viewBox="0 0 48 48"><path d="M24 5c6 7.3 13 14.7 13 22.4a13 13 0 0 1-26 0C11 19.7 18 12.3 24 5Z" /><path class="shine" d="M18.5 29a6 6 0 0 0 5.5 5.5" /></svg>
+          <h2>Plus d'indices</h2>
+          <p>Tu n'as plus d'indice. Regarde une courte vidéo pour en recevoir <b>3</b>.</p>
+          <button class="big-btn" id="btn-watch-ad">Regarder une vidéo</button>
+          <button class="link-btn" data-close>Plus tard</button>
+        </div>
+      </section>
+
+      <section id="ad" class="overlay ad-overlay hidden">
+        <div class="card ad-card">
+          <span class="ad-label">Publicité · exemple</span>
+          <p>Ici s'affichera une vraie vidéo publicitaire.</p>
+          <div class="ad-bar"><div id="ad-progress"></div></div>
+          <button class="soft-btn" id="ad-close" disabled>Patiente…</button>
         </div>
       </section>
 

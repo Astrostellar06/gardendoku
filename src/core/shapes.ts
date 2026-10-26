@@ -7,7 +7,7 @@ import { Rng } from './rng';
 
 export type ShapeId =
   | 'rect'
-  | 'octagon'
+  | 'cloister'
   | 'circle'
   | 'diamond'
   | 'plus'
@@ -18,7 +18,7 @@ export type ShapeId =
 
 export const SHAPE_NAMES: Record<ShapeId, string> = {
   rect: 'Parterre',
-  octagon: 'Cloître',
+  cloister: 'Cloître',
   circle: 'Rond-point',
   diamond: 'Losange',
   plus: 'Croisée',
@@ -47,8 +47,9 @@ function inside(shape: ShapeId, u: number, v: number, w: number, h: number): boo
     case 'rect':
     case 'ponds':
       return true;
-    case 'octagon':
-      return Math.abs(u) + Math.abs(v) <= 1.45 + (hu + hv) * 0.5;
+    case 'cloister':
+      // Built cell by cell instead (see cloisterMask).
+      return true;
     case 'circle':
       return u * u + v * v <= 1 + (hu + hv);
     case 'diamond':
@@ -158,12 +159,56 @@ function heartMask(width: number, height: number): Uint8Array {
   return active;
 }
 
+/** Thickness of a cloister's galleries: 2 tiles, 3 for the tallest ones (9x13 and up). */
+export function cloisterThickness(width: number, height: number): number {
+  return width >= 9 && height >= 13 ? 3 : 2;
+}
+
+/** A cloister: a square or rectangular frame of galleries around an empty courtyard. */
+function cloisterMask(width: number, height: number): Uint8Array {
+  const active = new Uint8Array(width * height);
+  const t = cloisterThickness(width, height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const inner = x >= t && x < width - t && y >= t && y < height - t;
+      if (!inner) active[y * width + x] = 1;
+    }
+  }
+  return active;
+}
+
+/**
+ * Where the spring goes: the centre cell, or for shapes with an empty middle
+ * (cloister) the active cell closest to it, preferring the bottom gallery.
+ */
+export function sourceCell(active: Uint8Array, width: number, height: number): number {
+  const center = centerOf(width, height);
+  if (active[center]) return center;
+  const cx = center % width;
+  const cy = Math.floor(center / width);
+  let best = -1;
+  let bestKey = Infinity;
+  for (let i = 0; i < active.length; i++) {
+    if (!active[i]) continue;
+    const x = i % width;
+    const y = Math.floor(i / width);
+    // Closest first; among equals, below the centre, then nearest the middle column.
+    const key = (Math.abs(x - cx) + Math.abs(y - cy)) * 1000 + (y >= cy ? 0 : 500) + Math.abs(x - cx);
+    if (key < bestKey) {
+      bestKey = key;
+      best = i;
+    }
+  }
+  return best;
+}
+
 export function buildShape(shape: ShapeId, width: number, height: number, rng?: Rng): Uint8Array {
   if (shape === 'heart') {
     const heart = heartMask(width, height);
     keepConnected(heart, width, height, centerOf(width, height));
     return heart;
   }
+  if (shape === 'cloister') return cloisterMask(width, height);
   const active = new Uint8Array(width * height);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {

@@ -14,6 +14,43 @@ const SAMPLE: Array<{ x: number; y: number; mask: number; inflow: number }> = [
   { x: 1, y: 1, mask: W, inflow: 3 },
 ];
 
+/** The "random" style: four unlocked styles side by side, with a die on top. */
+export function renderRandomPreview(ids: ThemeId[], size: number, dpr: number): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = Math.round(size * dpr);
+  c.height = Math.round(size * dpr);
+  const ctx = c.getContext('2d')!;
+  const half = size / 2;
+  for (let k = 0; k < 4; k++) {
+    const id = ids[k % ids.length];
+    ctx.drawImage(renderThemePreview(id, half, dpr), (k % 2) * half * dpr, Math.floor(k / 2) * half * dpr, half * dpr, half * dpr);
+  }
+  ctx.scale(dpr, dpr);
+  // Die.
+  const d = size * 0.36;
+  const x = (size - d) / 2;
+  const y = (size - d) / 2;
+  ctx.shadowColor = 'rgba(120, 70, 110, 0.35)';
+  ctx.shadowBlur = 8;
+  roundRectPath(ctx, x, y, d, d, d * 0.22);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.fillStyle = '#F06C9C';
+  for (const [px, py] of [
+    [0.27, 0.27],
+    [0.73, 0.27],
+    [0.5, 0.5],
+    [0.27, 0.73],
+    [0.73, 0.73],
+  ]) {
+    ctx.beginPath();
+    ctx.arc(x + px * d, y + py * d, d * 0.09, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return c;
+}
+
 export function renderThemePreview(id: ThemeId, size: number, dpr: number): HTMLCanvasElement {
   return withTheme(id, () => {
     const c = document.createElement('canvas');

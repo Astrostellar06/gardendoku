@@ -1,5 +1,5 @@
 /** DOM overlay: bars, toasts, home screen and cards. */
-import type { LevelInfo } from '../core/levels';
+import { isHardLevel, LevelInfo } from '../core/levels';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -7,6 +7,16 @@ export function formatTime(seconds: number): string {
   const s = Math.max(0, Math.round(seconds));
   const m = Math.floor(s / 60);
   return `${m}:${String(s % 60).padStart(2, '0')}`;
+}
+
+export interface StyleCard {
+  id: string;
+  name: string;
+  blurb: string;
+  locked: boolean;
+  /** Challenge to meet, and how far the player is (locked styles). */
+  challenge?: string;
+  progress?: string;
 }
 
 export class Hud {
@@ -19,6 +29,8 @@ export class Hud {
   readonly hardIntro = $('hard-intro');
   readonly styles = $('styles');
   readonly coach = $('coach');
+  readonly hintShop = $('hint-shop');
+  readonly ad = $('ad');
   readonly lockBtn = $('btn-lock');
   readonly soundBtn = $('btn-sound');
   readonly nextFloat = $('btn-next-float');
@@ -26,7 +38,7 @@ export class Hud {
   private toastTimer = 0;
 
   constructor() {
-    for (const overlay of [this.howto, this.levels, this.hardIntro, this.styles]) {
+    for (const overlay of [this.howto, this.levels, this.hardIntro, this.styles, this.hintShop]) {
       overlay.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
         if (target === overlay || target.closest('[data-close]')) this.close(overlay);
@@ -100,8 +112,28 @@ export class Hud {
     this.home.classList.add('hidden');
   }
 
-  showWin(level: number, seconds: number, moves: number) {
+  /** Hints left, shown on the hint button. */
+  setHints(count: number) {
+    const badge = $('hint-count');
+    badge.textContent = String(count);
+    badge.classList.toggle('empty', count <= 0);
+  }
+
+  openHintShop() {
+    this.open(this.hintShop);
+  }
+
+  showWin(level: number, seconds: number, moves: number, rank: number | null = null, unlocked: string[] = []) {
     $('win-text').textContent = `Niveau ${level} terminé`;
+    $('win-rank').textContent = rank === null ? '' : `Plus rapide que ${rank} % des joueurs !`;
+    const list = $('win-unlocks');
+    list.textContent = '';
+    for (const name of unlocked) {
+      const line = document.createElement('div');
+      line.className = 'unlock-line';
+      line.textContent = `Nouveau style débloqué : ${name} !`;
+      list.appendChild(line);
+    }
     $('win-time').textContent = formatTime(seconds);
     $('win-moves').textContent = String(moves);
     $('win-moves-label').textContent = moves > 1 ? 'rotations' : 'rotation';
@@ -114,15 +146,21 @@ export class Hud {
 
   /** An overlay card is covering the game (the timer pauses meanwhile). */
   overlayOpen(): boolean {
-    return [this.howto, this.levels, this.hardIntro, this.styles].some((o) => !o.classList.contains('hidden') && !o.classList.contains('closing'));
+    return [this.howto, this.levels, this.hardIntro, this.styles, this.hintShop, this.ad].some(
+      (o) => !o.classList.contains('hidden') && !o.classList.contains('closing'),
+    );
   }
 
-  /** Style menu: one card per style, with a rendered preview. */
+  /**
+   * Style menu: one card per style, with a rendered preview. Locked styles are
+   * greyed out with a padlock, and show the challenge that unlocks them.
+   */
   openStyles(
-    styles: Array<{ id: string; name: string; blurb: string }>,
+    styles: StyleCard[],
     current: string,
     preview: (id: string, size: number) => HTMLCanvasElement,
     onPick: (id: string) => void,
+    onLocked: (style: StyleCard) => void,
   ) {
     const grid = $('styles-grid');
     grid.textContent = '';
@@ -130,16 +168,38 @@ export class Hud {
       const b = document.createElement('button');
       b.className = 'style-btn';
       if (style.id === current) b.classList.add('current');
+      if (style.locked) b.classList.add('locked');
       const canvas = preview(style.id, 112);
       canvas.className = 'style-preview';
       const name = document.createElement('span');
       name.className = 'style-name';
       name.textContent = style.name;
-      const blurb = document.createElement('span');
-      blurb.className = 'style-blurb';
-      blurb.textContent = style.blurb;
-      b.append(canvas, name, blurb);
+      b.append(canvas, name);
+      if (style.locked) {
+        const badge = document.createElement('span');
+        badge.className = 'style-lockbadge';
+        badge.innerHTML =
+          '<svg viewBox="0 0 24 24"><rect x="5.5" y="10.5" width="13" height="9" rx="2.6" /><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" /></svg>';
+        const challenge = document.createElement('span');
+        challenge.className = 'style-challenge';
+        const what = document.createElement('b');
+        what.textContent = style.challenge ?? '';
+        challenge.append(what, style.progress ?? '');
+        b.append(badge, challenge);
+      } else {
+        const blurb = document.createElement('span');
+        blurb.className = 'style-blurb';
+        blurb.textContent = style.blurb;
+        b.append(blurb);
+      }
       b.addEventListener('click', () => {
+        if (style.locked) {
+          b.classList.remove('shake');
+          void b.offsetWidth;
+          b.classList.add('shake');
+          onLocked(style);
+          return;
+        }
         grid.querySelector('.current')?.classList.remove('current');
         b.classList.add('current');
         onPick(style.id);
@@ -192,6 +252,7 @@ export class Hud {
       b.className = 'level-btn';
       b.textContent = String(n);
       if (n === current) b.classList.add('current');
+      if (isHardLevel(n)) b.classList.add('hard');
       if (n > maxLevel) {
         b.classList.add('locked');
         b.disabled = true;

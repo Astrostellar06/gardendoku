@@ -3,11 +3,15 @@ import { Sound } from './audio/sound';
 import { Analysis, Board } from './core/board';
 import { generate } from './core/generator';
 import { buildLevel, GENERATOR_VERSION, LevelInfo, levelInfo } from './core/levels';
-import { renderThemePreview } from './render/preview';
+import { hashString } from './core/rng';
+import { fasterThan, timeModel } from './core/timing';
+import { isUnlocked, RANDOM_STYLE, refreshUnlocks, STYLE_CHALLENGES } from './progress';
+import { renderRandomPreview, renderThemePreview } from './render/preview';
 import { GardenRenderer } from './render/renderer';
 import { setTheme, THEMES } from './render/themes';
 import type { ThemeId } from './render/themes';
-import { Hud } from './ui/hud';
+import { showRewardedAd } from './ui/ads';
+import { Hud, StyleCard } from './ui/hud';
 import { attachInput } from './ui/input';
 import { loadSave, SaveData, writeSave } from './ui/storage';
 import {
@@ -42,16 +46,34 @@ export class Game {
   /** Lock state applied by the current finger stroke, and how many tiles it changed. */
   private paint: { lock: boolean; count: number } | null = null;
   private tutorialStep: TutorialStep = 'intro';
+  /** Whether a lock was used on the current level (for the "no help" challenge). */
+  private usedLock = false;
+  /** Result of the last win, shown on the win card. */
+  private lastWin: { rank: number; unlocked: string[] } | null = null;
   /** Seconds spent on the current tutorial step, and whether the last tile has been turned. */
   private tutorialClock = 0;
   private tutorialSolved = false;
 
   constructor(canvas: HTMLCanvasElement) {
-    this.applyStyleColors(setTheme(this.save.settings.theme).id);
+    // `?debloquer` unlocks every style and tops up hints (testing).
+    const params = new URLSearchParams(location.search);
+    if (params.has('debloquer')) {
+      this.save.unlocked = THEMES.map((t) => t.id);
+      this.save.hints = Math.max(this.save.hints, 99);
+      params.delete('debloquer');
+      const rest = params.toString();
+      history.replaceState(null, '', location.pathname + (rest ? `?${rest}` : ''));
+    }
+    refreshUnlocks(this.save);
+    if (!isUnlocked(this.save, this.save.settings.theme)) this.save.settings.theme = 'printemps';
+    const first = this.pickStyle();
+    setTheme(first);
+    this.applyStyleColors(first);
     this.renderer = new GardenRenderer(canvas);
     this.renderer.events.onWaterArrive = (_cell, dist) => this.sound.water(dist);
     this.sound.enabled = this.save.settings.sound;
     this.hud.setSound(this.sound.enabled);
+    this.hud.setHints(this.save.hints);
 
     attachInput(canvas, {
       cellAt: (x, y) => (this.mode === 'home' ? -1 : this.renderer.cellAt(x, y)),
@@ -79,14 +101,8 @@ export class Game {
       });
     on('btn-play', () => this.play(this.save.level));
     on('btn-howto', () => this.hud.openHowto());
-    on('btn-styles', () =>
-      this.hud.openStyles(
-        THEMES,
-        this.save.settings.theme,
-        (id, size) => renderThemePreview(id as ThemeId, size, Math.min(window.devicePixelRatio || 1, 2.5)),
-        (id) => this.chooseTheme(id),
-      ),
-    );
+    on('btn-styles', () => this.openStyles());
+    on('btn-watch-ad', () => this.watchAdForHints());
     on('btn-help', () => this.hud.openHowto());
     on('btn-replay-tutorial', () => this.startTutorial());
     on('coach-next', () => this.advanceTutorial());
@@ -161,7 +177,9 @@ export class Game {
       this.sound.win();
       this.vibrate([18, 40, 18]);
       this.renderer.celebrate(() => {
-        if (this.mode === 'play' && this.won) this.hud.showWin(this.info!.index, this.elapsed, this.board!.moves);
+        if (this.mode === 'play' && this.won) {
+          this.hud.showWin(this.info!.index, this.elapsed, this.board!.moves, this.lastWin?.rank ?? null, this.lastWin?.unlocked ?? []);
+        }
       });
     }
   }
@@ -171,6 +189,7 @@ export class Game {
   private showHome() {
     this.persist();
     this.leaveTutorial();
+    if (this.save.settings.theme === RANDOM_STYLE) this.applyStyle(this.pickStyle());
     this.mode = 'home';
     this.won = false;
     this.setLockMode(false);
@@ -197,6 +216,7 @@ export class Game {
   }
 
   private loadLevel(n: number) {
+    if (this.save.settings.theme === RANDOM_STYLE) this.applyStyle(this.pickStyle(n));
     this.info = levelInfo(n);
     const board = new Board(buildLevel(n));
     this.board = board;
@@ -210,7 +230,11 @@ export class Game {
     this.hud.hideToast();
 
     const snap = this.save.snapshot;
-    if (snap && snap.level === n && snap.version === GENERATOR_VERSION && board.restore(snap)) this.elapsed = snap.time;
+    if (snap && snap.level === n && snap.version === GENERATOR_VERSION && board.restore(snap)) {
+      this.elapsed = snap.time;
+      this.hints = snap.hints ?? 0;
+    }
+    this.usedLock = (snap?.level === n && snap.usedLock) || board.locked.some((l) => l === 1);
     this.save.level = n;
 
     this.renderer.setBoard(board, this.info.seed);
@@ -351,6 +375,7 @@ export class Game {
     if (this.mode !== 'play' || this.won || !board) return;
     const lock = !board.locked[cell];
     board.setLock(cell, lock);
+    if (lock) this.usedLock = true;
     this.paint = { lock, count: 0 };
     this.sound.lock(lock);
     this.vibrate(12);
@@ -397,6 +422,10 @@ export class Game {
     const board = this.board;
     const an = this.analysis;
     if (!board || !an || this.won) return;
+    if (this.save.hints <= 0) {
+      this.hud.openHintShop();
+      return;
+    }
     const cells = board.grid.cells;
     // A wrongly locked tile is the most useful thing to point out.
     let pool = cells.filter((i) => board.locked[i] && !board.isCorrect(i));
@@ -413,6 +442,8 @@ export class Game {
     }
     if (!pool.length) return;
     const cell = pool[Math.floor(Math.random() * pool.length)];
+    this.save.hints--;
+    this.hud.setHints(this.save.hints);
     const turns = board.applySolution(cell);
     this.renderer.rotate(cell, turns);
     const [x, y] = this.renderer.cellCenter(cell);
@@ -422,11 +453,67 @@ export class Game {
     this.afterChange();
   }
 
+  // ---------- Styles ----------
+
+  /** Style to use now: the chosen one, or for "random" one of the unlocked styles (stable per level). */
+  private pickStyle(level?: number): string {
+    if (this.save.settings.theme !== RANDOM_STYLE) return this.save.settings.theme;
+    const pool = THEMES.filter((t) => isUnlocked(this.save, t.id));
+    const k = level === undefined ? Math.floor(Math.random() * pool.length) : hashString(`style:${level}`) % pool.length;
+    return pool[k].id;
+  }
+
+  /** Switch the palette and scenery before a new garden is shown. */
+  private applyStyle(id: string) {
+    setTheme(id);
+    this.applyStyleColors(id);
+    this.renderer.refreshScenery();
+  }
+
+  private openStyles() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const unlockedIds = THEMES.filter((t) => isUnlocked(this.save, t.id)).map((t) => t.id);
+    const cards: StyleCard[] = [
+      { id: RANDOM_STYLE, name: 'Aléatoire', blurb: 'Un style au hasard parmi tes styles, à chaque niveau', locked: false },
+      ...THEMES.map((t) => {
+        const challenge = STYLE_CHALLENGES[t.id];
+        return {
+          id: t.id,
+          name: t.name,
+          blurb: t.blurb,
+          locked: !isUnlocked(this.save, t.id),
+          challenge: challenge?.text,
+          progress: challenge?.state(this.save).progress,
+        };
+      }),
+    ];
+    this.hud.openStyles(
+      cards,
+      this.save.settings.theme,
+      (id, size) => (id === RANDOM_STYLE ? renderRandomPreview(unlockedIds, size, dpr) : renderThemePreview(id as ThemeId, size, dpr)),
+      (id) => this.chooseTheme(id),
+      (card) => this.hud.toast(`${card.name} : ${card.challenge} (${card.progress})`, false, 3600),
+    );
+  }
+
   private chooseTheme(id: string) {
-    const theme = setTheme(id);
-    this.save.settings.theme = theme.id;
-    this.applyStyleColors(theme.id);
+    if (!isUnlocked(this.save, id)) return;
+    this.save.settings.theme = id;
+    const applied = this.pickStyle(this.mode === 'play' ? this.info?.index : undefined);
+    setTheme(applied);
+    this.applyStyleColors(applied);
     this.renderer.refreshTheme();
+    this.persist();
+  }
+
+  /** Rewarded video (placeholder for now): +3 hints. */
+  private async watchAdForHints() {
+    this.hud.close(this.hud.hintShop);
+    const rewarded = await showRewardedAd();
+    if (!rewarded) return;
+    this.save.hints += 3;
+    this.hud.setHints(this.save.hints);
+    this.hud.toast('+3 indices !');
     this.persist();
   }
 
@@ -461,7 +548,8 @@ export class Game {
   }
 
   private onWin() {
-    if (!this.info) return;
+    if (!this.info || !this.board) return;
+    this.recordWin(this.info, this.board);
     this.won = true;
     this.setLockMode(false);
     this.renderer.hold = null;
@@ -471,7 +559,21 @@ export class Game {
     this.save.maxLevel = Math.max(this.save.maxLevel, this.info.index + 1);
     this.save.level = this.info.index + 1;
     this.save.snapshot = null;
+    const fresh = refreshUnlocks(this.save);
+    if (this.lastWin) this.lastWin.unlocked = fresh.map((id) => THEMES.find((t) => t.id === id)!.name);
     writeSave(this.save);
+  }
+
+  /** Rank against other players, and the numbers behind the style challenges. */
+  private recordWin(info: LevelInfo, board: Board) {
+    const rank = fasterThan(this.elapsed, timeModel(board.puzzle), this.hints);
+    const stats = this.save.stats;
+    const key = String(info.index);
+    stats.bestTimes[key] = Math.min(stats.bestTimes[key] ?? Infinity, Math.round(this.elapsed));
+    stats.bestFasterThan = Math.max(stats.bestFasterThan, rank);
+    if (info.wrap && !stats.hardSolved.includes(info.index)) stats.hardSolved.push(info.index);
+    if (!this.usedLock && this.hints === 0) stats.noHelpBest = Math.max(stats.noHelpBest, board.grid.cells.length);
+    this.lastWin = { rank, unlocked: [] };
   }
 
   /** Dev helper: solve all but `leave` tiles. */
@@ -496,7 +598,13 @@ export class Game {
 
   private persist() {
     if (this.mode === 'play' && this.board && this.info && !this.won) {
-      this.save.snapshot = { level: this.info.index, ...this.board.snapshot(this.elapsed), version: GENERATOR_VERSION };
+      this.save.snapshot = {
+        level: this.info.index,
+        ...this.board.snapshot(this.elapsed),
+        version: GENERATOR_VERSION,
+        hints: this.hints,
+        usedLock: this.usedLock,
+      };
     }
     writeSave(this.save);
   }

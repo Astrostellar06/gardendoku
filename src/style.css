@@ -209,6 +209,32 @@ svg {
   height: 24px;
 }
 
+.tool-btn {
+  position: relative;
+}
+
+/* Hints left, as a small bubble on the button. */
+.tool-btn .count {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--pink);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 22px;
+  box-shadow: 0 2px 0 var(--pink-edge);
+}
+
+.tool-btn .count.empty {
+  background: #c9bfd6;
+  box-shadow: 0 2px 0 #b0a4c0;
+}
+
 .tool-btn.toggle[aria-pressed='true'] {
   background: var(--lilac-soft);
   color: #7b4fc9;
@@ -608,6 +634,32 @@ h1 {
   }
 }
 
+.win-rank {
+  font-weight: 600;
+  color: #e0708f;
+}
+
+.win-unlocks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.win-unlocks:empty {
+  display: none;
+}
+
+.unlock-line {
+  padding: 8px 12px;
+  border-radius: 16px;
+  background: var(--lilac-soft);
+  color: #7b4fc9;
+  font-weight: 600;
+  font-size: 15px;
+  animation: pop-in 0.6s 0.3s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+
 .stats {
   display: flex;
   gap: 12px;
@@ -798,6 +850,114 @@ h1 {
   margin-bottom: 4px;
 }
 
+.style-btn {
+  position: relative;
+}
+
+.style-btn.locked .style-preview {
+  filter: grayscale(0.75) brightness(1.05);
+  opacity: 0.6;
+}
+
+.style-btn.locked .style-name {
+  color: var(--ink-soft);
+}
+
+/* Padlock badge on locked styles. */
+.style-btn .style-lockbadge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--lilac);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 6px rgba(140, 100, 170, 0.35);
+}
+
+.style-btn .style-lockbadge svg {
+  width: 18px;
+  height: 18px;
+}
+
+.style-challenge {
+  margin-top: 4px;
+  padding: 5px 8px;
+  border-radius: 12px;
+  background: var(--lilac-soft);
+  color: #7b4fc9;
+  font-size: 11.5px;
+  line-height: 1.25;
+}
+
+.style-challenge b {
+  display: block;
+  font-weight: 600;
+}
+
+.style-btn.shake {
+  animation: shake 0.4s;
+}
+
+@keyframes shake {
+  25% {
+    transform: translateX(-5px);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+  75% {
+    transform: translateX(-3px);
+  }
+}
+
+.shop-drop {
+  width: 54px;
+  height: 54px;
+  fill: var(--blue);
+  stroke: #3fafe9;
+  stroke-width: 2;
+}
+
+.shop-drop .shine {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3;
+}
+
+.ad-overlay {
+  background: rgba(40, 30, 50, 0.6);
+}
+
+.ad-card {
+  background: #2f2a38;
+  color: #fff;
+}
+
+.ad-label {
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #d8c8f0;
+}
+
+.ad-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+#ad-progress {
+  height: 100%;
+  width: 0;
+  background: var(--pink);
+}
+
 .style-name {
   font-weight: 600;
   font-size: 16px;
@@ -837,6 +997,25 @@ h1 {
   background: var(--pink);
   box-shadow: 0 3px 0 var(--pink-edge);
   color: #fff;
+}
+
+/* Hard levels (joined edges) stand out in lilac. */
+.level-btn.hard {
+  background: #e4d5fb;
+  color: #7b4fc9;
+  box-shadow: 0 3px 0 #c9aef3;
+}
+
+.level-btn.hard.current {
+  background: var(--lilac);
+  color: #fff;
+  box-shadow: 0 3px 0 #8a63c9;
+}
+
+.level-btn.hard.locked {
+  background: #f1eafc;
+  color: #cdb8ef;
+  box-shadow: none;
 }
 
 .level-btn.locked {

@@ -105,11 +105,16 @@ export class GardenRenderer {
     this.particles.setAmbient(theme.ambient, theme.ambientColors);
   }
 
-  /** Redraw everything for the newly selected style (palette, scenery, tile decorations). */
-  refreshTheme() {
+  /** Background and ambient particles of the current style (before a new board). */
+  refreshScenery() {
     const theme = currentTheme();
     this.particles.setAmbient(theme.ambient, theme.ambientColors);
     if (this.width) this.bg = renderBackground(this.width, this.height, this.dpr);
+  }
+
+  /** Redraw everything for the newly selected style (palette, scenery, tile decorations). */
+  refreshTheme() {
+    this.refreshScenery();
     const board = this.board;
     if (board) {
       this.vis.forEach((v, i) => {

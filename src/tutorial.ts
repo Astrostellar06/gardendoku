@@ -15,7 +15,7 @@ export const LAST_CELL = 7;
 /** Tile locked with a long press. */
 export const LOCK_CELL = 0;
 /** Seconds before the last tile gets a spotlight, if the player is stuck. */
-export const LAST_HINT_DELAY = 6;
+export const LAST_HINT_DELAY = 10;
 
 export type TutorialStep = 'intro' | 'turn' | 'flowing' | 'lock' | 'finish' | 'bravo';
 

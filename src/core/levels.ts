@@ -30,7 +30,7 @@ export interface LevelInfo {
  * Bump whenever generation changes: saved games from another version are not
  * restored (they would land on a different garden).
  */
-export const GENERATOR_VERSION = 3;
+export const GENERATOR_VERSION = 4;
 
 /** From these levels on, gardens require hypothesis reasoning on part of the tiles. */
 export const ADVANCED_FROM = 21;
@@ -82,19 +82,19 @@ const FIXED_SHAPES: Record<number, ShapeId> = {
   12: 'flower',
   14: 'circle',
   17: 'ponds',
-  22: 'octagon',
+  22: 'cloister',
   27: 'diamond',
   33: 'hourglass',
   44: 'heart',
 };
 
-const SHAPES: ShapeId[] =['circle', 'octagon', 'diamond', 'plus', 'heart', 'flower', 'hourglass', 'ponds'];
+const SHAPES: ShapeId[] = ['circle', 'cloister', 'diamond', 'plus', 'heart', 'flower', 'hourglass', 'ponds'];
 
 /** How many rows taller than wide a shape may get before it looks stretched. */
 const MAX_EXTRA_ROWS: Record<ShapeId, number> = {
   rect: 6,
   ponds: 6,
-  octagon: 4,
+  cloister: 4,
   circle: 2,
   diamond: 6,
   plus: 6,

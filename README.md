@@ -21,6 +21,10 @@ Ajouter `?niveau=N` à l'adresse, par exemple `http://localhost:5173/?niveau=60`
 
 Ajouter `?reset` à l'adresse, par exemple `http://localhost:5173/?reset` : la sauvegarde (progression, réglages, tutoriel vu) est effacée et le jeu redémarre comme au tout premier lancement, tutoriel compris. Le tutoriel peut aussi être relancé depuis l'aide (« Revoir le tutoriel »).
 
+### Débloquer tous les styles (tests)
+
+Ajouter `?debloquer` à l'adresse débloque tous les styles et met 99 indices. Le paramètre se combine avec `?niveau=N`.
+
 En mode dev, la console du navigateur expose aussi `__game` : `__game.debugSolve(5)` résout tout sauf 5 parcelles (pratique pour voir la victoire).
 
 ## Commandes de jeu
@@ -33,7 +37,7 @@ En mode dev, la console du navigateur expose aussi `__game` : `__game.debugSolve
 | Indice | Bouton **Indice** : remet une parcelle dans le bon sens et la verrouille |
 | Recommencer | Bouton **Recommencer**, à toucher deux fois |
 | Aide | Bouton **?** en jeu |
-| Changer de style | Bouton **Styles** sur l'écran d'accueil |
+| Changer de style | Bouton **Styles** sur l'écran d'accueil (dont « Aléatoire ») |
 
 ## Tutoriel
 
@@ -45,7 +49,7 @@ Au premier lancement, un mini-jardin 3×3 explique le jeu en 5 étapes. Un proje
 | --- | --- |
 | Rectangle | Parterre |
 | Rectangle avec quelques trous | Étangs |
-| Octogone | Cloître |
+| Cadre évidé au centre (cour vide), source sur la galerie intérieure | Cloître |
 | Cercle | Rond-point |
 | Losange | Losange |
 | Croix | Croisée |
@@ -73,6 +77,38 @@ Un niveau sur 5 (5, 10, 15…) est un niveau difficile : une grille carrée ou r
 - des **bandes fantômes** autour du jardin montrent en transparence le bord des parcelles opposées : le canal qui arrive de l'autre côté est visible juste à côté du bord (toucher une parcelle fantôme fait tourner la vraie) ;
 - quand deux parcelles sont reliées à travers un bord, le **canal se prolonge** jusque dans la bande fantôme, et l'eau qui passe fait une petite **étincelle** des deux côtés ;
 - une **carte d'explication** s'affiche la première fois, et le bandeau du niveau passe en lilas avec la mention « ★ Difficile ».
+
+## Rang, défis et indices
+
+### « Plus rapide que X % des joueurs »
+
+Le calcul se fait sans serveur, dans `src/core/timing.ts` :
+
+- **Temps médian estimé** d'un niveau : `0,8 × parcelles^1,3` secondes, plus 7 s par parcelle qui exige un raisonnement par hypothèse, le tout × 1,45 pour les bords reliés (au moins 20 s).
+- **Répartition des temps des joueurs** : une loi log-normale (courbe en cloche sur le logarithme du temps, écart-type 0,55). Le rang affiché est la part des joueurs théoriquement plus lents.
+- **Indices** : chaque indice utilisé ajoute 25 s au temps pris en compte.
+
+Exemple : sur un 5×5, le temps médian estimé est de 52 s. En 25 s, on est plus rapide que 91 % des joueurs ; en 2 min, que 6 %.
+
+### Styles à débloquer
+
+Seul le printemps est disponible au départ ; chaque autre style se débloque par un défi (`src/progress.ts`). Dans le menu, les styles verrouillés sont grisés, avec un cadenas, le défi et la progression ; un toucher rappelle le défi. Un déblocage est définitif et s'annonce sur la carte de victoire.
+
+| Style | Défi |
+| --- | --- |
+| Japon | Atteindre le niveau 8 |
+| Automne | Finir un jardin d'au moins 40 parcelles sans verrou ni indice |
+| Hiver | Réussir 3 niveaux difficiles |
+| Savane | Atteindre le niveau 25 |
+| Désert | Finir un niveau plus vite que 80 % des joueurs |
+| Jungle | Réussir 10 niveaux difficiles |
+| Sauvage | Finir un niveau plus vite que 95 % des joueurs |
+
+Le choix **Aléatoire** donne à chaque niveau un style tiré parmi ceux débloqués. Le tirage est stable : rejouer un niveau redonne le même style.
+
+### Indices
+
+On commence avec 5 indices ; le compteur est affiché sur le bouton. À 0, une fenêtre propose de regarder une vidéo pour en gagner 3. **Pour l'instant, la vidéo est un exemple factice** (`src/ui/ads.ts`, 3 secondes) : il faudra y brancher une vraie régie publicitaire (par exemple AdMob via Capacitor).
 
 ## Styles de jardin
 
@@ -105,6 +141,7 @@ src/
     solver.ts      Solveur logique (preuve d'unicité de la solution)
     board.ts       État de jeu : rotations, verrous, eau, boucles, victoire
     levels.ts      Progression infinie : niveau n → taille, forme, seed
+    timing.ts      Temps médian estimé d'un niveau et rang du joueur
   render/          Rendu Canvas 2D
     tileArt.ts     Dessin procédural d'une parcelle (sol, canal, eau, herbe, fleurs, lotus, détails)
     decor.ts       Décor de chaque parcelle, déterministe (placé hors des canaux)
@@ -116,6 +153,7 @@ src/
   audio/sound.ts   Sons synthétisés en WebAudio (aucun fichier audio)
   ui/              HUD (DOM), saisie tactile, sauvegarde localStorage
   tutorial.ts      Mini-jardin et étapes du tutoriel
+  progress.ts      Défis qui débloquent les styles
   game.ts          Contrôleur qui relie le tout
 ```
 

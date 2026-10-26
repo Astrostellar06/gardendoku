@@ -17,7 +17,7 @@
  */
 import { Grid, opposite, popcount4, rotateMask } from './grid';
 import { Rng } from './rng';
-import { buildShape, centerOf, ShapeId } from './shapes';
+import { buildShape, ShapeId, sourceCell } from './shapes';
 import { solve } from './solver';
 
 export interface GenParams {
@@ -186,7 +186,7 @@ export function generate(params: GenParams): Puzzle {
 
   const active = buildShape(params.shape, width, height, shapeRng);
   const grid = new Grid(width, height, active, params.wrap ?? false);
-  const source = centerOf(width, height);
+  const source = sourceCell(active, width, height);
 
   const conn = growTree(grid, source, treeRng, params.windiness, maxDegree);
 
