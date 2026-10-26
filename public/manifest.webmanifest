@@ -1,0 +1,11 @@
+{
+  "name": "Jardin des Sources",
+  "short_name": "Jardin",
+  "description": "Un jeu de puzzle zen : guide l'eau de la source et fais fleurir le jardin.",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFD6E5",
+  "theme_color": "#FFD6E5",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
