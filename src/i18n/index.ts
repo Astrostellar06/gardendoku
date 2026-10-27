@@ -1,5 +1,5 @@
 /**
- * Translations (French and English). French is the source language and the
+ * Translations: French, English, Spanish, German, Dutch, Italian, Portuguese. French is the source language and the
  * default until `setLang` is called (main.ts does it before anything is built),
  * which also keeps the tests in French.
  *
@@ -8,29 +8,35 @@
  * - `applyDom()`: fills the page's `data-i18n` (text), `data-i18n-html` (our own
  *   strings holding <b>) and `data-i18n-attr="aria-label:key;placeholder:key"`.
  */
+import { de } from './de';
 import { en } from './en';
+import { es } from './es';
 import { fr } from './fr';
+import { it } from './it';
+import { nl } from './nl';
+import { pt } from './pt';
 
-export type Lang = 'fr' | 'en';
+export type Lang = 'fr' | 'en' | 'es' | 'de' | 'nl' | 'it' | 'pt';
 export type Key = keyof typeof fr;
 /** Keys with plural forms, without their `_one` / `_other` suffix. */
 export type PluralKey = { [K in Key]: K extends `${infer Base}_one` ? Base : never }[Key];
 type Vars = Record<string, string | number>;
 
-export const LANGS: Lang[] = ['fr', 'en'];
-const DICTS: Record<Lang, Record<Key, string>> = { fr, en };
+export const LANGS: Lang[] = ['fr', 'en', 'es', 'de', 'nl', 'it', 'pt'];
+export const DICTS: Record<Lang, Record<Key, string>> = { fr, en, es, de, nl, it, pt };
 
 let current: Lang = 'fr';
 let plurals = new Intl.PluralRules('fr');
 
 export function isLang(value: unknown): value is Lang {
-  return value === 'fr' || value === 'en';
+  return typeof value === 'string' && (LANGS as string[]).includes(value);
 }
 
-/** Saved choice first, else the device language: French for "fr…", English otherwise. */
+/** Saved choice first, else the device language when the game speaks it, English otherwise. */
 export function detectLang(saved?: string | null, device = typeof navigator === 'undefined' ? '' : navigator.language): Lang {
   if (isLang(saved)) return saved;
-  return /^fr/i.test(device ?? '') ? 'fr' : 'en';
+  const prefix = (device ?? '').slice(0, 2).toLowerCase();
+  return isLang(prefix) ? prefix : 'en';
 }
 
 export function lang(): Lang {
@@ -74,9 +80,12 @@ export function formatDate(date: Date, opts: Intl.DateTimeFormatOptions): string
   return new Intl.DateTimeFormat(locale(), opts).format(date);
 }
 
-/** "1er", "2e" / "1st", "2nd", "3rd", "11th", "22nd"... */
+/** "1er", "2e" / "1st", "2nd", "3rd", "11th", "22nd" / "1.º", "1.", "1e"... */
 export function ordinal(rank: number): string {
   if (current === 'fr') return rank === 1 ? '1er' : `${rank}e`;
+  if (current === 'es' || current === 'it' || current === 'pt') return `${rank}º`;
+  if (current === 'de') return `${rank}.`;
+  if (current === 'nl') return `${rank}e`;
   const tens = rank % 100;
   const suffix = tens >= 11 && tens <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[rank % 10] ?? 'th';
   return `${rank}${suffix}`;

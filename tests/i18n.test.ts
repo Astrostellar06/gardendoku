@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { en } from '../src/i18n/en';
 import { fr } from '../src/i18n/fr';
-import { detectLang, listJoin, ordinal, setLang, t, tn } from '../src/i18n';
+import { detectLang, DICTS, LANGS, listJoin, ordinal, setLang, t, tn } from '../src/i18n';
 import { shareText } from '../src/daily';
 import { THEMES } from '../src/render/themes';
 import { rewardText } from '../src/streak';
@@ -13,18 +12,20 @@ const tags = (text: string) => [...text.matchAll(/<\/?(\w+)/g)].map((m) => m[0])
 describe('translations', () => {
   afterEach(() => setLang('fr'));
 
-  it('have the same keys in French and English', () => {
-    expect(Object.keys(en).sort()).toEqual(Object.keys(fr).sort());
+  const others = LANGS.filter((l) => l !== 'fr');
+
+  it.each(others)('%s: the same keys as French', (l) => {
+    expect(Object.keys(DICTS[l]).sort()).toEqual(Object.keys(fr).sort());
   });
 
-  it('have no empty text', () => {
-    for (const [key, text] of [...Object.entries(fr), ...Object.entries(en)]) expect(text.trim(), key).not.toBe('');
+  it.each(LANGS)('%s: no empty text', (l) => {
+    for (const [key, text] of Object.entries(DICTS[l])) expect(text.trim(), key).not.toBe('');
   });
 
-  it('use the same placeholders and tags in both languages', () => {
+  it.each(others)('%s: the same placeholders and tags as French', (l) => {
     for (const key of Object.keys(fr) as Array<keyof typeof fr>) {
-      expect(placeholders(en[key]), key).toEqual(placeholders(fr[key]));
-      expect(tags(en[key]), key).toEqual(tags(fr[key]));
+      expect(placeholders(DICTS[l][key]), key).toEqual(placeholders(fr[key]));
+      expect(tags(DICTS[l][key]), key).toEqual(tags(fr[key]));
     }
   });
 
@@ -43,8 +44,8 @@ describe('translations', () => {
     for (const a of AVATARS) expect(fr, a.key).toHaveProperty(`avatar.${a.key}`);
   });
 
-  it('keep French typography in French only', () => {
-    for (const [key, text] of Object.entries(en)) expect(text, key).not.toMatch(/[  ]/);
+  it.each(others)('%s: keeps French typography out', (l) => {
+    for (const [key, text] of Object.entries(DICTS[l])) expect(text, key).not.toMatch(/[  ]/);
   });
 
   it('fill placeholders, plurals, lists and ordinals', () => {
@@ -73,7 +74,9 @@ describe('translations', () => {
   it('pick the saved language, else the device language', () => {
     expect(detectLang('en', 'fr-FR')).toBe('en');
     expect(detectLang(undefined, 'fr-CA')).toBe('fr');
-    expect(detectLang(undefined, 'de-DE')).toBe('en');
+    expect(detectLang(undefined, 'de-DE')).toBe('de');
+    expect(detectLang(undefined, 'pt-BR')).toBe('pt');
+    expect(detectLang(undefined, 'ja-JP')).toBe('en');
     expect(detectLang('xx', 'en-US')).toBe('en');
   });
 });

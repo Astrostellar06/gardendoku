@@ -64,10 +64,10 @@ Les icônes viennent de `public/icon.svg`, déclinée dans `assets/` : icône pl
 
 Le bouton engrenage (accueil, et en haut à droite en jeu) ouvre les **paramètres** : sons, vibrations et langue.
 
-Le jeu existe en **français** et en **anglais** (`src/i18n/`) :
-- `fr.ts` est la référence, `en.ts` doit avoir exactement les mêmes clés (le typage et `tests/i18n.test.ts` le vérifient) ;
+Le jeu existe en **français**, **anglais**, **espagnol**, **allemand**, **néerlandais**, **italien** et **portugais** (`src/i18n/`) :
+- `fr.ts` est la référence, les autres (`en.ts`, `es.ts`, `de.ts`, `nl.ts`, `it.ts`, `pt.ts`) doivent avoir exactement les mêmes clés, les mêmes `{variables}` et les mêmes balises (le typage et `tests/i18n.test.ts` le vérifient) ;
 - dans `index.html`, les textes portent `data-i18n` (ou `data-i18n-attr` pour les étiquettes et textes indicatifs), dans le code ils passent par `t()` / `tn()` (pluriels) ;
-- sans choix enregistré, la langue suit celle du téléphone. En changer recharge la page, la partie en cours est reprise ;
+- sans choix enregistré, la langue suit celle du téléphone (anglais si le jeu ne la parle pas). En changer recharge la page, la partie en cours est reprise ;
 - `src/core` reste sans texte : les noms de formes et de styles sont traduits à l'affichage.
 
 Ajouter une langue : un fichier `xx.ts` typé comme `en.ts`, puis l'ajouter au type `Lang` et au sélecteur des paramètres.
