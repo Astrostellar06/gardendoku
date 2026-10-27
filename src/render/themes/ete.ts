@@ -1,5 +1,5 @@
 /** Summer: sunflowers, parasols, surfboards, watermelon, lemonade stands, sandcastles and pool floats. */
-import { SPRING } from '../palette';
+import { grassFrom, SPRING } from '../palette';
 import { plankBridge, swimOffset } from './common';
 import { circle, ellipse, eyes, groundShadow, leaf, line, poly, rrect, TAU } from './kit';
 import { cloud, sun } from './scenery';
@@ -314,12 +314,7 @@ export const ete: Theme = {
     soilSideDark: '#D4A664',
     pebble: '#FFF8EA',
     pebbleShade: '#DDB47C',
-    grass: '#A8DE78',
-    grassLight: '#C4EC98',
-    grassDark: '#8ECF62',
-    grassDeep: '#68B44E',
-    grassSide: '#80C25C',
-    grassSideDark: '#70B050',
+    ...grassFrom(75, 0.62, 0.64),
     rim: '#FFFBF0',
     rimShade: '#DDAE74',
     groove: '#E6BC80',

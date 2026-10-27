@@ -91,19 +91,18 @@ export class Hud {
   }
 
   setLevel(info: LevelInfo) {
-    $('level-title').textContent = `Niveau ${info.index}`;
-    $('level-sub').textContent = info.wrap
-      ? `★ Difficile · bords reliés`
-      : `${info.shapeName} · ${info.cells} parcelles`;
+    // Hard levels: a star in the title, on a lilac pill.
+    $('level-title').textContent = info.wrap ? `Niveau ${info.index} ★` : `Niveau ${info.index}`;
+    $('level-sub').textContent = `${info.cells} parcelles`;
     const pill = document.querySelector('.level-pill')!;
     pill.classList.toggle('hard', info.wrap);
     pill.classList.remove('daily');
   }
 
   /** Level pill during the daily challenge. */
-  setDaily(info: LevelInfo, label: string, styleName: string) {
+  setDaily(info: LevelInfo, styleName: string) {
     $('level-title').textContent = 'Défi du jour';
-    $('level-sub').textContent = `${label.charAt(0).toUpperCase()}${label.slice(1)} · ${styleName}`;
+    $('level-sub').textContent = styleName;
     const pill = document.querySelector('.level-pill')!;
     pill.classList.toggle('hard', info.wrap);
     pill.classList.add('daily');
@@ -173,6 +172,11 @@ export class Hud {
   showHome(level: number) {
     $('play-level').textContent = `Niveau ${level}`;
     this.home.classList.remove('hidden', 'leaving');
+    // Water the G of the title again.
+    const logo = this.home.querySelector('.logo-g')!;
+    logo.classList.remove('play');
+    logo.getBoundingClientRect();
+    logo.classList.add('play');
   }
 
   hideHome() {

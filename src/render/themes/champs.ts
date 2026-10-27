@@ -1,5 +1,5 @@
 /** Fields: hay bales, windmills, poppies, lavender rows, wheat sheaves, rabbits and a little tractor. */
-import { SPRING } from '../palette';
+import { grassFrom, SPRING } from '../palette';
 import { lilyPadsProp, plankBridge } from './common';
 import { circle, ellipse, eyes, groundShadow, leaf, line, poly, rrect, TAU } from './kit';
 import { fields, sun, windmillSilhouette } from './scenery';
@@ -209,12 +209,7 @@ export const champs: Theme = {
     soilSideDark: '#BA8C56',
     pebble: '#FBEFD8',
     pebbleShade: '#C9A06C',
-    grass: '#B8D978',
-    grassLight: '#D0E698',
-    grassDark: '#9DCB62',
-    grassDeep: '#78B04C',
-    grassSide: '#90BE5A',
-    grassSideDark: '#80AC4E',
+    ...grassFrom(66, 0.52, 0.68),
     rim: '#FFF8EA',
     rimShade: '#C9A06C',
     groove: '#DDB27A',

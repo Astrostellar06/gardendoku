@@ -1,5 +1,5 @@
 /** Jungle: lush green, monstera leaves, hibiscus, toucans, tiki idols, turtles and crocodiles. */
-import { SPRING } from '../palette';
+import { grassFrom, SPRING } from '../palette';
 import { plankBridge, rockProp, swimOffset } from './common';
 import { circle, ellipse, groundShadow, leaf, line, poly, rrect, TAU } from './kit';
 import { jungleLeaf } from './scenery';
@@ -352,12 +352,7 @@ export const jungle: Theme = {
     soilSideDark: '#9A6F49',
     pebble: '#EADBC6',
     pebbleShade: '#A98462',
-    grass: '#72CC75',
-    grassLight: '#97DE90',
-    grassDark: '#58BA60',
-    grassDeep: '#2F9450',
-    grassSide: '#4DA85B',
-    grassSideDark: '#3D954D',
+    ...grassFrom(132, 0.48, 0.53),
     rim: '#F7F3E8',
     rimShade: '#A68E70',
     groove: '#B8926E',

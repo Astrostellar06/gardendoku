@@ -1,5 +1,5 @@
 /** Japanese garden: raked gravel, moss, red bridges, stone lanterns, pagodas and koi. */
-import { SPRING } from '../palette';
+import { grassFrom, SPRING } from '../palette';
 import { bridgeProp, rockProp, swimOffset } from './common';
 import { circle, ellipse, glow, groundShadow, leaf, line, poly, rrect, TAU } from './kit';
 import { clouds, hill, mountain } from './scenery';
@@ -269,12 +269,7 @@ export const japon: Theme = {
     soilSideDark: '#B9AC98',
     pebble: '#FAF8F3',
     pebbleShade: '#C9C0B1',
-    grass: '#A7D28A',
-    grassLight: '#C3E2A6',
-    grassDark: '#8DC274',
-    grassDeep: '#5E9C5E',
-    grassSide: '#82B56C',
-    grassSideDark: '#6CA15B',
+    ...grassFrom(160, 0.32, 0.66),
     rim: '#F4F1EC',
     rimShade: '#AFA597',
     groove: '#C8BEAE',

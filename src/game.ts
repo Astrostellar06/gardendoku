@@ -10,7 +10,7 @@ import { dailyThemeId, shareText } from './daily';
 import { isUnlocked, RANDOM_STYLE, refreshUnlocks, STYLE_CHALLENGES } from './progress';
 import { renderRandomPreview, renderThemePreview } from './render/preview';
 import { GardenRenderer } from './render/renderer';
-import { setTheme, THEMES } from './render/themes';
+import { currentTheme, setTheme, THEMES } from './render/themes';
 import type { ThemeId } from './render/themes';
 import { showRewardedAd } from './ui/ads';
 import { Hud, StreakView, StyleCard, WinView } from './ui/hud';
@@ -218,7 +218,7 @@ export class Game {
   private showHome() {
     this.persist();
     this.leaveTutorial();
-    if (this.save.settings.theme === RANDOM_STYLE) this.applyStyle(this.pickStyle());
+    this.applyStyle(this.pickStyle());
     this.mode = 'home';
     this.won = false;
     this.setLockMode(false);
@@ -250,7 +250,7 @@ export class Game {
 
   private loadLevel(n: number) {
     this.daily = null;
-    if (this.save.settings.theme === RANDOM_STYLE) this.applyStyle(this.pickStyle(n));
+    this.applyStyle(this.pickStyle(n));
     const info = levelInfo(n);
     const snap = this.save.snapshot?.level === n ? this.save.snapshot : null;
     this.save.level = n;
@@ -344,7 +344,7 @@ export class Game {
     this.applyStyle(styleId);
     if (this.save.daily?.key !== key) this.save.daily = { key, snapshot: null, result: null };
     this.startGarden(info, buildDaily(key), this.save.daily.snapshot);
-    this.hud.setDaily(info, info.label, THEMES.find((t) => t.id === styleId)!.name);
+    this.hud.setDaily(info, THEMES.find((t) => t.id === styleId)!.name);
     if (info.wrap && !this.save.seenHardIntro) {
       this.save.seenHardIntro = true;
       this.renderer.after(0.5, () => this.hud.openHardIntro());
@@ -709,6 +709,7 @@ export class Game {
 
   /** Switch the palette and scenery before a new garden is shown. */
   private applyStyle(id: string) {
+    if (currentTheme().id === id) return;
     setTheme(id);
     this.applyStyleColors(id);
     this.renderer.refreshScenery();
@@ -766,6 +767,14 @@ export class Game {
     const theme = THEMES.find((t) => t.id === id);
     if (!theme) return;
     document.body.style.background = theme.palette.bgTop;
+    const root = document.documentElement.style;
+    const p = theme.palette;
+    root.setProperty('--logo-grass', p.grass);
+    root.setProperty('--logo-side', p.grassSideDark);
+    root.setProperty('--logo-rim', p.rim);
+    root.setProperty('--logo-groove', p.groove);
+    root.setProperty('--logo-water', p.water);
+    root.setProperty('--logo-water-deep', p.waterDeep);
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.palette.bgTop);
   }
 

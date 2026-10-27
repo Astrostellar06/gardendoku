@@ -1,5 +1,5 @@
 /** Mountain pasture: firs, chalets, marmots, ibexes, cows with bells, cairns and edelweiss. */
-import { SPRING } from '../palette';
+import { grassFrom, SPRING } from '../palette';
 import { pineProp, plankBridge, rockProp } from './common';
 import { circle, ellipse, eyes, groundShadow, line, poly, rrect, star, TAU } from './kit';
 import { hill, mountain, pineSilhouette } from './scenery';
@@ -183,12 +183,7 @@ export const montagne: Theme = {
     soilSideDark: '#A6927A',
     pebble: '#F6F2EE',
     pebbleShade: '#B5A690',
-    grass: '#9AD88A',
-    grassLight: '#B8E6A8',
-    grassDark: '#7EC870',
-    grassDeep: '#5CAE58',
-    grassSide: '#72BC66',
-    grassSideDark: '#62AA5A',
+    ...grassFrom(92, 0.6, 0.78),
     rim: '#FFFFFF',
     rimShade: '#B8A890',
     groove: '#CFC0A8',

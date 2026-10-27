@@ -7,7 +7,7 @@
  * from the spring along the canals. Grass and flowers follow the water.
  */
 import { Analysis, Board } from '../core/board';
-import { DX, DY, opposite } from '../core/grid';
+import { DX, DY, N, opposite, S } from '../core/grid';
 import { Particles } from './particles';
 import { renderBackground } from './background';
 import { Decor, G, makeDecor } from './decor';
@@ -673,6 +673,17 @@ export class GardenRenderer {
     if (gloss && glossAlpha > 0) {
       ctx.save();
       ctx.globalAlpha = glossAlpha;
+      // The light outline at the top and the shade at the bottom stay off the
+      // water running out of the tile there: it flows over the edge, unshaded.
+      const mask = this.board?.mask(i) ?? 0;
+      if (mask & (N | S)) {
+        const w = G.waterW * t;
+        ctx.beginPath();
+        ctx.rect(fx - t / 2, fy - t / 2, t, t);
+        if (mask & N) ctx.rect(fx - w / 2, fy - t / 2, w, t * 0.16);
+        if (mask & S) ctx.rect(fx - w / 2, fy + t / 2 - t * 0.24, w, t * 0.24);
+        ctx.clip('evenodd');
+      }
       ctx.drawImage(gloss, fx - t / 2, fy - t / 2, t, t);
       ctx.restore();
     }
@@ -789,29 +800,36 @@ export class GardenRenderer {
           (an.inflow[i] === d && vi.water > 0.02) ||
           (vi.water >= 1 && vj.water >= 1);
         const loop = an.loopSides[i] & (1 << d) ? Math.max(vi.loop, vj.loop) : 0;
-        const layers: Array<[number, string]> = [
+        const banks: Array<[number, string]> = [
           [G.rimW + 0.04, P.rimShade],
           [G.rimW, P.rim],
           [G.grooveW, P.grooveDeep],
           [G.grooveW - 0.05, P.groove],
         ];
-        if (wet) {
-          layers.push([G.waterW, loop > 0 ? mixColor(P.waterDeep, P.loop, loop * 0.75) : P.waterDeep]);
-          layers.push([G.waterW - 0.045, loop > 0 ? mixColor(P.water, P.loop, loop * 0.75) : P.water]);
-        }
+        const waterLayers: Array<[number, string]> = wet
+          ? [
+              [G.waterW, loop > 0 ? mixColor(P.waterDeep, P.loop, loop * 0.75) : P.waterDeep],
+              [G.waterW - 0.045, loop > 0 ? mixColor(P.water, P.loop, loop * 0.75) : P.water],
+            ]
+          : [];
         const len = t - edge * 2 + 2;
-        for (const [cx, cy] of spots) {
+        const fill = (cx: number, cy: number, layers: Array<[number, string]>, over = 0) => {
           for (const [w, color] of layers) {
             ctx.fillStyle = color;
             if (d === 1) ctx.fillRect(cx + edge - 1, cy - (w * t) / 2, len, w * t);
-            else ctx.fillRect(cx - (w * t) / 2, cy + edge - 1, w * t, len);
+            // Vertical water also runs a little over both tile edges, above their outline.
+            else ctx.fillRect(cx - (w * t) / 2, cy + edge - 1 - over, w * t, len + over * 2);
           }
+        };
+        for (const [cx, cy] of spots) {
+          fill(cx, cy, banks);
           if (d === 2) {
-            // The part running down the front of the upper tile is in the shade.
+            // The banks running down the front of the upper tile are in the shade, not the water.
             const w = (G.rimW + 0.04) * t;
             ctx.fillStyle = 'rgba(150, 80, 60, 0.16)';
             ctx.fillRect(cx - w / 2, cy + edge, w, G.depth * t);
           }
+          fill(cx, cy, waterLayers, d === 2 ? 1.5 : 0);
         }
       }
     }

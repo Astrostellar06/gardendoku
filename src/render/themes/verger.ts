@@ -1,5 +1,5 @@
 /** Orchard and kitchen garden: apple and cherry trees, vegetable rows, scarecrows, beehives and hens. */
-import { SPRING } from '../palette';
+import { grassFrom, SPRING } from '../palette';
 import { plankBridge, treeProp } from './common';
 import { circle, ellipse, eyes, groundShadow, leaf, line, poly, rrect } from './kit';
 import { clouds, hill, roundTree } from './scenery';
@@ -193,12 +193,7 @@ export const verger: Theme = {
     soilSideDark: '#A6744A',
     pebble: '#F7E6D0',
     pebbleShade: '#BB8C64',
-    grass: '#A6D97C',
-    grassLight: '#C2E69C',
-    grassDark: '#8CCA66',
-    grassDeep: '#66AE4E',
-    grassSide: '#7EBE5C',
-    grassSideDark: '#6EAC50',
+    ...grassFrom(88, 0.58, 0.6),
     rim: '#FFF6EA',
     rimShade: '#BE906A',
     groove: '#D2A276',

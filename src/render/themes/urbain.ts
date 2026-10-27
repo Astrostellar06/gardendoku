@@ -1,5 +1,5 @@
 /** City park: paved paths, street lamps, benches, bikes, hot-dog carts, pigeons and rowing boats. */
-import { SPRING } from '../palette';
+import { grassFrom, SPRING } from '../palette';
 import { benchProp, bridgeProp, swimOffset, treeProp } from './common';
 import { circle, ellipse, glow, groundShadow, line, poly, rrect } from './kit';
 import { hill, roundTree, skyline } from './scenery';
@@ -216,12 +216,7 @@ export const urbain: Theme = {
     soilSideDark: '#A79B8B',
     pebble: '#F6F2EC',
     pebbleShade: '#B5AA9A',
-    grass: '#92D27E',
-    grassLight: '#B0E09A',
-    grassDark: '#78C266',
-    grassDeep: '#5AA852',
-    grassSide: '#6CB65E',
-    grassSideDark: '#5CA252',
+    ...grassFrom(105, 0.28, 0.64),
     rim: '#FAF8F4',
     rimShade: '#B8AC9C',
     groove: '#CFC4B4',

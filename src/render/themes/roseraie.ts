@@ -1,5 +1,5 @@
 /** Rose garden: rose bushes, rose arches, bird baths, white benches, stone urns and floating petals. */
-import { SPRING } from '../palette';
+import { grassFrom, SPRING } from '../palette';
 import { benchProp, bridgeProp, treeProp } from './common';
 import { circle, ellipse, groundShadow, leaf, line, rrect, TAU } from './kit';
 import { clouds, hill } from './scenery';
@@ -193,12 +193,7 @@ export const roseraie: Theme = {
     soilSideDark: '#CC967C',
     pebble: '#FFF6F2',
     pebbleShade: '#D9AE98',
-    grass: '#94D48C',
-    grassLight: '#B2E2A8',
-    grassDark: '#78C272',
-    grassDeep: '#56A856',
-    grassSide: '#6EB666',
-    grassSideDark: '#5EA45A',
+    ...grassFrom(120, 0.46, 0.66),
     rim: '#FFF9F6',
     rimShade: '#D6A894',
     groove: '#E6B6A0',

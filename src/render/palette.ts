@@ -111,6 +111,38 @@ export const SPRING: Palette = {
 
 export const P: Palette = { ...SPRING };
 
+type GrassShades = Pick<Palette, 'grass' | 'grassLight' | 'grassDark' | 'grassDeep' | 'grassSide' | 'grassSideDark'>;
+
+/**
+ * The six grass shades of a style from one base colour (hue in degrees,
+ * saturation and lightness in 0..1), with the same relations as in spring.
+ */
+export function grassFrom(h: number, s: number, l: number): GrassShades {
+  const c = (dh: number, ks: number, dl: number) => hslHex(h + dh, s * ks, l + dl);
+  return {
+    grass: c(0, 1, 0),
+    grassLight: c(-7, 1.19, 0.086),
+    grassDark: c(4, 0.87, -0.083),
+    grassDeep: c(14, 0.65, -0.18),
+    grassSide: c(5, 0.76, -0.13),
+    grassSideDark: c(8, 0.63, -0.2),
+  };
+}
+
+function hslHex(h: number, s: number, l: number): string {
+  const sat = Math.min(1, Math.max(0, s));
+  const lum = Math.min(0.97, Math.max(0.05, l));
+  const a = sat * Math.min(lum, 1 - lum);
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const v = lum - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(v * 255)
+      .toString(16)
+      .padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`.toUpperCase();
+}
+
 export function applyPalette(palette: Palette): void {
   Object.assign(P, palette);
 }

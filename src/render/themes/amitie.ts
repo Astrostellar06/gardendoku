@@ -1,5 +1,5 @@
 /** Friendship garden: heart topiaries, picnics, bunny pairs, heart balloons and paper boats. */
-import { SPRING } from '../palette';
+import { grassFrom, SPRING } from '../palette';
 import { benchProp, bridgeProp, lilyPadsProp, swimOffset } from './common';
 import { circle, ellipse, eyes, glow, groundShadow, heart, line, poly, rrect, TAU } from './kit';
 import { clouds, hill, rainbow } from './scenery';
@@ -198,12 +198,7 @@ export const amitie: Theme = {
     soilSideDark: '#DA9682',
     pebble: '#FFF4F6',
     pebbleShade: '#E3B0A6',
-    grass: '#A8E3B0',
-    grassLight: '#C8F0CC',
-    grassDark: '#8CD498',
-    grassDeep: '#62BC7A',
-    grassSide: '#7CC78C',
-    grassSideDark: '#68B47A',
+    ...grassFrom(150, 0.55, 0.8),
     rim: '#FFF8FA',
     rimShade: '#E0A8A0',
     groove: '#ECB4A4',

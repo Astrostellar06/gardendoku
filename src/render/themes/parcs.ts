@@ -1,5 +1,5 @@
 /** Great national parks: pines, bison, bears, geysers, hot springs, elk and trout. */
-import { SPRING } from '../palette';
+import { grassFrom, SPRING } from '../palette';
 import { pineProp, plankBridge, rockProp, swimOffset } from './common';
 import { circle, ellipse, groundShadow, line, poly, rrect, TAU } from './kit';
 import { hill, mountain, pineSilhouette } from './scenery';
@@ -209,12 +209,7 @@ export const parcs: Theme = {
     soilSideDark: '#B08B5C',
     pebble: '#F6EDE0',
     pebbleShade: '#BFA382',
-    grass: '#8FCF86',
-    grassLight: '#ADDFA2',
-    grassDark: '#74BE6E',
-    grassDeep: '#55A156',
-    grassSide: '#68B062',
-    grassSideDark: '#5A9C56',
+    ...grassFrom(145, 0.28, 0.55),
     rim: '#FAF6EE',
     rimShade: '#BFA07A',
     groove: '#D4B080',

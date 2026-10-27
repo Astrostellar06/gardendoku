@@ -24,7 +24,7 @@ export function shareText(key: string, result: DailyResult, streak: number, url 
   const date = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
   const flowers = Math.max(1, Math.min(5, Math.round(result.rank / 20)));
   const lines = [
-    `🌸 Jardin des Sources · défi du ${date}`,
+    `🌸 Gardendoku · défi du ${date}`,
     `⏱️ ${formatTime(result.time)} · plus rapide que ${result.rank} % des joueurs`,
     '🌸'.repeat(flowers) + '🌱'.repeat(5 - flowers),
     helpLine(result.hints, result.zones ?? 0),

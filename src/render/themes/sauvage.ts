@@ -1,5 +1,5 @@
 /** Wild marsh: reeds and cattails, wildflowers, mossy logs, frogs, ducks and dragonflies. */
-import { SPRING } from '../palette';
+import { grassFrom, SPRING } from '../palette';
 import { mushroomProp, rockProp, snailProp, steppingStonesBridge, swimOffset } from './common';
 import { circle, ellipse, groundShadow, leaf, line, TAU } from './kit';
 import { clouds, hill, reeds } from './scenery';
@@ -171,12 +171,7 @@ export const sauvage: Theme = {
     soilSideDark: '#9E805C',
     pebble: '#F0E6D4',
     pebbleShade: '#AF9472',
-    grass: '#92D27D',
-    grassLight: '#B4E39C',
-    grassDark: '#76C068',
-    grassDeep: '#4E9A52',
-    grassSide: '#68B05F',
-    grassSideDark: '#579A50',
+    ...grassFrom(82, 0.35, 0.6),
     rim: '#F6F2E6',
     rimShade: '#AC9674',
     groove: '#BEA07A',

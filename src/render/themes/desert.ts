@@ -1,5 +1,5 @@
 /** Desert & oasis: rippled sand, cacti, palm trees, clay jars and camels. */
-import { SPRING } from '../palette';
+import { grassFrom, SPRING } from '../palette';
 import { bridgeProp, lilyPadsProp, rockProp } from './common';
 import { circle, ellipse, groundShadow, leaf, line, rrect, TAU } from './kit';
 import { dunes, sun } from './scenery';
@@ -215,12 +215,7 @@ export const desert: Theme = {
     soilSideDark: '#CF9C56',
     pebble: '#FFF2D8',
     pebbleShade: '#D9AE6E',
-    grass: '#9FD98A',
-    grassLight: '#C1EAA5',
-    grassDark: '#82C86F',
-    grassDeep: '#4FA65A',
-    grassSide: '#6FB862',
-    grassSideDark: '#5CA552',
+    ...grassFrom(108, 0.6, 0.64),
     rim: '#FFF8EA',
     rimShade: '#D4A46A',
     groove: '#E2B475',

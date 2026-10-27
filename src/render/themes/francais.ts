@@ -1,5 +1,5 @@
 /** French formal garden: clipped cones, orange trees in boxes, statues, box parterres, fountains and swans. */
-import { SPRING } from '../palette';
+import { grassFrom, SPRING } from '../palette';
 import { bridgeProp, swimOffset, treeProp } from './common';
 import { circle, ellipse, groundShadow, line, rrect, TAU } from './kit';
 import { hill, palace } from './scenery';
@@ -198,12 +198,7 @@ export const francais: Theme = {
     soilSideDark: '#BEAE94',
     pebble: '#FFFFFF',
     pebbleShade: '#C9BBA2',
-    grass: '#8ECC7C',
-    grassLight: '#AADB96',
-    grassDark: '#76BC68',
-    grassDeep: '#58A052',
-    grassSide: '#6AB05E',
-    grassSideDark: '#5A9E52',
+    ...grassFrom(112, 0.4, 0.55),
     rim: '#FFFFFF',
     rimShade: '#C6B9A2',
     groove: '#D6C8B0',

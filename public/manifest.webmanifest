@@ -1,7 +1,7 @@
 {
-  "name": "Jardin des Sources",
-  "short_name": "Jardin",
-  "description": "Un jeu de puzzle zen : guide l'eau de la source et fais fleurir le jardin.",
+  "name": "Gardendoku",
+  "short_name": "Gardendoku",
+  "description": "Un jeu de puzzle zen : guide l'eau de la source et fais fleurir ton jardin.",
   "start_url": "./",
   "display": "standalone",
   "orientation": "portrait",

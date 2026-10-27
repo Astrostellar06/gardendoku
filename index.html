@@ -6,10 +6,10 @@
     <meta name="theme-color" content="#FFD6E5" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="description" content="Un jeu de puzzle zen : guide l'eau de la source et fais fleurir le jardin." />
+    <meta name="description" content="Gardendoku, un jeu de puzzle zen : guide l'eau de la source et fais fleurir ton jardin." />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <title>Jardin des Sources</title>
+    <title>Gardendoku</title>
   </head>
   <body>
     <div id="app">
@@ -80,11 +80,8 @@
       <section id="home" class="screen">
         <button class="streak-badge" id="btn-streak" aria-label="Série d'arrosage"><svg class="can-icon" viewBox="0 0 32 32" aria-hidden="true"><path class="can-spout" d="M18.4 21 26 13" /><ellipse class="can-rose" cx="27.2" cy="11.8" rx="2.7" ry="1.6" transform="rotate(-45 27.2 11.8)" /><path class="can-handle" d="M8.6 12.8C8.6 6.4 17.6 6.4 17.6 12.8" /><path class="can-body" d="M6.4 12.8h13.6l-1.1 12.1a2.6 2.6 0 0 1-2.6 2.4h-6.2a2.6 2.6 0 0 1-2.6-2.4Z" /><path class="can-shine" d="M9.6 15.8v6.6" /><path class="can-drop" d="M29 16.4c.9 1.1 1.4 1.9 1.4 2.6a1.4 1.4 0 0 1-2.8 0c0-.7.5-1.5 1.4-2.6Z" /><path class="can-drop" d="M25.6 18.8c.7.9 1.1 1.5 1.1 2a1.1 1.1 0 0 1-2.2 0c0-.5.4-1.1 1.1-2Z" /></svg><b id="streak-count">0</b></button>
         <div class="home-top">
-          <div class="logo">
-            <svg class="logo-drop" viewBox="0 0 48 48"><path d="M24 5c6 7.3 13 14.7 13 22.4a13 13 0 0 1-26 0C11 19.7 18 12.3 24 5Z" /><path class="shine" d="M18.5 29a6 6 0 0 0 5.5 5.5" /></svg>
-            <h1>Jardin<br />des Sources</h1>
-          </div>
-          <p class="tagline">Guide l'eau, fais fleurir le jardin.</p>
+          <h1 class="logo" aria-label="Gardendoku"><svg class="logo-g" viewBox="-2 -2 100 105" aria-hidden="true"><defs><clipPath id="g-still"><path clip-rule="evenodd" d="M-5 -5H105V105H-5Z M0 66H30V96H0Z" /></clipPath></defs><g class="g-tile" style="--i:0"><rect class="g-side" x="0" y="4" width="30" height="30" rx="7" /><rect class="g-face" x="0" y="0" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:1"><rect class="g-side" x="33" y="4" width="30" height="30" rx="7" /><rect class="g-face" x="33" y="0" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:2"><rect class="g-side" x="66" y="4" width="30" height="30" rx="7" /><rect class="g-face" x="66" y="0" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:3"><rect class="g-side" x="0" y="37" width="30" height="30" rx="7" /><rect class="g-face" x="0" y="33" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:4"><rect class="g-side" x="33" y="37" width="30" height="30" rx="7" /><rect class="g-face" x="33" y="33" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:5"><rect class="g-side" x="66" y="37" width="30" height="30" rx="7" /><rect class="g-face" x="66" y="33" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:6"><rect class="g-side" x="0" y="70" width="30" height="30" rx="7" /><g class="g-turn"><rect class="g-face" x="0" y="66" width="30" height="30" rx="7" /><path class="g-rim" d="M30 81H15V66" /><path class="g-groove" d="M30 81H15V66" /></g></g><g class="g-tile" style="--i:7"><rect class="g-side" x="33" y="70" width="30" height="30" rx="7" /><rect class="g-face" x="33" y="66" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:8"><rect class="g-side" x="66" y="70" width="30" height="30" rx="7" /><rect class="g-face" x="66" y="66" width="30" height="30" rx="7" /></g><g class="g-canal" clip-path="url(#g-still)"><path class="g-rim" d="M48 48H81V81H15V15H81" /><path class="g-groove" d="M48 48H81V81H15V15H81" /></g><circle class="g-basin" cx="48" cy="48" r="7.5" /><circle class="g-spring" cx="48" cy="48" r="4.6" /><path class="g-water" d="M48 48H81V81H15V15H81" pathLength="100" /><path class="g-shine" d="M48 48H81V81H15V15H81" pathLength="100" /><g class="g-lotus"><ellipse class="g-petal" cx="81" cy="10.5" rx="3.6" ry="5.4" transform="rotate(0 81 15)" /><ellipse class="g-petal" cx="81" cy="10.5" rx="3.6" ry="5.4" transform="rotate(72 81 15)" /><ellipse class="g-petal" cx="81" cy="10.5" rx="3.6" ry="5.4" transform="rotate(144 81 15)" /><ellipse class="g-petal" cx="81" cy="10.5" rx="3.6" ry="5.4" transform="rotate(216 81 15)" /><ellipse class="g-petal" cx="81" cy="10.5" rx="3.6" ry="5.4" transform="rotate(288 81 15)" /><circle class="g-heart" cx="81" cy="15" r="2.6" /></g></svg><span class="logo-word">ardendoku</span></h1>
+          <p class="tagline">Guide l'eau, fais fleurir ton jardin.</p>
         </div>
         <div class="home-bottom">
           <button class="big-btn" id="btn-play">Jouer<small id="play-level">Niveau 1</small></button>

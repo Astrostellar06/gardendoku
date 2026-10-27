@@ -25,13 +25,15 @@ export function formatTime(seconds: number): string {
 export const HINT_PENALTY = 25;
 /** A zone hint fixes up to 9 tiles: it weighs as much as 3 hints. */
 export const ZONE_HINT_WEIGHT = 3;
+/** Joined edges are much harder to read: every border hides a neighbour on the other side. */
+export const WRAP_FACTOR = 2.5;
 
 export function timeModel(puzzle: Puzzle): TimeModel {
   const tiles = puzzle.grid.cells.length;
   // Bigger gardens take more than proportionally longer to read.
   let median = 0.8 * tiles ** 1.3;
   median += (puzzle.deepCells ?? 0) * 7;
-  if (puzzle.grid.wrap) median *= 1.45;
+  if (puzzle.grid.wrap) median *= WRAP_FACTOR;
   return { median: Math.max(20, median), sigma: 0.55 };
 }
 

@@ -33,7 +33,7 @@ export const STEP_COUNT = 5;
 
 export const STEPS: Record<TutorialStep, StepInfo> = {
   intro: {
-    text: "Bienvenue au Jardin des Sources ! L'eau jaillit de la source, au centre. Relie toutes les parcelles à la source pour faire fleurir le jardin.",
+    text: "Bienvenue dans Gardendoku ! L'eau jaillit de la source, au centre. Relie toutes les parcelles à la source pour faire fleurir le jardin.",
     button: 'Commencer',
     focus: null,
     number: 1,

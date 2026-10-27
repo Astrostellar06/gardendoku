@@ -1,6 +1,10 @@
-# Jardin des Sources
+# Gardendoku
 
 Jeu de puzzle mobile zen inspiré de *Pipe Puzzle / Net* : on fait pivoter les parcelles d'un jardin pour relier tous les canaux à la source centrale, sans former de boucle. Quand une parcelle reçoit l'eau, l'herbe pousse, les fleurs s'ouvrent et un lotus éclot au bout de chaque canal.
+
+Dépôt : [github.com/Astrostellar06/gardendoku](https://github.com/Astrostellar06/gardendoku)
+
+Sur l'accueil, le « G » du titre est un petit jardin de 9 parcelles : à chaque retour sur l'accueil, une parcelle pivote, puis l'eau part de la source au centre, parcourt toute la lettre et fait éclore un lotus au bout. Ses couleurs suivent le style choisi.
 
 ## Lancer le jeu
 
@@ -78,7 +82,7 @@ Un niveau sur 5 (5, 10, 15…) est un niveau difficile : une grille carrée ou r
 - le jardin est posé sur un **plateau lilas**, avec un **liseré en pointillés** sur les bords qui mènent de l'autre côté ;
 - des **bandes fantômes** autour du jardin montrent en transparence le bord des parcelles opposées : le canal qui arrive de l'autre côté est visible juste à côté du bord (toucher une parcelle fantôme fait tourner la vraie) ;
 - quand deux parcelles sont reliées à travers un bord, le **canal se prolonge** jusque dans la bande fantôme, et l'eau qui passe fait une petite **étincelle** des deux côtés ;
-- une **carte d'explication** s'affiche la première fois, et le bandeau du niveau passe en lilas avec la mention « ★ Difficile ».
+- une **carte d'explication** s'affiche la première fois, et le bandeau du niveau passe en lilas, avec une étoile après le numéro (« Niveau 10 ★ »). Le bandeau n'indique que le nombre de parcelles, pour rester lisible à côté des boutons.
 
 ## Rang, défis et indices
 
@@ -86,7 +90,7 @@ Un niveau sur 5 (5, 10, 15…) est un niveau difficile : une grille carrée ou r
 
 Le calcul se fait sans serveur, dans `src/core/timing.ts` :
 
-- **Temps médian estimé** d'un niveau : `0,8 × parcelles^1,3` secondes, plus 7 s par parcelle qui exige un raisonnement par hypothèse, le tout × 1,45 pour les bords reliés (au moins 20 s).
+- **Temps médian estimé** d'un niveau : `0,8 × parcelles^1,3` secondes, plus 7 s par parcelle qui exige un raisonnement par hypothèse, le tout × 2,5 pour les bords reliés (au moins 20 s). Exemple : un niveau difficile de 5×6 sans déduction avancée est estimé à environ 2 min 45.
 - **Répartition des temps des joueurs** : une loi log-normale (courbe en cloche sur le logarithme du temps, écart-type 0,55). Le rang affiché est la part des joueurs théoriquement plus lents.
 - **Indices** : chaque indice utilisé ajoute 25 s au temps pris en compte.
 
@@ -128,7 +132,7 @@ Le bouton **Défi du jour** de l'accueil ouvre un jardin commun à tous les joue
 - **Partager** envoie un texte court sans rien dévoiler du jardin : date, temps, rang, une barre de 1 à 5 fleurs, indices utilisés et série. Sur téléphone, c'est la feuille de partage du système ; ailleurs, le texte est copié dans le presse-papiers.
 
 ```
-🌸 Jardin des Sources · défi du 26/10
+🌸 Gardendoku · défi du 26/10
 ⏱️ 1:42 · plus rapide que 73 % des joueurs
 🌸🌸🌸🌸🌱
 💧 Sans indice
@@ -178,6 +182,8 @@ Dix-huit styles, choisis depuis l'écran d'accueil (bouton **Styles**, avec un a
 | Grands parcs | Grands pins, bisons, ours, geysers qui jaillissent, sources chaudes arc-en-ciel, cabane de ranger, wapitis, truites |
 
 Chaque style a sa palette, son paysage de fond, ses particules d'ambiance (sakura, feuilles, neige, pollen, sable, lucioles, aigrettes, cœurs) et son catalogue de détails. Environ 80 % des parcelles reçoivent un ou deux détails tirés au hasard (de façon déterministe : un même niveau garde les mêmes détails). Certains sont là dès le départ (lanternes, rochers…), d'autres apparaissent quand l'eau arrive (animaux, fleurs). Les éléments debout restent droits quelle que soit la rotation de la tuile.
+
+Chaque style a son propre vert : `grassFrom(teinte, saturation, clarté)` (`src/render/palette.ts`) en tire les six nuances d'herbe avec les mêmes rapports que le printemps.
 
 Ajouter un style = un fichier dans `src/render/themes/` (palette, décor de fond, liste de détails), à déclarer dans `themes/index.ts`.
 
