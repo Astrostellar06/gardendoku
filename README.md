@@ -39,7 +39,7 @@ En mode dev, la console du navigateur expose aussi `__game` : `__game.debugSolve
 | Verrouiller / déverrouiller | Appui long, ou bouton **Verrou** puis tap (clic droit sur ordinateur) |
 | Verrouiller plusieurs parcelles | Après l'appui long (ou en mode Verrou), glisser le doigt : chaque parcelle touchée prend l'état de la première |
 | Indice | Bouton **Indice** : remet une parcelle dans le bon sens et la verrouille |
-| Indice de zone | Bouton **Zone**, puis toucher une parcelle : le carré de 3×3 autour se remet en place et se verrouille |
+| Indice de zone | Bouton **Zone**, puis toucher une parcelle : le carré de 3×3 autour (sur les hexagones : la parcelle et ses 6 voisines) se remet en place et se verrouille |
 | Passer le niveau | Bouton **»** en haut, contre une courte vidéo (pas pendant le défi du jour) |
 | Recommencer | Bouton **Recommencer**, à toucher deux fois |
 | Aide | Bouton **?** en jeu |
@@ -48,6 +48,10 @@ En mode dev, la console du navigateur expose aussi `__game` : `__game.debugSolve
 ## Tutoriel
 
 Au premier lancement, un mini-jardin 3×3 explique le jeu en 5 étapes. Un projecteur met en valeur la parcelle à tourner, puis la parcelle à verrouiller (appui long). On peut le passer, et le revoir depuis l'aide.
+
+Avant le premier niveau difficile (niveau 5), un second tutoriel en 4 étapes présente les bords reliés sur un jardin 3×3 dont les bords sont reliés : on tourne une parcelle que l'eau atteint en traversant le bord gauche, puis on en tourne une autre en touchant sa copie pâle sous le jardin. On peut le revoir depuis l'aide (« Revoir le tutoriel des bords reliés »).
+
+Les deux tutoriels sont décrits comme une suite d'étapes dans `src/tutorial.ts` : lire puis appuyer sur le bouton, tourner une parcelle donnée, en verrouiller une, ou finir le jardin seul.
 
 ## Formes de jardin
 
@@ -63,6 +67,9 @@ Au premier lancement, un mini-jardin 3×3 explique le jeu en 5 étapes. Un proje
 | Trèfle à quatre lobes | Trèfle |
 | Sablier | Sablier |
 | Carré ou rectangle aux bords reliés (niveaux difficiles) | Bords reliés |
+| Grand hexagone (jardins hexagonaux) | Alvéole |
+| Rectangle de parcelles hexagonales | Rayon de miel |
+| Hexagone évidé au centre, source sur l'anneau | Couronne |
 
 Le cœur est dessiné case par case comme en pixel art : ses bords descendent d'une case par ligne jusqu'à une pointe d'une seule case. Le cercle et le trèfle ne s'allongent que de 2 lignes au plus en hauteur.
 
@@ -77,12 +84,27 @@ Jusqu'au niveau 20, chaque jardin se résout par déductions directes. À partir
 
 ## Niveaux difficiles : bords reliés
 
-Un niveau sur 5 (5, 10, 15…) est un niveau difficile : une grille carrée ou rectangulaire (de 5×5 à 8×10) dont les bords opposés sont reliés. L'eau qui sort d'un côté réapparaît du côté opposé. Pour que ça reste lisible :
+Un niveau sur 5 (5, 10, 15…) est un niveau difficile : une grille carrée ou rectangulaire dont les bords opposés sont reliés. L'eau qui sort d'un côté réapparaît du côté opposé.
+
+Le premier (niveau 5) ne fait que 4×4, juste après son tutoriel. Ensuite, la taille monte d'une ligne ou d'une colonne à la fois : 4×5, 5×5, 5×6, 6×6, 6×7, 7×7, 7×8, 8×8, 8×9, puis 8×10 à partir du niveau 145. Les premières marches arrivent vite, les suivantes de plus en plus lentement (`WRAP_LADDER` et `WRAP_RUNG_FROM` dans `levels.ts`). Une fois sur trois, à partir du 5×6, le jardin garde la taille de la marche précédente, pour varier sans jamais faire de saut.
+
+Pour que ça reste lisible :
 
 - le jardin est posé sur un **plateau lilas**, avec un **liseré en pointillés** sur les bords qui mènent de l'autre côté ;
 - des **bandes fantômes** autour du jardin montrent en transparence le bord des parcelles opposées : le canal qui arrive de l'autre côté est visible juste à côté du bord (toucher une parcelle fantôme fait tourner la vraie) ;
 - quand deux parcelles sont reliées à travers un bord, le **canal se prolonge** jusque dans la bande fantôme, et l'eau qui passe fait une petite **étincelle** des deux côtés ;
-- une **carte d'explication** s'affiche la première fois, et le bandeau du niveau passe en lilas, avec une étoile après le numéro (« Niveau 10 ★ »). Le bandeau n'indique que le nombre de parcelles, pour rester lisible à côté des boutons.
+- un **tutoriel** précède le premier niveau difficile (la carte d'explication reste pour le défi du jour du samedi, si on n'a pas encore vu de bords reliés), et le bandeau du niveau passe en lilas, avec une étoile après le numéro (« Niveau 10 ★ »). Le bandeau n'indique que le nombre de parcelles, pour rester lisible à côté des boutons.
+
+## Jardins hexagonaux
+
+Environ un niveau normal sur cinq a des **parcelles hexagonales** : six côtés, donc six voisines possibles, et chaque toucher tourne la parcelle d'un sixième de tour. La règle ne change pas.
+
+- Le niveau 3 est toujours hexagonal (les cinq premiers sont fixes : normal, normal, hexagonal, normal, difficile). Ensuite, chaque niveau normal est tiré au sort, sauf s'il suit un niveau hexagonal (jamais deux à la suite) ou s'il a une forme imposée. Les niveaux difficiles (multiples de 5) ne sont jamais hexagonaux. La chance du tirage (24 %, `HEX_CHANCE` dans `levels.ts`) est un peu au-dessus de 1/5 pour compenser les niveaux écartés : au final, un niveau normal sur cinq est hexagonal. Les premiers tombent aux niveaux 3, 6, 11, 16, 19, 34, 37, 39, 49…
+- Les hexagones ont le sommet plat et sont rangés en colonnes, les colonnes impaires décalées d'une demi-parcelle vers le bas. Les côtés se numérotent N, NE, SE, S, SO, NO (bits 1 à 32 du masque).
+- D'un jardin hexagonal au suivant, les formes s'enchaînent dans un ordre fixe, sans jamais deux fois la même à la suite, et de plus en plus grandes : alvéole de 19 parcelles (le 1er, niveau 3), rayon de miel de 25, couronne de 30, rayon de miel de 35, alvéole de 37, rayon de miel de 42, couronne de 54, rayon de miel de 49, alvéole de 61, rayon de miel de 56 (le 10e), puis un cycle des plus grandes.
+- Ils n'ont jamais de bords reliés. Ils demandent des hypothèses plus tard que les autres (à partir du niveau 43) et moins souvent : leurs six voisines suffisent déjà à les rendre exigeants.
+- Une **carte d'explication** s'affiche la première fois. Le bandeau du niveau passe en jaune miel avec un petit hexagone, et ces niveaux apparaissent en alvéoles aux coins adoucis dans la liste des niveaux (contour pointillé s'ils ont été passés).
+- Les détails posés en travers d'un canal et dessinés « face écran » (ponts en 2,5D) ne connaissent que les canaux verticaux et horizontaux : ils ne sont pas utilisés sur les hexagones.
 
 ## Rang, défis et indices
 
@@ -90,7 +112,7 @@ Un niveau sur 5 (5, 10, 15…) est un niveau difficile : une grille carrée ou r
 
 Le calcul se fait sans serveur, dans `src/core/timing.ts` :
 
-- **Temps médian estimé** d'un niveau : `0,8 × parcelles^1,3` secondes, plus 7 s par parcelle qui exige un raisonnement par hypothèse, le tout × 2,5 pour les bords reliés (au moins 20 s). Exemple : un niveau difficile de 5×6 sans déduction avancée est estimé à environ 2 min 45.
+- **Temps médian estimé** d'un niveau : `0,8 × parcelles^1,3` secondes, plus 7 s par parcelle qui exige un raisonnement par hypothèse, le tout × 2,5 pour les bords reliés et × 1,4 pour les hexagones (au moins 20 s). Exemples : un niveau difficile de 5×6 sans déduction avancée est estimé à environ 2 min 45, une alvéole de 37 parcelles à 2 min.
 - **Répartition des temps des joueurs** : une loi log-normale (courbe en cloche sur le logarithme du temps, écart-type 0,55). Le rang affiché est la part des joueurs théoriquement plus lents.
 - **Indices** : chaque indice utilisé ajoute 25 s au temps pris en compte.
 
@@ -152,7 +174,7 @@ Un jour compte dans la série dès qu'un jardin fleurit : un niveau ou le défi 
 
 On commence avec 5 indices ; le compteur est affiché sur le bouton. À 0, une fenêtre propose de regarder une vidéo pour en gagner 3. **Pour l'instant, la vidéo est un exemple factice** (`src/ui/ads.ts`, 3 secondes) : il faudra y brancher une vraie régie publicitaire (par exemple AdMob via Capacitor).
 
-**Indice de zone** : un bonus plus rare. On en a 3 au départ, puis on en gagne avec la série d'arrosage. Toucher **Zone** l'arme (le bouton passe en lilas), puis toucher une parcelle remet en place et verrouille le carré de 3×3 autour, y compris par-dessus les bords reliés. Un carré déjà juste ne consomme rien. Pour le rang, un indice de zone compte comme 3 indices ; les défis « sans indice » le comptent comme une aide.
+**Indice de zone** : un bonus plus rare. On en a 3 au départ, puis on en gagne avec la série d'arrosage. Toucher **Zone** l'arme (le bouton passe en lilas), puis toucher une parcelle remet en place et verrouille le carré de 3×3 autour, y compris par-dessus les bords reliés. Sur les hexagones, c'est la parcelle et ses 6 voisines. Une zone déjà juste ne consomme rien. Pour le rang, un indice de zone compte comme 3 indices ; les défis « sans indice » le comptent comme une aide.
 
 **Passer un niveau** : le bouton **»** de la barre du haut propose de regarder une vidéo (la même régie factice) pour passer au niveau suivant. Le niveau passé reste jouable : il apparaît en pointillés dans la liste des niveaux, jusqu'à ce qu'il soit réussi. Passer un niveau ne compte ni pour la série ni pour les défis de styles, sauf « Atteindre le niveau N ».
 
@@ -185,6 +207,8 @@ Chaque style a sa palette, son paysage de fond, ses particules d'ambiance (sakur
 
 Chaque style a son propre vert : `grassFrom(teinte, saturation, clarté)` (`src/render/palette.ts`) en tire les six nuances d'herbe avec les mêmes rapports que le printemps.
 
+Le canal qui passe d'une parcelle à sa voisine du dessous est dessiné par-dessus le liseré clair des deux parcelles, et ni l'ombre du bas de la parcelle ni celle de sa tranche ne le foncent : berges et eau gardent la même couleur d'une parcelle à l'autre.
+
 Ajouter un style = un fichier dans `src/render/themes/` (palette, décor de fond, liste de détails), à déclarer dans `themes/index.ts`.
 
 ## Organisation du code
@@ -193,8 +217,8 @@ Ajouter un style = un fichier dans `src/render/themes/` (palette, décor de fond
 src/
   core/            Moteur, sans dépendance au DOM (testé avec Vitest)
     rng.ts         Générateur pseudo-aléatoire à seed (sfc32)
-    grid.ts        Grille, directions en masque de bits (N=1, E=2, S=4, W=8), rotations
-    shapes.ts      Formes de jardin : rectangle, cercle, cœur, trèfle, losange, croix, sablier, étangs…
+    grid.ts        Grille carrée ou hexagonale, directions en masque de bits (N=1, E=2, S=4, W=8 ; 6 bits sur les hexagones), rotations
+    shapes.ts      Formes de jardin : rectangle, cercle, cœur, trèfle, losange, croix, sablier, étangs… et alvéole, rayon de miel, couronne
     generator.ts   Génération d'un niveau à partir d'une seed
     solver.ts      Solveur logique (preuve d'unicité de la solution)
     board.ts       État de jeu : rotations, verrous, eau, boucles, victoire
@@ -211,7 +235,7 @@ src/
     background.ts  Ciel pastel, nuages, collines
   audio/sound.ts   Sons synthétisés en WebAudio (aucun fichier audio)
   ui/              HUD (DOM), saisie tactile, sauvegarde localStorage, partage
-  tutorial.ts      Mini-jardin et étapes du tutoriel
+  tutorial.ts      Mini-jardins et étapes des deux tutoriels (premiers pas, bords reliés)
   progress.ts      Défis qui débloquent les styles
   daily.ts         Résultat du défi du jour, texte à partager
   streak.ts        Série d'arrosage et ses récompenses
@@ -223,7 +247,7 @@ src/
 Aucun niveau n'est stocké : le niveau `n` est entièrement reconstruit à partir de la seed `jardin-n`.
 
 1. **Paramètres** (`levels.ts`) : une seed dérivée choisit la taille (5×5 au départ, jusqu'à 9 colonnes × 12 à 15 lignes), la forme (à partir du niveau 9), et le caractère « sinueux » du réseau. La largeur est plafonnée à 9 colonnes pour garder des parcelles assez grandes sur un téléphone en portrait.
-2. **Arbre couvrant** (`generator.ts`) : un algorithme *growing tree* part de la source et relie toutes les parcelles sans cycle (au plus 3 sorties par parcelle, 4 pour la source).
+2. **Arbre couvrant** (`generator.ts`) : un algorithme *growing tree* part de la source et relie toutes les parcelles sans cycle (au plus 3 sorties par parcelle, 4 pour la source, carrée comme hexagonale).
 3. **Unicité** : le solveur (`solver.ts`) ne fait que des déductions sûres (accord entre voisins, interdiction des boucles, un groupe isolé doit prendre sa seule sortie, deux groupes ne doivent pas s'enfermer mutuellement). S'il reste des parcelles ambiguës, l'arbre est localement « recâblé » autour d'elles, puis on recommence. Sur les 400 premiers niveaux, 100 % ont une solution unique trouvable par pure logique, en moins de 2 ms chacun.
 4. **Mélange** : chaque parcelle reçoit une rotation aléatoire.
 
@@ -235,6 +259,6 @@ La victoire ne compare pas avec la solution d'origine : elle est déclarée dès
 
 - **Application native** : empaqueter avec [Capacitor](https://capacitorjs.com/) (iOS / Android), ajouter un service worker pour jouer hors ligne, et des icônes PNG.
 - Zoom par pincement pour les très grandes grilles.
-- Variantes exotiques : tuiles hexagonales.
+- Variantes exotiques : défi du jour hexagonal, formes hexagonales en étoile ou en triangle.
 - Musique d'ambiance, réglage des vibrations, écran de statistiques.
 - Défi du jour : un classement réel demandera un petit serveur (aujourd'hui, le rang est estimé localement).

@@ -1,5 +1,5 @@
 /** DOM overlay: bars, toasts, home screen and cards. */
-import { isHardLevel, LevelInfo } from '../core/levels';
+import { isHardLevel, isHexLevel, LevelInfo } from '../core/levels';
 import { formatTime } from '../core/timing';
 
 export { formatTime };
@@ -45,6 +45,7 @@ export class Hud {
   readonly howto = $('howto');
   readonly levels = $('levels');
   readonly hardIntro = $('hard-intro');
+  readonly hexIntro = $('hex-intro');
   readonly styles = $('styles');
   readonly coach = $('coach');
   readonly hintShop = $('hint-shop');
@@ -63,7 +64,7 @@ export class Hud {
   private toastTimer = 0;
 
   constructor() {
-    for (const overlay of [this.howto, this.levels, this.hardIntro, this.styles, this.hintShop, this.dailyResult, this.streak, this.zoneInfo, this.skip]) {
+    for (const overlay of [this.howto, this.levels, this.hardIntro, this.hexIntro, this.styles, this.hintShop, this.dailyResult, this.streak, this.zoneInfo, this.skip]) {
       overlay.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
         if (target === overlay || target.closest('[data-close]')) this.close(overlay);
@@ -96,6 +97,8 @@ export class Hud {
     $('level-sub').textContent = `${info.cells} parcelles`;
     const pill = document.querySelector('.level-pill')!;
     pill.classList.toggle('hard', info.wrap);
+    // Hexagonal levels: honey pill with a little hexagon after the title.
+    pill.classList.toggle('hex', info.hex);
     pill.classList.remove('daily');
   }
 
@@ -105,6 +108,7 @@ export class Hud {
     $('level-sub').textContent = styleName;
     const pill = document.querySelector('.level-pill')!;
     pill.classList.toggle('hard', info.wrap);
+    pill.classList.toggle('hex', info.hex);
     pill.classList.add('daily');
   }
 
@@ -280,7 +284,7 @@ export class Hud {
 
   /** An overlay card is covering the game (the timer pauses meanwhile). */
   overlayOpen(): boolean {
-    return [this.howto, this.levels, this.hardIntro, this.styles, this.hintShop, this.ad, this.dailyResult, this.streak, this.zoneInfo, this.skip].some(
+    return [this.howto, this.levels, this.hardIntro, this.hexIntro, this.styles, this.hintShop, this.ad, this.dailyResult, this.streak, this.zoneInfo, this.skip].some(
       (o) => !o.classList.contains('hidden') && !o.classList.contains('closing'),
     );
   }
@@ -373,6 +377,10 @@ export class Hud {
     this.open(this.hardIntro);
   }
 
+  openHexIntro() {
+    this.open(this.hexIntro);
+  }
+
   openHowto() {
     this.open(this.howto);
   }
@@ -388,6 +396,7 @@ export class Hud {
       b.textContent = String(n);
       if (n === current) b.classList.add('current');
       if (isHardLevel(n)) b.classList.add('hard');
+      if (isHexLevel(n)) b.classList.add('hex');
       if (skipped.includes(n)) {
         b.classList.add('skipped');
         b.title = 'Niveau passé';

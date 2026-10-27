@@ -28,6 +28,8 @@ function mockContext() {
 }
 
 const MASKS = [N | S, N | E, N | E | S, N | E | S | W, W, E | S];
+/** Hexagonal tiles: straight, sharp and wide bends, a fork, a dead end, a star. */
+const HEX_MASKS = [9, 3, 5, 21, 1, 63];
 
 describe('garden styles', () => {
   it.each(THEMES.map((t) => [t.id]))('%s: every prop keeps save()/restore() balanced', (id) => {
@@ -46,18 +48,19 @@ describe('garden styles', () => {
 
   it.each(THEMES.map((t) => [t.id]))('%s: whole tiles keep save()/restore() balanced', (id) => {
     setTheme(id);
-    for (const mask of MASKS) {
+    const tiles = [...MASKS.map((m) => [m, 4]), ...HEX_MASKS.map((m) => [m, 6])];
+    for (const [mask, sides] of tiles) {
       for (let seed = 0; seed < 12; seed++) {
-        const decor = makeDecor(mask, `test:${seed}`, seed === 0, 2);
+        const decor = makeDecor(mask, `test:${seed}`, seed === 0, 2, sides);
         for (const bloom of [0, 0.5, 1]) {
           for (const rot of [0, 1]) {
             const { ctx, state } = mockContext();
-            const st = { mask, decor, isSource: seed === 0, bloom, water: bloom > 0 ? 1 : 0.4, inflow: 0, loop: 0, rot };
+            const st = { mask, decor, isSource: seed === 0, bloom, water: bloom > 0 ? 1 : 0.4, inflow: 0, loop: 0, rot, sides };
             drawTile(ctx, st);
             drawTileWater(ctx, st, 2.1);
             drawTileProps(ctx, st);
             drawTileCritters(ctx, st, 2.1);
-            expect(state.depth, `${id} mask=${mask} seed=${seed} bloom=${bloom}`).toBe(0);
+            expect(state.depth, `${id} mask=${mask}/${sides} seed=${seed} bloom=${bloom}`).toBe(0);
           }
         }
       }

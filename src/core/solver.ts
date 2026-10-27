@@ -12,7 +12,7 @@
  *    and two groups that would close each other off must not be joined.
  *  - (optional) trial: an orientation that leads to a contradiction is removed.
  */
-import { Grid, distinctRotations, opposite } from './grid';
+import { Grid, distinctRotations } from './grid';
 
 export type SolveStatus = 'solved' | 'stuck' | 'contradiction';
 
@@ -29,15 +29,14 @@ interface State {
   opts: number[][];
   /** Bitset of orientations still possible for each cell. */
   alive: Uint8Array;
+  /** Mask with every side open (15 on squares, 63 on hexagons). */
+  full: number;
 }
-
-const EAST = 1;
-const SOUTH = 2;
 
 function must(st: State, i: number): number {
   const o = st.opts[i];
   const a = st.alive[i];
-  let m = 15;
+  let m = st.full;
   for (let k = 0; k < o.length; k++) if (a & (1 << k)) m &= o[k];
   return a ? m : 0;
 }
@@ -71,11 +70,11 @@ function propagateLocal(grid: Grid, st: State, queue: number[], queued: Uint8Arr
     if (!st.alive[i]) return false;
     const m = must(st, i);
     const c = can(st, i);
-    for (let d = 0; d < 4; d++) {
+    for (let d = 0; d < grid.sides; d++) {
       const j = grid.neighbor(i, d);
       if (j < 0) continue;
       const bit = 1 << d;
-      const ob = 1 << opposite(d);
+      const ob = 1 << grid.opposite(d);
       let changed = false;
       if (m & bit) changed = restrict(st, j, ob, true);
       else if (!(c & bit)) changed = restrict(st, j, ob, false);
@@ -107,11 +106,13 @@ function globalPass(grid: Grid, st: State): GlobalOutcome {
 
   const total = grid.cells.length;
   const undecided: number[] = []; // pairs (i, d)
+  // Each side shared by two tiles is seen once: through E and S on squares, NE, SE and S on hexagons.
+  const half = grid.sides / 2;
 
   for (const i of grid.cells) {
     const m = must(st, i);
     const c = can(st, i);
-    for (const d of [EAST, SOUTH]) {
+    for (let d = 1; d <= half; d++) {
       const j = grid.neighbor(i, d);
       if (j < 0) continue;
       const bit = 1 << d;
@@ -134,7 +135,7 @@ function globalPass(grid: Grid, st: State): GlobalOutcome {
     const j = grid.neighbor(i, d);
     if (find(i) === find(j)) {
       restrict(st, i, 1 << d, false);
-      restrict(st, j, 1 << opposite(d), false);
+      restrict(st, j, 1 << grid.opposite(d), false);
       changed = true;
     }
   }
@@ -170,7 +171,7 @@ function globalPass(grid: Grid, st: State): GlobalOutcome {
       const a = undecided[k];
       const d = undecided[k + 1];
       restrict(st, a, 1 << d, true);
-      restrict(st, grid.neighbor(a, d), 1 << opposite(d), true);
+      restrict(st, grid.neighbor(a, d), 1 << grid.opposite(d), true);
       changed = true;
     }
   }
@@ -188,7 +189,7 @@ function globalPass(grid: Grid, st: State): GlobalOutcome {
     const shared = between.get(key) ?? 0;
     if (exits[ri] + exits[rj] - 2 * shared === 0) {
       restrict(st, i, 1 << d, false);
-      restrict(st, j, 1 << opposite(d), false);
+      restrict(st, j, 1 << grid.opposite(d), false);
       changed = true;
     }
   }
@@ -196,7 +197,9 @@ function globalPass(grid: Grid, st: State): GlobalOutcome {
 }
 
 function countBits(a: number): number {
-  return (a & 1) + ((a >> 1) & 1) + ((a >> 2) & 1) + ((a >> 3) & 1);
+  let n = 0;
+  for (; a; a &= a - 1) n++;
+  return n;
 }
 
 function deduce(grid: Grid, st: State, depth: number): boolean {
@@ -228,7 +231,7 @@ function deduce(grid: Grid, st: State, depth: number): boolean {
       if (countBits(a) < 2) continue;
       for (let k = 0; k < st.opts[i].length; k++) {
         if (!(st.alive[i] & (1 << k))) continue;
-        const trial: State = { opts: st.opts, alive: st.alive.slice() };
+        const trial: State = { opts: st.opts, alive: st.alive.slice(), full: st.full };
         trial.alive[i] = 1 << k;
         if (!deduce(grid, trial, depth - 1)) {
           st.alive[i] &= ~(1 << k);
@@ -255,14 +258,14 @@ export function solve(grid: Grid, tiles: ArrayLike<number>, depth = 0): SolveRes
       opts.push([]);
       continue;
     }
-    const o = distinctRotations(tiles[i]);
+    const o = distinctRotations(tiles[i], grid.sides);
     opts.push(o);
     const open = grid.openMask(i);
     let a = 0;
     for (let k = 0; k < o.length; k++) if ((o[k] & ~open) === 0) a |= 1 << k;
     alive[i] = a;
   }
-  const st: State = { opts, alive };
+  const st: State = { opts, alive, full: grid.full };
   if (grid.cells.some((i) => !st.alive[i]) || !deduce(grid, st, depth)) {
     return { status: 'contradiction', undetermined: [] };
   }

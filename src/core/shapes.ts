@@ -1,8 +1,12 @@
 /**
  * Garden shapes: masks of active cells inside a width x height box.
  * Every shape keeps the centre cell (the spring) and is reduced to the
- * 4-connected component that contains it.
+ * connected component that contains it.
+ *
+ * Hexagonal gardens have their own shapes: a big hexagon, a honeycomb
+ * rectangle and a crown (a hexagon with its middle left empty).
  */
+import { hexOffset } from './grid';
 import { Rng } from './rng';
 
 export type ShapeId =
@@ -14,7 +18,13 @@ export type ShapeId =
   | 'heart'
   | 'flower'
   | 'hourglass'
-  | 'ponds';
+  | 'ponds'
+  | 'hexagon'
+  | 'comb'
+  | 'crown';
+
+/** Shapes of hexagonal gardens. */
+export const HEX_SHAPES: ShapeId[] = ['hexagon', 'comb', 'crown'];
 
 export const SHAPE_NAMES: Record<ShapeId, string> = {
   rect: 'Parterre',
@@ -26,6 +36,9 @@ export const SHAPE_NAMES: Record<ShapeId, string> = {
   flower: 'Trèfle',
   hourglass: 'Sablier',
   ponds: 'Étangs',
+  hexagon: 'Alvéole',
+  comb: 'Rayon de miel',
+  crown: 'Couronne',
 };
 
 export function centerOf(width: number, height: number): number {
@@ -70,27 +83,36 @@ function inside(shape: ShapeId, u: number, v: number, w: number, h: number): boo
       return petals.some(([pu, pv]) => Math.hypot(u - pu, v - pv) <= 0.4 + (hu + hv) * 0.3);
     }
     case 'heart':
-      // Built cell by cell instead (see heartMask).
+    case 'hexagon':
+    case 'comb':
+    case 'crown':
+      // Built cell by cell instead (see heartMask, hexMask).
       return true;
   }
 }
 
-/** Keep only cells 4-connected to `start`. */
-function keepConnected(active: Uint8Array, width: number, height: number, start: number): void {
+/** Indices of the cells next to i (4 sides, or 6 on hexagons) inside the box. */
+function boxNeighbors(i: number, width: number, height: number, hex: boolean): number[] {
+  const x = i % width;
+  const y = (i / width) | 0;
+  const out: number[] = [];
+  for (let d = 0; d < (hex ? 6 : 4); d++) {
+    const [dx, dy] = hex ? hexOffset(x, d) : [[0, -1], [1, 0], [0, 1], [-1, 0]][d];
+    const nx = x + dx;
+    const ny = y + dy;
+    if (nx >= 0 && ny >= 0 && nx < width && ny < height) out.push(ny * width + nx);
+  }
+  return out;
+}
+
+/** Keep only cells connected to `start`. */
+function keepConnected(active: Uint8Array, width: number, height: number, start: number, hex = false): void {
   const seen = new Uint8Array(active.length);
   const stack = [start];
   seen[start] = 1;
   while (stack.length) {
     const i = stack.pop()!;
-    const x = i % width;
-    const y = (i / width) | 0;
-    const nbs = [
-      y > 0 ? i - width : -1,
-      x < width - 1 ? i + 1 : -1,
-      y < height - 1 ? i + width : -1,
-      x > 0 ? i - 1 : -1,
-    ];
-    for (const j of nbs) {
+    for (const j of boxNeighbors(i, width, height, hex)) {
       if (j >= 0 && active[j] && !seen[j]) {
         seen[j] = 1;
         stack.push(j);
@@ -177,11 +199,45 @@ function cloisterMask(width: number, height: number): Uint8Array {
   return active;
 }
 
+/** Steps between two hexagonal cells (odd columns shifted down). */
+export function hexDistance(x1: number, y1: number, x2: number, y2: number): number {
+  const q1 = x1;
+  const r1 = y1 - (x1 - (x1 & 1)) / 2;
+  const q2 = x2;
+  const r2 = y2 - (x2 - (x2 & 1)) / 2;
+  const dq = q1 - q2;
+  const dr = r1 - r2;
+  return (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2;
+}
+
+/**
+ * Hexagonal shapes in a box of odd width. A hexagon of radius (width - 1) / 2
+ * needs as many rows as columns.
+ */
+function hexMask(shape: ShapeId, width: number, height: number): Uint8Array {
+  const active = new Uint8Array(width * height);
+  const center = centerOf(width, height);
+  const cx = center % width;
+  const cy = Math.floor(center / width);
+  const radius = (width - 1) / 2;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const d = hexDistance(x, y, cx, cy);
+      let on: boolean;
+      if (shape === 'hexagon') on = d <= radius;
+      else if (shape === 'crown') on = d <= radius && d >= 2;
+      else on = true;
+      if (on) active[y * width + x] = 1;
+    }
+  }
+  return active;
+}
+
 /**
  * Where the spring goes: the centre cell, or for shapes with an empty middle
- * (cloister) the active cell closest to it, preferring the bottom gallery.
+ * (cloister, crown) the active cell closest to it, preferring the bottom gallery.
  */
-export function sourceCell(active: Uint8Array, width: number, height: number): number {
+export function sourceCell(active: Uint8Array, width: number, height: number, hex = false): number {
   const center = centerOf(width, height);
   if (active[center]) return center;
   const cx = center % width;
@@ -192,8 +248,9 @@ export function sourceCell(active: Uint8Array, width: number, height: number): n
     if (!active[i]) continue;
     const x = i % width;
     const y = Math.floor(i / width);
+    const near = hex ? hexDistance(x, y, cx, cy) : Math.abs(x - cx) + Math.abs(y - cy);
     // Closest first; among equals, below the centre, then nearest the middle column.
-    const key = (Math.abs(x - cx) + Math.abs(y - cy)) * 1000 + (y >= cy ? 0 : 500) + Math.abs(x - cx);
+    const key = near * 1000 + (y >= cy ? 0 : 500) + Math.abs(x - cx);
     if (key < bestKey) {
       bestKey = key;
       best = i;
@@ -202,7 +259,12 @@ export function sourceCell(active: Uint8Array, width: number, height: number): n
   return best;
 }
 
-export function buildShape(shape: ShapeId, width: number, height: number, rng?: Rng): Uint8Array {
+export function buildShape(shape: ShapeId, width: number, height: number, rng?: Rng, hex = false): Uint8Array {
+  if (hex) {
+    const cells = hexMask(shape, width, height);
+    keepConnected(cells, width, height, sourceCell(cells, width, height, true), true);
+    return cells;
+  }
   if (shape === 'heart') {
     const heart = heartMask(width, height);
     keepConnected(heart, width, height, centerOf(width, height));

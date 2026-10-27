@@ -1,8 +1,10 @@
 /**
  * Procedural drawing of one garden tile, in unit coordinates centred on the
- * tile (-0.5..0.5) and in the tile's own (unrotated) frame.
+ * tile (-0.5..0.5) and in the tile's own (unrotated) frame. Square and
+ * hexagonal tiles share everything but their outline and the directions of
+ * their canals.
  */
-import { DX, DY, popcount4 } from '../core/grid';
+import { dirVecs, popcount } from '../core/grid';
 import { Decor, Flower, G, PropInstance } from './decor';
 import { clamp01, easeOutBack, easeOutCubic, sub } from './easing';
 import { mixColor, P } from './palette';
@@ -18,13 +20,44 @@ export interface TileState {
   inflow: number;
   /** 0..1, tints water toward the loop warning colour. */
   loop: number;
-  /** Resting rotation (quarter turns), so plants can be drawn upright on screen. */
+  /** Resting rotation (steps), so plants can be drawn upright on screen. */
   rot: number;
+  /** Sides of the tile: 4, or 6 for hexagons. */
+  sides: number;
 }
 
 const TAU = Math.PI * 2;
 /** Canals are drawn a bit past the tile edge; the tile clip trims them. */
 const REACH = 0.56;
+
+/** Corner rounding of hexagonal tiles (their corners are already wide). */
+export const HEX_CORNER = 0.09;
+
+/** One step of rotation, in radians. */
+export function stepAngle(sides: number): number {
+  return (Math.PI * 2) / sides;
+}
+
+/**
+ * Rounded flat-topped hexagon centred on (cx, cy), `apothem` from the centre
+ * to the middle of each side; with `append`, added to the current path.
+ */
+export function hexPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, apothem: number, r: number, append = false) {
+  const R = (apothem * 2) / Math.sqrt(3);
+  const vx = (k: number) => cx + Math.cos((k * Math.PI) / 3) * R;
+  const vy = (k: number) => cy + Math.sin((k * Math.PI) / 3) * R;
+  if (!append) ctx.beginPath();
+  ctx.moveTo((vx(5) + vx(0)) / 2, (vy(5) + vy(0)) / 2);
+  for (let k = 0; k < 6; k++) ctx.arcTo(vx(k), vy(k), vx(k + 1), vy(k + 1), r);
+  ctx.closePath();
+}
+
+/** Outline of a tile's top face, shrunk by `inset` (unit coordinates). */
+export function facePath(ctx: CanvasRenderingContext2D, sides: number, inset = 0, corner?: number, append = false) {
+  const h = G.half - inset;
+  if (sides === 6) hexPath(ctx, 0, 0, h, corner ?? HEX_CORNER, append);
+  else roundRectPath(ctx, -h, -h, h * 2, h * 2, corner ?? G.corner, append);
+}
 
 /** Rounded rectangle path; with `append`, added to the current path (e.g. to cut a hole). */
 export function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, append = false) {
@@ -37,14 +70,14 @@ export function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: numbe
   ctx.closePath();
 }
 
-function strokeArms(ctx: CanvasRenderingContext2D, mask: number, width: number, color: string) {
+function strokeArms(ctx: CanvasRenderingContext2D, mask: number, width: number, color: string, vecs: ReadonlyArray<readonly [number, number]>) {
   ctx.strokeStyle = color;
   ctx.lineWidth = width;
   ctx.beginPath();
-  for (let d = 0; d < 4; d++) {
+  for (let d = 0; d < vecs.length; d++) {
     if (!(mask & (1 << d))) continue;
     ctx.moveTo(0, 0);
-    ctx.lineTo(DX[d] * REACH, DY[d] * REACH);
+    ctx.lineTo(vecs[d][0] * REACH, vecs[d][1] * REACH);
   }
   ctx.stroke();
 }
@@ -204,12 +237,13 @@ function drawSprout(ctx: CanvasRenderingContext2D, s: number) {
 
 export function drawTile(ctx: CanvasRenderingContext2D, st: TileState) {
   const { mask, decor, isSource, bloom, water } = st;
-  const arms = popcount4(mask);
+  const arms = popcount(mask);
   const isLeaf = arms === 1 && !isSource;
   const H = G.half;
+  const vecs = dirVecs(st.sides);
 
   ctx.save();
-  roundRectPath(ctx, -H, -H, H * 2, H * 2, G.corner);
+  facePath(ctx, st.sides);
   ctx.clip();
 
   // Dry soil.
@@ -217,7 +251,7 @@ export function drawTile(ctx: CanvasRenderingContext2D, st: TileState) {
   soil.addColorStop(0, P.soilLight);
   soil.addColorStop(1, decor.tint > 0 ? P.soil : mixColor(P.soil, P.soilDark, 0.25));
   ctx.fillStyle = soil;
-  ctx.fillRect(-0.5, -0.5, 1, 1);
+  ctx.fillRect(-0.6, -0.6, 1.2, 1.2);
   for (const p of decor.pebbles) {
     ctx.fillStyle = P.pebbleShade;
     ctx.beginPath();
@@ -255,14 +289,14 @@ export function drawTile(ctx: CanvasRenderingContext2D, st: TileState) {
 
   // Canal: stone rim then sandy groove.
   ctx.lineCap = 'round';
-  strokeArms(ctx, mask, G.rimW + 0.04, P.rimShade);
+  strokeArms(ctx, mask, G.rimW + 0.04, P.rimShade, vecs);
   if (isSource) disc(ctx, 0, 0, G.pondR + 0.065, P.rimShade);
   else if (isLeaf) disc(ctx, 0, 0, G.basinR + 0.065, P.rimShade);
-  strokeArms(ctx, mask, G.rimW, P.rim);
+  strokeArms(ctx, mask, G.rimW, P.rim, vecs);
   if (isSource) disc(ctx, 0, 0, G.pondR + 0.045, P.rim);
   else if (isLeaf) disc(ctx, 0, 0, G.basinR + 0.045, P.rim);
-  strokeArms(ctx, mask, G.grooveW, P.grooveDeep);
-  strokeArms(ctx, mask, G.grooveW - 0.05, P.groove);
+  strokeArms(ctx, mask, G.grooveW, P.grooveDeep, vecs);
+  strokeArms(ctx, mask, G.grooveW - 0.05, P.groove, vecs);
   if (isLeaf) {
     disc(ctx, 0, 0, G.basinR, P.grooveDeep);
     disc(ctx, 0.01, 0.012, G.basinR - 0.03, P.groove);
@@ -285,10 +319,12 @@ export function drawTile(ctx: CanvasRenderingContext2D, st: TileState) {
     disc(ctx, 0, 0, G.pondR - 0.025, waterColor);
     const k = easeOutCubic(water);
     ctx.beginPath();
-    for (let d = 0; d < 4; d++) {
+    for (let d = 0; d < vecs.length; d++) {
       if (!(mask & (1 << d))) continue;
-      ctx.moveTo(DX[d] * G.pondR * 0.8, DY[d] * G.pondR * 0.8);
-      ctx.lineTo(DX[d] * (G.pondR * 0.8 + (REACH - G.pondR * 0.8) * k), DY[d] * (G.pondR * 0.8 + (REACH - G.pondR * 0.8) * k));
+      const [ux, uy] = vecs[d];
+      const reach = G.pondR * 0.8 + (REACH - G.pondR * 0.8) * k;
+      ctx.moveTo(ux * G.pondR * 0.8, uy * G.pondR * 0.8);
+      ctx.lineTo(ux * reach, uy * reach);
     }
     if (k > 0) strokeWater();
     disc(ctx, 0, 0, G.pondR - 0.025, waterColor);
@@ -299,18 +335,18 @@ export function drawTile(ctx: CanvasRenderingContext2D, st: TileState) {
     let any = false;
     if (inArm >= 0) {
       const a = sub(water, 0, inPart);
-      const ex = DX[inArm] * REACH;
-      const ey = DY[inArm] * REACH;
+      const ex = vecs[inArm][0] * REACH;
+      const ey = vecs[inArm][1] * REACH;
       ctx.moveTo(ex, ey);
       ctx.lineTo(ex * (1 - a), ey * (1 - a));
       any = a > 0;
     }
     const b = sub(water, inPart, 1 - inPart);
     if (b > 0 && !isLeaf) {
-      for (let d = 0; d < 4; d++) {
+      for (let d = 0; d < vecs.length; d++) {
         if (d === inArm || !(mask & (1 << d))) continue;
         ctx.moveTo(0, 0);
-        ctx.lineTo(DX[d] * REACH * b, DY[d] * REACH * b);
+        ctx.lineTo(vecs[d][0] * REACH * b, vecs[d][1] * REACH * b);
         any = true;
       }
     }
@@ -321,9 +357,10 @@ export function drawTile(ctx: CanvasRenderingContext2D, st: TileState) {
       disc(ctx, 0, 0, Math.max(0, r - 0.022), waterColor);
       if (inArm >= 0) {
         // Re-open the inlet so the basin and its canal read as one body of water.
+        const [ux, uy] = vecs[inArm];
         ctx.beginPath();
-        ctx.moveTo(DX[inArm] * r * 0.5, DY[inArm] * r * 0.5);
-        ctx.lineTo(DX[inArm] * (r + 0.01), DY[inArm] * (r + 0.01));
+        ctx.moveTo(ux * r * 0.5, uy * r * 0.5);
+        ctx.lineTo(ux * (r + 0.01), uy * (r + 0.01));
         ctx.strokeStyle = waterColor;
         ctx.lineWidth = G.waterW - 0.045;
         ctx.stroke();
@@ -341,7 +378,7 @@ export function drawTile(ctx: CanvasRenderingContext2D, st: TileState) {
   }
 
   // End of a canal: a seedling becomes a lotus (or the style's own bloom).
-  const upright = (-st.rot * Math.PI) / 2;
+  const upright = -st.rot * stepAngle(st.sides);
   if (isLeaf) {
     const t = sub(bloom, 0.3, 0.7);
     ctx.save();
@@ -382,14 +419,14 @@ export function hasCritters(st: TileState): boolean {
  * front as seen on screen. Not clipped: a tree may rise above its tile.
  */
 export function drawTileProps(ctx: CanvasRenderingContext2D, st: TileState) {
-  const upright = (-st.rot * Math.PI) / 2;
+  const upright = -st.rot * stepAngle(st.sides);
   const props = st.decor.props;
   for (const p of props) {
     if (!p.def.animated && (p.def.place === 'water' || (p.def.place === 'canal' && !p.def.screen))) drawProp(ctx, p, st, upright, 0);
   }
   const standing = props.filter((p) => (p.def.place === 'ground' || p.def.screen) && !p.def.animated);
   if (standing.length > 1) {
-    const a = (st.rot * Math.PI) / 2;
+    const a = st.rot * stepAngle(st.sides);
     const screenY = (p: PropInstance) => p.x * Math.sin(a) + p.y * Math.cos(a);
     standing.sort((p, q) => screenY(p) - screenY(q));
   }
@@ -398,7 +435,7 @@ export function drawTileProps(ctx: CanvasRenderingContext2D, st: TileState) {
 
 /** Animated ground props, drawn live above everything else of the tile. */
 export function drawTileCritters(ctx: CanvasRenderingContext2D, st: TileState, time: number) {
-  const upright = (-st.rot * Math.PI) / 2;
+  const upright = -st.rot * stepAngle(st.sides);
   for (const p of st.decor.props) {
     if (p.def.animated && p.def.place === 'ground') drawProp(ctx, p, st, upright, time);
   }
@@ -417,7 +454,7 @@ function drawProp(ctx: CanvasRenderingContext2D, p: PropInstance, st: TileState,
   ctx.translate(p.x, p.y);
   let axis: 'v' | 'h' | undefined;
   if (def.screen) {
-    // Drawn as seen on screen: knows whether its canal runs up-down or left-right there.
+    // Drawn as seen on screen: knows whether its canal runs up-down or left-right there (square tiles only).
     ctx.rotate(upright);
     axis = ((p.arm + st.rot) & 1) === 0 ? 'v' : 'h';
   } else if (def.place !== 'ground') ctx.rotate(p.angle);
@@ -441,8 +478,9 @@ function drawProp(ctx: CanvasRenderingContext2D, p: PropInstance, st: TileState,
  */
 export function drawTileWater(ctx: CanvasRenderingContext2D, st: TileState, time: number) {
   const { mask, isSource } = st;
-  const arms = popcount4(mask);
+  const arms = popcount(mask);
   const isLeaf = arms === 1 && !isSource;
+  const vecs = dirVecs(st.sides);
   if (st.water >= 1) {
     // Two lanes of irregular glints drifting downstream.
     ctx.save();
@@ -459,18 +497,19 @@ export function drawTileWater(ctx: CanvasRenderingContext2D, st: TileState, time
       ctx.setLineDash(dash);
       ctx.lineDashOffset = -time * speed;
       ctx.beginPath();
-      for (let d = 0; d < 4; d++) {
+      for (let d = 0; d < vecs.length; d++) {
         if (!(mask & (1 << d))) continue;
-        const ex = DX[d] * (G.half - 0.03);
-        const ey = DY[d] * (G.half - 0.03);
-        const ox = -DY[d] * offset;
-        const oy = DX[d] * offset;
+        const [ux, uy] = vecs[d];
+        const ex = ux * (G.half - 0.03);
+        const ey = uy * (G.half - 0.03);
+        const ox = -uy * offset;
+        const oy = ux * offset;
         const start = isSource ? G.pondR * 0.9 : 0;
         if (d === st.inflow) {
           ctx.moveTo(ex + ox, ey + oy);
-          ctx.lineTo(DX[d] * inEnd + ox, DY[d] * inEnd + oy);
+          ctx.lineTo(ux * inEnd + ox, uy * inEnd + oy);
         } else if (!isLeaf) {
-          ctx.moveTo(DX[d] * start + ox, DY[d] * start + oy);
+          ctx.moveTo(ux * start + ox, uy * start + oy);
           ctx.lineTo(ex + ox, ey + oy);
         }
       }
@@ -496,7 +535,7 @@ export function drawTileWater(ctx: CanvasRenderingContext2D, st: TileState, time
     ctx.restore();
   }
   // Swimmers glide along the canals, above the glints.
-  const upright = (-st.rot * Math.PI) / 2;
+  const upright = -st.rot * stepAngle(st.sides);
   for (const p of st.decor.props) {
     if (p.def.animated && p.def.place === 'water') drawProp(ctx, p, st, upright, time);
   }

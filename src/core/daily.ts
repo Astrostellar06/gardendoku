@@ -87,6 +87,7 @@ export function dailyInfo(key: string): DailyInfo {
     cells,
     wrap: plan.wrap,
     advanced: plan.advanced,
+    hex: false,
   };
 }
 

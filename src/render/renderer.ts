@@ -7,7 +7,7 @@
  * from the spring along the canals. Grass and flowers follow the water.
  */
 import { Analysis, Board } from '../core/board';
-import { DX, DY, N, opposite, S } from '../core/grid';
+import { DX, DY, dirVecs, opposite } from '../core/grid';
 import { Particles } from './particles';
 import { renderBackground } from './background';
 import { Decor, G, makeDecor } from './decor';
@@ -19,9 +19,12 @@ import {
   drawTileCritters,
   drawTileProps,
   drawTileWater,
+  facePath,
   hasCritters,
   hasForeground,
+  hexPath,
   roundRectPath,
+  stepAngle,
   TILE_OVERFLOW,
   TileState,
 } from './tileArt';
@@ -62,6 +65,10 @@ const WILT_RATE = 1.6;
 const HOLD_VISIBLE_AFTER = 0.12;
 /** Width (in tiles) of the faded strips showing the opposite edge on joined-edge levels. */
 const GHOST = 0.42;
+/** Half the width of a hexagonal cell, centre to corner (tile units). */
+const HEX_HALF_W = 1 / Math.sqrt(3);
+/** Shadow and gloss sprites span a little more than a tile, for the corners of hexagons. */
+const SPRITE_SPAN = 1.1;
 
 export class GardenRenderer {
   readonly canvas: HTMLCanvasElement;
@@ -93,8 +100,21 @@ export class GardenRenderer {
   time = 0;
   lockMode = false;
   hold: { cell: number; start: number; duration: number } | null = null;
-  /** Tutorial: tile under the spotlight, and the gesture it asks for. */
-  spotlight: { cell: number; kind: 'tap' | 'hold' } | null = null;
+  /**
+   * Tutorial: tile under the spotlight, and the gesture it asks for. With
+   * `ghost`, the faded copy of the tile in the strip below the garden.
+   */
+  spotlight: { cell: number; kind: 'tap' | 'hold'; ghost?: boolean } | null = null;
+
+  /** Sides of the tiles (4, or 6 on hexagonal gardens) and one rotation step in radians. */
+  private sides = 4;
+  private step = Math.PI / 2;
+  private vecs = dirVecs(4);
+  /** Hexagonal gardens: top-left cell centre (tile units) and size of the garden (tiles). */
+  private hexMin: [number, number] = [0, 0];
+  private span: [number, number] = [0, 0];
+  /** Tiles from the back of the garden to the front, as drawn. */
+  private order: number[] = [];
 
   private decorSeed = '';
 
@@ -119,7 +139,7 @@ export class GardenRenderer {
     if (board) {
       this.vis.forEach((v, i) => {
         const active = board.grid.active[i] === 1;
-        v.decor = makeDecor(active ? board.base[i] : 0, `${this.decorSeed}:${i}`, i === board.source);
+        v.decor = makeDecor(active ? board.base[i] : 0, `${this.decorSeed}:${i}`, i === board.source, 0, this.sides);
       });
     }
     this.layout();
@@ -150,6 +170,12 @@ export class GardenRenderer {
     this.analysis = null;
     this.timers = [];
     this.particles.clearEffects();
+    this.sides = board.grid.sides;
+    this.step = stepAngle(this.sides);
+    this.vecs = dirVecs(this.sides);
+    // Odd hexagonal columns sit half a tile lower: draw by height on screen, back to front.
+    const g = board.grid;
+    this.order = g.hex ? g.cells.slice().sort((a, b) => g.center(a)[1] - g.center(b)[1] || a - b) : g.cells;
     this.vis = [];
     for (let i = 0; i < board.grid.size; i++) {
       const active = board.grid.active[i] === 1;
@@ -165,7 +191,7 @@ export class GardenRenderer {
         shake: 0,
         popAt: -10,
         arrived: false,
-        decor: makeDecor(active ? board.base[i] : 0, `${decorSeed}:${i}`, i === board.source),
+        decor: makeDecor(active ? board.base[i] : 0, `${decorSeed}:${i}`, i === board.source, 0, this.sides),
         cache: emptyCache(),
         cacheRot: emptyRots(),
       });
@@ -177,7 +203,7 @@ export class GardenRenderer {
     this.analysis = analysis;
   }
 
-  /** Animate a rotation of `dir` quarter turns. */
+  /** Animate a rotation of `dir` steps (quarter turns, or sixth turns on hexagons). */
   rotate(cell: number, dir: number) {
     this.vis[cell].target += dir;
   }
@@ -187,7 +213,8 @@ export class GardenRenderer {
     if (!this.board) return;
     for (const i of this.board.grid.cells) {
       const v = this.vis[i];
-      const delta = (((this.board.rot[i] - v.target) % 4) + 4) % 4;
+      const n = this.sides;
+      const delta = (((this.board.rot[i] - v.target) % n) + n) % n;
       v.target += delta;
     }
   }
@@ -204,6 +231,20 @@ export class GardenRenderer {
   cellAt(x: number, y: number): number {
     if (!this.board) return -1;
     const g = this.board.grid;
+    if (g.hex) {
+      // The nearest centre, if the touch is on its hexagon.
+      let best = -1;
+      let bestD = Infinity;
+      for (const i of g.cells) {
+        const [cx, cy] = this.cellCenter(i);
+        const d = (x - cx) ** 2 + (y - cy) ** 2;
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      }
+      return bestD <= (this.tile * 0.58) ** 2 ? best : -1;
+    }
     const fx = (x - this.ox) / this.tile;
     const fy = (y - this.oy) / this.tile;
     let gx = Math.floor(fx);
@@ -222,12 +263,17 @@ export class GardenRenderer {
 
   cellCenter(i: number): [number, number] {
     const g = this.board!.grid;
+    if (g.hex) {
+      const [cx, cy] = g.center(i);
+      return [this.ox + (cx - this.hexMin[0] + HEX_HALF_W) * this.tile, this.oy + (cy - this.hexMin[1] + 0.5) * this.tile];
+    }
     return [this.ox + (g.x(i) + 0.5) * this.tile, this.oy + (g.y(i) + 0.5) * this.tile];
   }
 
   boardBounds() {
     const g = this.board?.grid;
     if (!g) return { x: 0, y: 0, w: this.width, h: this.height };
+    if (g.hex) return { x: this.ox, y: this.oy, w: this.span[0] * this.tile, h: this.span[1] * this.tile };
     return { x: this.ox, y: this.oy, w: g.width * this.tile, h: g.height * this.tile };
   }
 
@@ -271,11 +317,31 @@ export class GardenRenderer {
     const availW = this.width - this.insets.side * 2;
     const availH = this.height - this.insets.top - this.insets.bottom;
     this.ghost = g.wrap ? GHOST : 0;
-    const cols = g.width + this.ghost * 2;
-    const rows = g.height + this.ghost * 2;
-    this.tile = Math.max(12, Math.floor(Math.min(availW / cols, availH / rows, this.maxTile)));
-    this.ox = Math.round((this.width - this.tile * g.width) / 2);
-    this.oy = Math.round(this.insets.top + (availH - this.tile * g.height) / 2);
+    if (g.hex) {
+      // Fit the hexagons themselves: columns overlap, odd ones sit half a tile lower.
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (const i of g.cells) {
+        const [cx, cy] = g.center(i);
+        minX = Math.min(minX, cx);
+        minY = Math.min(minY, cy);
+        maxX = Math.max(maxX, cx);
+        maxY = Math.max(maxY, cy);
+      }
+      this.hexMin = [minX, minY];
+      this.span = [maxX - minX + HEX_HALF_W * 2, maxY - minY + 1];
+      this.tile = Math.max(12, Math.floor(Math.min(availW / this.span[0], availH / this.span[1], this.maxTile)));
+      this.ox = Math.round((this.width - this.tile * this.span[0]) / 2);
+      this.oy = Math.round(this.insets.top + (availH - this.tile * this.span[1]) / 2);
+    } else {
+      const cols = g.width + this.ghost * 2;
+      const rows = g.height + this.ghost * 2;
+      this.tile = Math.max(12, Math.floor(Math.min(availW / cols, availH / rows, this.maxTile)));
+      this.ox = Math.round((this.width - this.tile * g.width) / 2);
+      this.oy = Math.round(this.insets.top + (availH - this.tile * g.height) / 2);
+    }
     for (const v of this.vis) {
       v.cache = emptyCache();
       v.cacheRot = emptyRots();
@@ -289,6 +355,7 @@ export class GardenRenderer {
     const H = G.half;
 
     // Shadow: only the blurred shadow of a shape drawn off-canvas is kept.
+    const sides = this.sides;
     const shadowPx = Math.ceil(t * 1.5 * this.dpr);
     const sh = document.createElement('canvas');
     sh.width = shadowPx;
@@ -299,19 +366,19 @@ export class GardenRenderer {
     sctx.shadowColor = P.tileShadow;
     sctx.shadowBlur = t * this.dpr * 0.12;
     sctx.shadowOffsetX = far;
-    roundRectPath(sctx, -H, -H, H * 2, H * 2, G.corner);
+    facePath(sctx, sides);
     sctx.fillStyle = '#000';
     sctx.fill();
     this.shadowSprite = sh;
 
     // Gloss: light along the top of the face, a hint of shade at the bottom.
-    const px = Math.ceil(t * this.dpr);
+    const px = Math.ceil(t * SPRITE_SPAN * this.dpr);
     const gl = document.createElement('canvas');
     gl.width = px;
     gl.height = px;
     const gctx = gl.getContext('2d')!;
-    gctx.setTransform(px, 0, 0, px, px / 2, px / 2);
-    roundRectPath(gctx, -H, -H, H * 2, H * 2, G.corner);
+    gctx.setTransform(px / SPRITE_SPAN, 0, 0, px / SPRITE_SPAN, px / 2, px / 2);
+    facePath(gctx, sides);
     const shade = gctx.createLinearGradient(0, -H, 0, H);
     shade.addColorStop(0, 'rgba(255,255,255,0.22)');
     shade.addColorStop(0.1, 'rgba(255,255,255,0)');
@@ -319,7 +386,7 @@ export class GardenRenderer {
     shade.addColorStop(1, 'rgba(120,60,90,0.08)');
     gctx.fillStyle = shade;
     gctx.fill();
-    roundRectPath(gctx, -H + 0.012, -H + 0.012, (H - 0.012) * 2, (H - 0.012) * 2, G.corner - 0.01);
+    facePath(gctx, sides, 0.012, sides === 6 ? undefined : G.corner - 0.01);
     const rim = gctx.createLinearGradient(0, -H, 0, H);
     rim.addColorStop(0, 'rgba(255,255,255,0.9)');
     rim.addColorStop(0.35, 'rgba(255,255,255,0)');
@@ -347,6 +414,11 @@ export class GardenRenderer {
     }
     ctx.beginPath();
     for (const i of g.cells) {
+      if (g.hex) {
+        const [cx, cy] = this.cellCenter(i);
+        hexPath(ctx, cx, cy, t * 0.5 + pad, t * 0.18, true);
+        continue;
+      }
       const x = this.ox + g.x(i) * t - pad;
       const y = this.oy + g.y(i) * t - pad;
       const s = t + pad * 2;
@@ -514,6 +586,7 @@ export class GardenRenderer {
   /** Water entering tile i through a joined edge: a little sparkle on both sides. */
   private sparkleIfTeleported(i: number, inflow: number) {
     const g = this.board!.grid;
+    if (!g.wrap) return;
     const p = g.neighbor(i, inflow);
     if (p < 0 || Math.abs(g.x(i) - g.x(p)) + Math.abs(g.y(i) - g.y(p)) === 1) return;
     const t = this.tile;
@@ -529,7 +602,8 @@ export class GardenRenderer {
     const an = this.analysis;
     const v = this.vis[i];
     const rot = board.rot[i];
-    const inflow = an && an.inflow[i] >= 0 ? (an.inflow[i] - rot + 4) & 3 : -1;
+    const n = this.sides;
+    const inflow = an && an.inflow[i] >= 0 ? (an.inflow[i] - rot + n) % n : -1;
     return {
       mask: board.base[i],
       decor: v.decor,
@@ -539,6 +613,7 @@ export class GardenRenderer {
       inflow,
       loop: v.loop < 0.01 ? 0 : v.loop,
       rot,
+      sides: n,
     };
   }
 
@@ -579,11 +654,11 @@ export class GardenRenderer {
     if (board) {
       if (this.bed) ctx.drawImage(this.bed, 0, 0, this.width, this.height);
       if (board.grid.wrap) this.drawGhosts();
-      for (const i of board.grid.cells) this.drawShadow(i);
-      for (const i of board.grid.cells) this.drawCell(i);
+      for (const i of this.order) this.drawShadow(i);
+      for (const i of this.order) this.drawCell(i);
       this.drawBridges();
-      for (const i of board.grid.cells) this.drawCellProps(i);
-      for (const i of board.grid.cells) this.drawCellOverlay(i);
+      for (const i of this.order) this.drawCellProps(i);
+      for (const i of this.order) this.drawCellOverlay(i);
       this.drawSpotlight();
     }
     this.particles.draw(ctx, this.time);
@@ -615,7 +690,7 @@ export class GardenRenderer {
     const s = t * 1.5;
     ctx.save();
     ctx.translate(cx, cy + G.depth * t * 0.5 + t * 0.035 * (1 - v.press * 0.6));
-    ctx.rotate((v.angle * Math.PI) / 2);
+    ctx.rotate(v.angle * this.step);
     ctx.drawImage(sprite, -s / 2, -s / 2, s, s);
     ctx.restore();
   }
@@ -627,9 +702,8 @@ export class GardenRenderer {
     const cy = this.cellCenter(i)[1] + dy;
     const scale = this.cellScale(v);
     const t = this.tile * scale;
-    const angle = (v.angle * Math.PI) / 2;
+    const angle = v.angle * this.step;
     const [fx, fy] = this.facePos(i, dx, dy);
-    const H = G.half;
     const depth = G.depth * t;
 
     // Side of the tile: two copies of the face outline, below it, in the side colour.
@@ -644,7 +718,7 @@ export class GardenRenderer {
       ctx.translate(fx, cy + dy);
       ctx.rotate(angle);
       ctx.scale(t, t);
-      roundRectPath(ctx, -H, -H, H * 2, H * 2, G.corner);
+      facePath(ctx, this.sides);
       ctx.fillStyle = color;
       ctx.fill();
       ctx.restore();
@@ -673,20 +747,43 @@ export class GardenRenderer {
     if (gloss && glossAlpha > 0) {
       ctx.save();
       ctx.globalAlpha = glossAlpha;
-      // The light outline at the top and the shade at the bottom stay off the
-      // water running out of the tile there: it flows over the edge, unshaded.
-      const mask = this.board?.mask(i) ?? 0;
-      if (mask & (N | S)) {
-        const w = G.waterW * t;
-        ctx.beginPath();
-        ctx.rect(fx - t / 2, fy - t / 2, t, t);
-        if (mask & N) ctx.rect(fx - w / 2, fy - t / 2, w, t * 0.16);
-        if (mask & S) ctx.rect(fx - w / 2, fy + t / 2 - t * 0.24, w, t * 0.24);
-        ctx.clip('evenodd');
-      }
-      ctx.drawImage(gloss, fx - t / 2, fy - t / 2, t, t);
+      this.clipCanalsOut(i, fx, fy, t);
+      const s = t * SPRITE_SPAN;
+      ctx.drawImage(gloss, fx - s / 2, fy - s / 2, s, s);
       ctx.restore();
     }
+  }
+
+  /**
+   * The light outline at the top of a tile and the shade at its bottom stay
+   * off the canals running out of the tile there: they flow over its edge,
+   * banks and water alike, in the colours of the canal between the tiles.
+   */
+  private clipCanalsOut(i: number, fx: number, fy: number, t: number) {
+    const mask = this.board?.mask(i) ?? 0;
+    const ctx = this.ctx;
+    const w = ((G.rimW + 0.04) * t) / 2;
+    const edge = G.half * t;
+    let any = false;
+    ctx.beginPath();
+    ctx.rect(fx - t, fy - t, t * 2, t * 2);
+    for (let d = 0; d < this.sides; d++) {
+      if (!(mask & (1 << d))) continue;
+      const [ux, uy] = this.vecs[d];
+      // Canals leaving sideways cross neither the outline nor the shade.
+      if (Math.abs(uy) < 0.3) continue;
+      const from = edge - (uy < 0 ? 0.16 : 0.26) * t;
+      const to = edge + 0.05 * t;
+      const nx = -uy;
+      const ny = ux;
+      ctx.moveTo(fx + ux * from + nx * w, fy + uy * from + ny * w);
+      ctx.lineTo(fx + ux * to + nx * w, fy + uy * to + ny * w);
+      ctx.lineTo(fx + ux * to - nx * w, fy + uy * to - ny * w);
+      ctx.lineTo(fx + ux * from - nx * w, fy + uy * from - ny * w);
+      ctx.closePath();
+      any = true;
+    }
+    if (any) ctx.clip('evenodd');
   }
 
   /** Tutorial focus: the rest of the garden is dimmed, the tile pulses and an arrow points at it. */
@@ -695,22 +792,29 @@ export class GardenRenderer {
     if (!s || !this.board) return;
     const ctx = this.ctx;
     const t = this.tile;
-    const [cx, cy] = this.facePos(s.cell);
+    let [cx, cy] = this.facePos(s.cell);
+    // The tile with its side, or the visible part of its copy in the strip below the garden.
     const half = t * 0.56;
+    let [x0, y0, w, h] = [cx - half, cy - half, half * 2, half * 2 + G.depth * t];
+    if (s.ghost) {
+      const top = this.oy + this.board.grid.height * t + t * (0.5 - G.half);
+      [x0, y0, w, h] = [cx - t * 0.5, top - t * 0.06, t, this.ghost * t + t * 0.12];
+      cy = y0 + h / 2;
+    }
     ctx.save();
     ctx.fillStyle = 'rgba(70, 45, 70, 0.32)';
     ctx.beginPath();
     ctx.rect(0, 0, this.width, this.height);
-    roundRectPath(ctx, cx - half, cy - half, half * 2, half * 2 + G.depth * t, t * 0.2, true);
+    roundRectPath(ctx, x0, y0, w, h, t * 0.2, true);
     ctx.fill('evenodd');
 
     // Pulse around the tile.
     const pulse = (this.time * 0.9) % 1;
-    const grow = half + pulse * t * 0.22;
+    const grow = pulse * t * 0.22;
     ctx.globalAlpha = 1 - pulse;
     ctx.strokeStyle = '#FFFFFF';
     ctx.lineWidth = Math.max(2, t * 0.04);
-    roundRectPath(ctx, cx - grow, cy - grow, grow * 2, grow * 2 + G.depth * t, t * 0.22);
+    roundRectPath(ctx, x0 - grow, y0 - grow, w + grow * 2, h + grow * 2, t * 0.22);
     ctx.stroke();
     ctx.globalAlpha = 1;
 
@@ -725,21 +829,22 @@ export class GardenRenderer {
       ctx.stroke();
     }
 
-    // Bouncing arrow above the tile.
+    // Bouncing arrow above the tile (below the strip, pointing up, for a copy).
     const bob = Math.sin(this.time * 5) * t * 0.06;
-    const ay = cy - half - t * 0.12 + bob;
+    const ay = s.ghost ? y0 + h + t * 0.12 - bob : y0 - t * 0.12 + bob;
     const aw = t * 0.18;
+    const k = s.ghost ? -1 : 1;
     ctx.fillStyle = '#FFFFFF';
     ctx.shadowColor = 'rgba(120, 70, 110, 0.4)';
     ctx.shadowBlur = t * 0.1;
     ctx.beginPath();
     ctx.moveTo(cx, ay);
-    ctx.lineTo(cx - aw, ay - aw);
-    ctx.lineTo(cx - aw * 0.4, ay - aw);
-    ctx.lineTo(cx - aw * 0.4, ay - aw * 2);
-    ctx.lineTo(cx + aw * 0.4, ay - aw * 2);
-    ctx.lineTo(cx + aw * 0.4, ay - aw);
-    ctx.lineTo(cx + aw, ay - aw);
+    ctx.lineTo(cx - aw, ay - aw * k);
+    ctx.lineTo(cx - aw * 0.4, ay - aw * k);
+    ctx.lineTo(cx - aw * 0.4, ay - aw * 2 * k);
+    ctx.lineTo(cx + aw * 0.4, ay - aw * 2 * k);
+    ctx.lineTo(cx + aw * 0.4, ay - aw * k);
+    ctx.lineTo(cx + aw, ay - aw * k);
     ctx.closePath();
     ctx.fill();
     ctx.restore();
@@ -757,7 +862,7 @@ export class GardenRenderer {
     const [fx, fy] = this.facePos(i);
     ctx.save();
     ctx.translate(fx, fy);
-    ctx.rotate((v.angle * Math.PI) / 2);
+    ctx.rotate(v.angle * this.step);
     ctx.scale(t, t);
     if (statics) {
       const o = 0.5 + TILE_OVERFLOW;
@@ -782,21 +887,23 @@ export class GardenRenderer {
     const ctx = this.ctx;
     const t = this.tile;
     const edge = G.half * t;
+    // Each shared side once: E and S on squares, NE, SE and S on hexagons.
+    const half = this.sides / 2;
     for (const i of g.cells) {
       const vi = this.vis[i];
-      for (const d of [1, 2]) {
+      for (let d = 1; d <= half; d++) {
         if (!(an.linked[i] & (1 << d))) continue;
         const j = g.neighbor(i, d);
         const vj = this.vis[j];
         if (Math.abs(this.cellScale(vi) - 1) > 0.01 || Math.abs(this.cellScale(vj) - 1) > 0.01) continue;
         if (vi.shake > 0 || vj.shake > 0 || vi.press > 0.02 || vj.press > 0.02) continue;
         // A joined edge gets a bridge on both sides: into the ghost strip, and out of it.
-        const wrapped = Math.abs(g.x(i) - g.x(j)) + Math.abs(g.y(i) - g.y(j)) !== 1;
+        const wrapped = g.wrap && Math.abs(g.x(i) - g.x(j)) + Math.abs(g.y(i) - g.y(j)) !== 1;
         const [fx, fy] = this.facePos(i);
         const spots: Array<[number, number]> = [[fx, fy]];
         if (wrapped) spots.push(d === 1 ? [fx - g.width * t, fy] : [fx, fy - g.height * t]);
         const wet =
-          (an.inflow[j] === opposite(d) && vj.water > 0.02) ||
+          (an.inflow[j] === g.opposite(d) && vj.water > 0.02) ||
           (an.inflow[i] === d && vi.water > 0.02) ||
           (vi.water >= 1 && vj.water >= 1);
         const loop = an.loopSides[i] & (1 << d) ? Math.max(vi.loop, vj.loop) : 0;
@@ -812,24 +919,20 @@ export class GardenRenderer {
               [G.waterW - 0.045, loop > 0 ? mixColor(P.water, P.loop, loop * 0.75) : P.water],
             ]
           : [];
-        const len = t - edge * 2 + 2;
-        const fill = (cx: number, cy: number, layers: Array<[number, string]>, over = 0) => {
-          for (const [w, color] of layers) {
-            ctx.fillStyle = color;
-            if (d === 1) ctx.fillRect(cx + edge - 1, cy - (w * t) / 2, len, w * t);
-            // Vertical water also runs a little over both tile edges, above their outline.
-            else ctx.fillRect(cx - (w * t) / 2, cy + edge - 1 - over, w * t, len + over * 2);
-          }
-        };
+        // From one tile's edge to the other's, a little over both so the canal covers their outlines.
+        const over = 1.5;
+        const len = t - edge * 2 + over * 2;
+        const [ux, uy] = this.vecs[d];
+        const angle = Math.atan2(uy, ux);
         for (const [cx, cy] of spots) {
-          fill(cx, cy, banks);
-          if (d === 2) {
-            // The banks running down the front of the upper tile are in the shade, not the water.
-            const w = (G.rimW + 0.04) * t;
-            ctx.fillStyle = 'rgba(150, 80, 60, 0.16)';
-            ctx.fillRect(cx - w / 2, cy + edge, w, G.depth * t);
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(angle);
+          for (const [w, color] of [...banks, ...waterLayers]) {
+            ctx.fillStyle = color;
+            ctx.fillRect(edge - over, (-w * t) / 2, len, w * t);
           }
-          fill(cx, cy, waterLayers, d === 2 ? 1.5 : 0);
+          ctx.restore();
         }
       }
     }
@@ -842,13 +945,15 @@ export class GardenRenderer {
     const [cx, cy] = this.facePos(i);
     const t = this.tile * this.cellScale(v);
     const H = G.half;
+    const sides = this.sides;
+    const hex = sides === 6;
 
     if (v.loop > 0.02) {
       ctx.save();
       ctx.translate(cx, cy);
       ctx.scale(t, t);
       ctx.globalAlpha = v.loop * (0.3 + 0.2 * Math.sin(this.time * 4));
-      roundRectPath(ctx, -H + 0.02, -H + 0.02, (H - 0.02) * 2, (H - 0.02) * 2, G.corner);
+      facePath(ctx, sides, 0.02);
       ctx.strokeStyle = P.loop;
       ctx.lineWidth = 0.035;
       ctx.stroke();
@@ -860,7 +965,7 @@ export class GardenRenderer {
       ctx.translate(cx, cy);
       ctx.scale(t, t);
       ctx.globalAlpha = 0.35 + 0.15 * Math.sin(this.time * 3);
-      roundRectPath(ctx, -H + 0.04, -H + 0.04, (H - 0.04) * 2, (H - 0.04) * 2, G.corner * 0.8);
+      facePath(ctx, sides, 0.04, hex ? undefined : G.corner * 0.8);
       ctx.setLineDash([0.06, 0.06]);
       ctx.strokeStyle = P.lockRing;
       ctx.lineWidth = 0.025;
@@ -873,13 +978,15 @@ export class GardenRenderer {
       ctx.translate(cx, cy);
       ctx.scale(t, t);
       ctx.globalAlpha = Math.min(1, v.lock * 1.2);
-      roundRectPath(ctx, -H + 0.025, -H + 0.025, (H - 0.025) * 2, (H - 0.025) * 2, G.corner * 0.85);
+      facePath(ctx, sides, 0.025, hex ? undefined : G.corner * 0.85);
       ctx.strokeStyle = P.lockRing;
       ctx.lineWidth = 0.045;
       ctx.stroke();
       const r = 0.12 * easeOutBack(clamp01(v.lock));
       if (r > 0) {
-        ctx.translate(H - 0.11, -H + 0.11);
+        // In the top right corner; on a hexagon, toward its upper right corner.
+        if (hex) ctx.translate(0.2, -0.33);
+        else ctx.translate(H - 0.11, -H + 0.11);
         ctx.shadowColor = 'rgba(140, 100, 170, 0.35)';
         ctx.shadowBlur = this.tile * 0.08;
         ctx.fillStyle = P.lockBadge;

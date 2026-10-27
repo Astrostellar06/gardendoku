@@ -3,7 +3,7 @@
  * props), generated deterministically in the tile's own frame so it rotates
  * with the tile and stays clear of the canals.
  */
-import { DX, DY, popcount4 } from '../core/grid';
+import { dirVecs, popcount } from '../core/grid';
 import { Rng } from '../core/rng';
 import { P } from './palette';
 import { currentTheme } from './themes';
@@ -85,13 +85,15 @@ export interface Decor {
   tint: number;
 }
 
+type Vecs = ReadonlyArray<readonly [number, number]>;
+
 /** Distance from (x, y) to the closest canal centre line of `mask`. */
-function canalDistance(mask: number, x: number, y: number): number {
+function canalDistance(mask: number, x: number, y: number, vecs: Vecs): number {
   let best = Math.hypot(x, y);
-  for (let d = 0; d < 4; d++) {
+  for (let d = 0; d < vecs.length; d++) {
     if (!(mask & (1 << d))) continue;
-    const ex = DX[d] * 0.5;
-    const ey = DY[d] * 0.5;
+    const ex = vecs[d][0] * 0.5;
+    const ey = vecs[d][1] * 0.5;
     // Project onto the segment (0,0) -> (ex, ey).
     const t = Math.max(0, Math.min(1, (x * ex + y * ey) / 0.25));
     best = Math.min(best, Math.hypot(x - ex * t, y - ey * t));
@@ -116,33 +118,44 @@ function weightedPick(defs: PropDef[], rng: Rng): PropDef {
   return defs[defs.length - 1];
 }
 
+/** Room left between (x, y) and the edge of the tile's face (a square, or a hexagon). */
+function edgeRoom(x: number, y: number, vecs: Vecs): number {
+  let room = Infinity;
+  // Each side faces one direction; opposite sides are covered by the absolute value.
+  for (let d = 0; d < vecs.length / 2; d++) room = Math.min(room, G.half - Math.abs(x * vecs[d][0] + y * vecs[d][1]));
+  return room;
+}
+
 /** `minProps` forces a number of props (style previews). */
-export function makeDecor(mask: number, seed: string, isSource: boolean, minProps = 0): Decor {
+export function makeDecor(mask: number, seed: string, isSource: boolean, minProps = 0, sides = 4): Decor {
   const theme = currentTheme();
   const rng = new Rng(seed);
   const propRng = new Rng(`${seed}:${theme.id}`);
-  const arms = popcount4(mask);
+  const vecs = dirVecs(sides);
+  const arms = popcount(mask);
   const isLeaf = arms === 1 && !isSource;
   const hubClear = isSource ? G.pondR + 0.07 : isLeaf ? G.basinR + 0.1 : G.rimW / 2 + 0.04;
   const canalClear = G.rimW / 2 + 0.035;
+  // Bridges drawn as seen on screen only know vertical and horizontal canals.
+  const propPool = sides === 4 ? theme.props : theme.props.filter((d) => !d.screen);
 
   const fits = (x: number, y: number, r: number, slack: number): boolean => {
-    if (Math.abs(x) > G.half - r - 0.02 || Math.abs(y) > G.half - r - 0.02) return false;
+    if (edgeRoom(x, y, vecs) < r + 0.02) return false;
     if (Math.hypot(x, y) < hubClear + r * slack) return false;
-    return canalDistance(mask, x, y) >= canalClear + r * slack;
+    return canalDistance(mask, x, y, vecs) >= canalClear + r * slack;
   };
 
   // Style props first: they need the most room.
   const props: PropInstance[] = [];
   const rolled = propRng.chance(theme.propChance) ? (propRng.chance(theme.extraChance) ? 2 : 1) : 0;
   const wanted = Math.max(rolled, minProps);
-  const armList = [0, 1, 2, 3].filter((d) => mask & (1 << d));
+  const armList = vecs.map((_, d) => d).filter((d) => mask & (1 << d));
 
   /** Largest prop radius that fits at (x, y); props may lean a little over the canal rim. */
   const capacity = (x: number, y: number): number => {
     const slack = 0.45;
-    let cap = Math.min(G.half - 0.02 - Math.abs(x), G.half - 0.02 - Math.abs(y));
-    cap = Math.min(cap, (Math.hypot(x, y) - hubClear) / slack, (canalDistance(mask, x, y) - canalClear) / slack);
+    let cap = edgeRoom(x, y, vecs) - 0.02;
+    cap = Math.min(cap, (Math.hypot(x, y) - hubClear) / slack, (canalDistance(mask, x, y, vecs) - canalClear) / slack);
     for (const p of props) if (p.def.place === 'ground') cap = Math.min(cap, Math.hypot(p.x - x, p.y - y) - p.r - 0.01);
     return cap;
   };
@@ -160,7 +173,7 @@ export function makeDecor(mask: number, seed: string, isSource: boolean, minProp
 
   for (let n = 0; n < wanted; n++) {
     for (let attempt = 0; attempt < 6; attempt++) {
-      let def = weightedPick(theme.props, propRng);
+      let def = weightedPick(propPool, propRng);
       if (props.some((p) => p.def.id === def.id)) continue;
       let r = propRng.float(def.size[0], def.size[1]) * footprint(def);
       let x = 0;
@@ -187,9 +200,9 @@ export function makeDecor(mask: number, seed: string, isSource: boolean, minProp
         const d = propRng.pick(armList);
         // Keep bridges clear of the tile edge.
         const t = def.place === 'canal' ? propRng.float(isLeaf ? 0.31 : 0.25, 0.33) : propRng.float(isLeaf ? 0.3 : 0.18, 0.36);
-        x = DX[d] * t;
-        y = DY[d] * t;
-        angle = Math.atan2(DY[d], DX[d]) - Math.PI / 2;
+        x = vecs[d][0] * t;
+        y = vecs[d][1] * t;
+        angle = Math.atan2(vecs[d][1], vecs[d][0]) - Math.PI / 2;
         arm = d;
       }
       props.push({ def, x, y, r, angle, arm, delay: propRng.float(0.3, 0.6), v: propRng.next(), v2: propRng.next() });

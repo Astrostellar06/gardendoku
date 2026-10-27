@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Board } from '../src/core/board';
 import { generate, Puzzle } from '../src/core/generator';
 import { E, Grid, N, rotateMask, S, W } from '../src/core/grid';
-import { buildLevel, levelInfo } from '../src/core/levels';
+import { buildLevel, isHexLevel, levelInfo } from '../src/core/levels';
 import { solve } from '../src/core/solver';
 
 describe('grid', () => {
@@ -90,7 +90,8 @@ describe('advanced levels', () => {
     let needing = 0;
     let total = 0;
     for (let n = 21; n <= 60; n++) {
-      if (n % 5 === 0) continue;
+      // Hard and hexagonal levels follow their own rules.
+      if (n % 5 === 0 || isHexLevel(n)) continue;
       const p = buildLevel(n);
       expect(p.unique, `level ${n}`).toBe(true);
       total++;
@@ -112,6 +113,20 @@ describe('hard levels (joined edges)', () => {
       }
     }
     expect(rectangles).toBeGreaterThan(0);
+  });
+
+  it('start on a tiny 4x4 garden and grow one row or column at a time', () => {
+    expect([levelInfo(5).width, levelInfo(5).height]).toEqual([4, 4]);
+    let biggest = 16;
+    for (let n = 10; n <= 200; n += 5) {
+      const info = levelInfo(n);
+      const cells = info.width * info.height;
+      // At most one row or column more than the biggest garden so far.
+      expect(cells, `level ${n}`).toBeLessThanOrEqual(biggest + Math.max(info.width, info.height));
+      expect(info.width).toBeLessThanOrEqual(info.height);
+      biggest = Math.max(biggest, cells);
+    }
+    expect(biggest).toBe(80);
   });
 
   it('are uniquely solvable and solved by their own solution', () => {

@@ -15,7 +15,7 @@
  *
  * Everything is driven by the seed, so a level never needs to be stored.
  */
-import { Grid, opposite, popcount4, rotateMask } from './grid';
+import { Grid, popcount } from './grid';
 import { Rng } from './rng';
 import { buildShape, ShapeId, sourceCell } from './shapes';
 import { solve } from './solver';
@@ -39,6 +39,8 @@ export interface GenParams {
    */
   advanced?: number;
   maxHarden?: number;
+  /** Hexagonal tiles (the shape must be one of the hexagonal ones, or 'rect'). */
+  hex?: boolean;
 }
 
 export interface Puzzle {
@@ -58,13 +60,13 @@ export interface Puzzle {
 function link(conn: Uint8Array, grid: Grid, i: number, d: number): void {
   const j = grid.neighbor(i, d);
   conn[i] |= 1 << d;
-  conn[j] |= 1 << opposite(d);
+  conn[j] |= 1 << grid.opposite(d);
 }
 
 function unlink(conn: Uint8Array, grid: Grid, i: number, d: number): void {
   const j = grid.neighbor(i, d);
   conn[i] &= ~(1 << d);
-  conn[j] &= ~(1 << opposite(d));
+  conn[j] &= ~(1 << grid.opposite(d));
 }
 
 function growTree(grid: Grid, source: number, rng: Rng, windiness: number, maxDegree: number): Uint8Array {
@@ -75,15 +77,15 @@ function growTree(grid: Grid, source: number, rng: Rng, windiness: number, maxDe
   const total = grid.cells.length;
   let active = [source];
   let relaxed = false;
-  const cap = (i: number) => (i === source || relaxed ? 4 : maxDegree);
+  const cap = (i: number) => (relaxed ? grid.sides : i === source ? 4 : maxDegree);
 
   while (count < total) {
     while (active.length) {
       const idx = rng.chance(windiness) ? active.length - 1 : rng.int(active.length);
       const c = active[idx];
       const cand: number[] = [];
-      if (popcount4(conn[c]) < cap(c)) {
-        for (let d = 0; d < 4; d++) {
+      if (popcount(conn[c]) < cap(c)) {
+        for (let d = 0; d < grid.sides; d++) {
           const j = grid.neighbor(c, d);
           if (j >= 0 && !inTree[j]) cand.push(d);
         }
@@ -100,7 +102,7 @@ function growTree(grid: Grid, source: number, rng: Rng, windiness: number, maxDe
       count++;
     }
     if (count < total) {
-      // Degree caps walled off part of the garden: allow 4-way tiles to finish.
+      // Degree caps walled off part of the garden: allow tiles open on every side to finish.
       relaxed = true;
       active = grid.cells.filter((i) => inTree[i]);
     }
@@ -116,7 +118,7 @@ function treePath(grid: Grid, conn: Uint8Array, a: number, b: number): number[] 
   for (let q = 0; q < queue.length; q++) {
     const i = queue[q];
     if (i === b) break;
-    for (let d = 0; d < 4; d++) {
+    for (let d = 0; d < grid.sides; d++) {
       if (!(conn[i] & (1 << d))) continue;
       const j = grid.neighbor(i, d);
       if (prev[j] !== -2) continue;
@@ -130,7 +132,7 @@ function treePath(grid: Grid, conn: Uint8Array, a: number, b: number): number[] 
 }
 
 function dirTo(grid: Grid, a: number, b: number): number {
-  for (let d = 0; d < 4; d++) if (grid.neighbor(a, d) === b) return d;
+  for (let d = 0; d < grid.sides; d++) if (grid.neighbor(a, d) === b) return d;
   return -1;
 }
 
@@ -144,15 +146,16 @@ function repair(
   maxDegree: number,
 ): boolean {
   const cap = (i: number) => (i === source ? 4 : maxDegree);
+  const sides = Array.from({ length: grid.sides }, (_, d) => d);
   for (let attempt = 0; attempt < 24; attempt++) {
     const c = rng.pick(ambiguous);
-    const dirs = rng.shuffle([0, 1, 2, 3]);
+    const dirs = rng.shuffle(sides.slice());
     for (const d of dirs) {
       const j = grid.neighbor(c, d);
       if (j < 0 || conn[c] & (1 << d)) continue;
       const path = treePath(grid, conn, c, j);
-      const degC = popcount4(conn[c]) + 1;
-      const degJ = popcount4(conn[j]) + 1;
+      const degC = popcount(conn[c]) + 1;
+      const degJ = popcount(conn[j]) + 1;
       const options: number[] = [];
       for (let k = 0; k + 1 < path.length; k++) {
         const a = path[k];
@@ -184,9 +187,10 @@ export function generate(params: GenParams): Puzzle {
   // Joined edges remove the borders the deductions start from: allow more rewiring.
   const maxRepairs = params.maxRepairs ?? (params.wrap ? 3000 : 400);
 
-  const active = buildShape(params.shape, width, height, shapeRng);
-  const grid = new Grid(width, height, active, params.wrap ?? false);
-  const source = sourceCell(active, width, height);
+  const hex = params.hex ?? false;
+  const active = buildShape(params.shape, width, height, shapeRng, hex);
+  const grid = new Grid(width, height, active, params.wrap ?? false, hex);
+  const source = sourceCell(active, width, height, hex);
 
   const conn = growTree(grid, source, treeRng, params.windiness, maxDegree);
 
@@ -230,12 +234,12 @@ export function generate(params: GenParams): Puzzle {
   const tiles = new Uint8Array(grid.size);
   let scrambled = 0;
   for (const i of grid.cells) {
-    tiles[i] = rotateMask(conn[i], scrambleRng.int(4));
+    tiles[i] = grid.rotate(conn[i], scrambleRng.int(grid.sides));
     if (tiles[i] !== conn[i]) scrambled++;
   }
   // Make sure the garden never starts (almost) solved.
   if (scrambled < Math.min(3, grid.cells.length)) {
-    for (const i of grid.cells) tiles[i] = rotateMask(conn[i], 1);
+    for (const i of grid.cells) tiles[i] = grid.rotate(conn[i], 1);
   }
 
   return { grid, source, solution: conn, tiles, unique, repairs, deepCells };

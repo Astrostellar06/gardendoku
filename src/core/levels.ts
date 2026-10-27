@@ -5,6 +5,7 @@
  *
  * Every fifth level is a "hard" one: a square or rectangular garden whose
  * opposite edges are joined (water leaving one side comes back on the other).
+ * About one normal level in five is hexagonal: tiles with six sides.
  */
 import { generate, Puzzle } from './generator';
 import { Rng } from './rng';
@@ -24,20 +25,26 @@ export interface LevelInfo {
   wrap: boolean;
   /** Share of tiles that need hypothesis reasoning (0: plain deductions are enough). */
   advanced: number;
+  /** Hexagonal tiles. */
+  hex: boolean;
 }
 
 /**
  * Bump whenever generation changes: saved games from another version are not
  * restored (they would land on a different garden).
  */
-export const GENERATOR_VERSION = 5;
+export const GENERATOR_VERSION = 6;
 
 /** From these levels on, gardens require hypothesis reasoning on part of the tiles. */
 export const ADVANCED_FROM = 21;
 export const ADVANCED_HARD_FROM = 50;
 
-function advancedShare(index: number, wrap: boolean): number {
+/** Hexagonal gardens are harder to read: they ask for hypotheses later, and less. */
+export const ADVANCED_HEX_FROM = 43;
+
+function advancedShare(index: number, wrap: boolean, hex = false): number {
   if (wrap) return index >= ADVANCED_HARD_FROM ? 0.05 : 0;
+  if (hex) return index >= ADVANCED_HEX_FROM ? 0.04 + Math.min(1, (index - ADVANCED_HEX_FROM) / 60) * 0.04 : 0;
   if (index < ADVANCED_FROM) return 0;
   const t = Math.min(1, (index - ADVANCED_FROM) / (80 - ADVANCED_FROM));
   return 0.06 + t * 0.06;
@@ -50,13 +57,96 @@ export function isHardLevel(index: number): boolean {
   return index % HARD_EVERY === 0;
 }
 
-/** Candidate sizes [w, h] of the hard levels' gardens, square or portrait. */
-const WRAP_SIZES: Array<{ upTo: number; sizes: Array<[number, number]> }> = [
-  { upTo: 10, sizes: [[5, 5], [5, 6]] },
-  { upTo: 25, sizes: [[5, 7], [6, 6], [6, 7]] },
-  { upTo: 50, sizes: [[6, 8], [7, 7], [7, 8]] },
-  { upTo: Infinity, sizes: [[7, 9], [8, 8], [8, 10]] },
+/**
+ * Chance for a normal level to be drawn hexagonal. A bit above 1/5 so that,
+ * once a level right after a hexagonal one is skipped, one normal level in
+ * five ends up hexagonal.
+ */
+export const HEX_CHANCE = 0.24;
+
+/** hexFlags[n]: level n is hexagonal; hexBefore[n]: hexagonal levels before it. Filled in order, on demand. */
+const hexFlags: boolean[] = [false];
+const hexBefore: number[] = [0];
+
+function drawHex(index: number, afterHex: boolean): boolean {
+  // The first ones are set: normal, normal, hexagonal, normal, hard.
+  if (index <= HARD_EVERY) return index === 3;
+  if (isHardLevel(index) || afterHex || FIXED_SHAPES[index]) return false;
+  return new Rng(`ruche-${index}`).chance(HEX_CHANCE);
+}
+
+function extendHex(index: number) {
+  for (let n = hexFlags.length; n <= index; n++) {
+    hexBefore.push(hexBefore[n - 1] + (hexFlags[n - 1] ? 1 : 0));
+    hexFlags.push(drawHex(n, hexFlags[n - 1]));
+  }
+}
+
+/** About one normal level in five has hexagonal tiles, never two levels in a row. */
+export function isHexLevel(index: number): boolean {
+  if (index < 1) return false;
+  extendHex(index);
+  return hexFlags[index];
+}
+
+/**
+ * Sizes [w, h] of the hard levels' gardens, square or portrait: the first
+ * one is tiny (4x4), and each rung adds one row or one column.
+ */
+const WRAP_LADDER: Array<[number, number]> = [
+  [4, 4],
+  [4, 5],
+  [5, 5],
+  [5, 6],
+  [6, 6],
+  [6, 7],
+  [7, 7],
+  [7, 8],
+  [8, 8],
+  [8, 9],
+  [8, 10],
 ];
+/** Hard level (1st, 2nd...) reaching each rung: quickly at first, then more and more slowly. */
+const WRAP_RUNG_FROM = [1, 2, 3, 4, 6, 8, 11, 14, 18, 23, 29];
+
+function wrapSize(index: number, rng: Rng): [number, number] {
+  const k = index / HARD_EVERY;
+  let rung = 0;
+  while (rung + 1 < WRAP_RUNG_FROM.length && k >= WRAP_RUNG_FROM[rung + 1]) rung++;
+  // Now and then a garden one size smaller, for variety (never a bigger one).
+  if (rung >= 3 && rng.chance(0.3)) rung--;
+  return WRAP_LADDER[rung];
+}
+
+/**
+ * Hexagonal gardens [shape, w, h], the first one, the second one... (odd
+ * widths keep them symmetrical, and a shape never comes twice in a row),
+ * then a cycle of the biggest ones.
+ */
+const HEX_LADDER: Array<[ShapeId, number, number]> = [
+  ['hexagon', 5, 5],
+  ['comb', 5, 5],
+  ['crown', 7, 7],
+  ['comb', 5, 7],
+  ['hexagon', 7, 7],
+  ['comb', 7, 6],
+  ['crown', 9, 9],
+  ['comb', 7, 7],
+  ['hexagon', 9, 9],
+  ['comb', 7, 8],
+];
+const HEX_CYCLE: Array<[ShapeId, number, number]> = [
+  ['crown', 9, 9],
+  ['comb', 7, 9],
+  ['hexagon', 9, 9],
+  ['comb', 9, 8],
+];
+
+function hexPlan(index: number): [ShapeId, number, number] {
+  extendHex(index);
+  const k = hexBefore[index];
+  return k < HEX_LADDER.length ? HEX_LADDER[k] : HEX_CYCLE[(k - HEX_LADDER.length) % HEX_CYCLE.length];
+}
 
 interface Band {
   upTo: number;
@@ -84,7 +174,7 @@ const FIXED_SHAPES: Record<number, ShapeId> = {
   17: 'ponds',
   22: 'cloister',
   27: 'diamond',
-  33: 'hourglass',
+  36: 'hourglass',
   44: 'heart',
 };
 
@@ -101,6 +191,9 @@ const MAX_EXTRA_ROWS: Record<ShapeId, number> = {
   heart: 2,
   flower: 2,
   hourglass: 6,
+  hexagon: 0,
+  comb: 6,
+  crown: 0,
 };
 
 /**
@@ -140,7 +233,7 @@ export function levelInfo(index: number): LevelInfo {
   const seed = `jardin-${index}`;
   const rng = new Rng(seed + ':params');
   if (isHardLevel(index)) {
-    const [width, height] = rng.pick(WRAP_SIZES.find((b) => index <= b.upTo)!.sizes);
+    const [width, height] = wrapSize(index, rng);
     return {
       index,
       width,
@@ -152,6 +245,24 @@ export function levelInfo(index: number): LevelInfo {
       cells: width * height,
       wrap: true,
       advanced: advancedShare(index, true),
+      hex: false,
+    };
+  }
+  if (isHexLevel(index)) {
+    const [shape, width, height] = hexPlan(index);
+    const cells = buildShape(shape, width, height, undefined, true).reduce((a, b) => a + b, 0);
+    return {
+      index,
+      width,
+      height,
+      shape,
+      shapeName: SHAPE_NAMES[shape],
+      windiness: rng.float(0.25, 0.85),
+      seed,
+      cells,
+      wrap: false,
+      advanced: advancedShare(index, false, true),
+      hex: true,
     };
   }
   const band = BANDS.find((b) => index <= b.upTo)!;
@@ -176,7 +287,7 @@ export function levelInfo(index: number): LevelInfo {
     }
   }
   const cells = buildShape(shape, width, height, new Rng(seed).fork('shape')).reduce((a, b) => a + b, 0);
-  return { index, width, height, shape, shapeName: SHAPE_NAMES[shape], windiness, seed, cells, wrap: false, advanced: advancedShare(index, false) };
+  return { index, width, height, shape, shapeName: SHAPE_NAMES[shape], windiness, seed, cells, wrap: false, advanced: advancedShare(index, false), hex: false };
 }
 
 const cache = new Map<number, Puzzle>();
@@ -193,6 +304,7 @@ export function buildLevel(index: number): Puzzle {
     windiness: info.windiness,
     wrap: info.wrap,
     advanced: info.advanced,
+    hex: info.hex,
   });
   cache.set(index, puzzle);
   if (cache.size > 8) cache.delete(cache.keys().next().value!);

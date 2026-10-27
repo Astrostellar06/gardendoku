@@ -2,9 +2,10 @@
  * Offline estimate of how a solve time compares with other players.
  *
  * No server: each garden gets an estimated median solve time from its size,
- * the tiles that need hypothesis reasoning and joined edges. Players' times on
- * a garden are assumed log-normal (a bell curve on the logarithm of the time):
- * nobody takes a negative time, and a few players take much longer.
+ * the tiles that need hypothesis reasoning, joined edges and hexagonal tiles.
+ * Players' times on a garden are assumed log-normal (a bell curve on the
+ * logarithm of the time): nobody takes a negative time, and a few players
+ * take much longer.
  */
 import type { Puzzle } from './generator';
 
@@ -27,6 +28,8 @@ export const HINT_PENALTY = 25;
 export const ZONE_HINT_WEIGHT = 3;
 /** Joined edges are much harder to read: every border hides a neighbour on the other side. */
 export const WRAP_FACTOR = 2.5;
+/** Hexagonal tiles have six orientations and six neighbours to check. */
+export const HEX_FACTOR = 1.4;
 
 export function timeModel(puzzle: Puzzle): TimeModel {
   const tiles = puzzle.grid.cells.length;
@@ -34,6 +37,7 @@ export function timeModel(puzzle: Puzzle): TimeModel {
   let median = 0.8 * tiles ** 1.3;
   median += (puzzle.deepCells ?? 0) * 7;
   if (puzzle.grid.wrap) median *= WRAP_FACTOR;
+  if (puzzle.grid.hex) median *= HEX_FACTOR;
   return { median: Math.max(20, median), sigma: 0.55 };
 }
 

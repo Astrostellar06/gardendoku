@@ -191,6 +191,26 @@ svg {
   color: #8f63dc;
 }
 
+/* Hexagonal levels: a honey pill, a little hexagon after the title. */
+.level-pill.hex {
+  box-shadow: 0 0 0 2.5px #f5d98f, 0 4px 0 #efc867, var(--shadow-soft);
+}
+
+.level-pill.hex .level-title,
+.level-pill.hex .level-sub {
+  color: #b9800f;
+}
+
+.level-pill.hex:not(.daily) .level-title::after {
+  content: '';
+  display: inline-block;
+  width: 0.78em;
+  height: 0.68em;
+  margin-left: 6px;
+  background: currentColor;
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+}
+
 .level-sub {
   font-size: 12px;
   line-height: 1.2;
@@ -1053,6 +1073,23 @@ h1 {
   stroke-dasharray: none;
 }
 
+/* Hexagonal gardens: honeycomb tiles, the dry one waiting to be turned. */
+.hex-illustration .tile {
+  stroke: #f8d7ae;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.hex-illustration .tile.dry {
+  fill: #f3e4cf;
+  stroke: #f3e4cf;
+}
+
+.hex-illustration .arrow,
+.hex-illustration .arrow-head {
+  stroke: #e0a521;
+}
+
 .styles-card {
   width: min(440px, 100%);
 }
@@ -1254,6 +1291,70 @@ h1 {
   background: var(--lilac);
   color: #fff;
   box-shadow: 0 3px 0 #8a63c9;
+}
+
+/*
+ * Hexagonal levels: honey hexagons with softened corners. The face and its
+ * 3px shadow (like the other buttons) are two masked layers behind the number.
+ */
+.level-btn.hex {
+  --hex-face: #fde7ae;
+  --hex-edge: #efc867;
+  position: relative;
+  z-index: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: #b07612;
+}
+
+.level-btn.hex::before,
+.level-btn.hex::after {
+  content: '';
+  position: absolute;
+  inset: 4% 0;
+  z-index: -1;
+  background: var(--hex-face);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M21,8Q25,0 34,0L66,0Q75,0 79,8L96,42Q100,50 96,58L79,92Q75,100 66,100L34,100Q25,100 21,92L4,58Q0,50 4,42Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M21,8Q25,0 34,0L66,0Q75,0 79,8L96,42Q100,50 96,58L79,92Q75,100 66,100L34,100Q25,100 21,92L4,58Q0,50 4,42Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+
+.level-btn.hex::before {
+  background: var(--hex-edge);
+  transform: translateY(3px);
+}
+
+.level-btn.hex.current {
+  --hex-face: #f2b93b;
+  --hex-edge: #d39a1f;
+  color: #fff;
+}
+
+.level-btn.hex.locked {
+  --hex-face: #fbf1d9;
+  --hex-edge: transparent;
+  background: none;
+  color: #e9cf96;
+}
+
+/* Passed with a video: a white cell with a dashed honey hexagon inside. */
+.level-btn.hex.skipped {
+  --hex-face: #fff;
+  --hex-edge: #ecd59c;
+  background: none;
+  box-shadow: none;
+  outline: none;
+}
+
+.level-btn.hex.skipped:not(.current)::after {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M26.9,16.3Q30,10 37,10L63,10Q70,10 73.1,16.3L86.9,43.7Q90,50 86.9,56.3L73.1,83.7Q70,90 63,90L37,90Q30,90 26.9,83.7L13.1,56.3Q10,50 13.1,43.7Z' fill='none' stroke='%23e5c36f' stroke-width='2' stroke-dasharray='5 4' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E")
+    center / 100% 100% no-repeat var(--hex-face);
+}
+
+.level-btn.hex.skipped.current {
+  --hex-face: #f2b93b;
+  --hex-edge: #d39a1f;
+  background: none;
 }
 
 .level-btn.hard.locked {

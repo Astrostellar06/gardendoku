@@ -57,6 +57,8 @@ export interface SaveData {
   seenTutorial: boolean;
   seenLockTip: boolean;
   seenHardIntro: boolean;
+  /** The hexagonal gardens' introduction was shown. */
+  seenHexIntro: boolean;
   /** Hints left. */
   hints: number;
   /** Zone hints left (fix a 3x3 square at once). */
@@ -85,6 +87,7 @@ const DEFAULTS: SaveData = {
   seenTutorial: false,
   seenLockTip: false,
   seenHardIntro: false,
+  seenHexIntro: false,
   hints: STARTING_HINTS,
   zoneHints: STARTING_ZONE_HINTS,
   skipped: [],

@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { generate } from '../src/core/generator';
-import { distinctRotations, Grid, opposite } from '../src/core/grid';
+import { distinctRotations, Grid } from '../src/core/grid';
 
 /** Count solutions (up to `limit`) by plain backtracking: reading order, check W/N sides, union-find loops. */
 function countSolutions(grid: Grid, tiles: ArrayLike<number>, limit = 2): number {
@@ -10,7 +10,7 @@ function countSolutions(grid: Grid, tiles: ArrayLike<number>, limit = 2): number
   for (let i = 0; i < grid.size; i++) parent[i] = i;
   const find = (x: number) => { while (parent[x] !== x) x = parent[x]; return x; };
   let count = 0;
-  const opts = cells.map((i) => distinctRotations(tiles[i]));
+  const opts = cells.map((i) => distinctRotations(tiles[i], grid.sides));
   const rec = (k: number) => {
     if (count >= limit) return;
     if (k === cells.length) {
@@ -22,18 +22,18 @@ function countSolutions(grid: Grid, tiles: ArrayLike<number>, limit = 2): number
     const i = cells[k];
     for (const m of opts[k]) {
       let ok = true;
-      for (let d = 0; d < 4 && ok; d++) {
+      for (let d = 0; d < grid.sides && ok; d++) {
         const j = grid.neighbor(i, d);
         const open = (m >> d) & 1;
         if (j < 0) { if (open) ok = false; continue; }
         if (choice[j] < 0) continue;
-        const back = (choice[j] >> opposite(d)) & 1;
+        const back = (choice[j] >> grid.opposite(d)) & 1;
         if (open !== back) ok = false;
       }
       if (!ok) continue;
       const undo: number[] = [];
       let loop = false;
-      for (let d = 0; d < 4; d++) {
+      for (let d = 0; d < grid.sides; d++) {
         const j = grid.neighbor(i, d);
         if (j < 0 || choice[j] < 0 || !((m >> d) & 1)) continue;
         const a = find(i), b = find(j);
@@ -85,4 +85,17 @@ it('gardens that need hypothesis reasoning are still unique (brute force)', () =
   }
   console.log('advanced gardens verified:', checked, '- needing hypotheses:', deep);
   expect(deep).toBeGreaterThan(checked / 2);
+});
+
+it('solver uniqueness claims match brute force on hexagonal gardens', () => {
+  let checked = 0;
+  for (let s = 0; s < 40; s++) {
+    const shape = s % 2 ? 'comb' : 'hexagon';
+    const p = generate({ width: 5, height: shape === 'comb' ? 4 : 5, shape, seed: 'hex' + s, windiness: (s % 10) / 10, maxRepairs: 0, hex: true });
+    const n = countSolutions(p.grid, p.tiles, 2);
+    expect(n).toBeGreaterThanOrEqual(1);
+    if (p.unique) { expect(n, `seed ${s}`).toBe(1); checked++; }
+  }
+  console.log('unique hexagonal puzzles verified:', checked);
+  expect(checked).toBeGreaterThan(20);
 });

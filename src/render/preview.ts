@@ -79,7 +79,7 @@ export function renderThemePreview(id: ThemeId, size: number, dpr: number): HTML
       ctx.fill();
       ctx.restore();
       const decor = makeDecor(tile.mask, `preview:${k}`, false, k === 1 ? 0 : 1);
-      const st = { mask: tile.mask, decor, isSource: false, bloom: 1, water: 1, inflow: tile.inflow, loop: 0, rot: 0 };
+      const st = { mask: tile.mask, decor, isSource: false, bloom: 1, water: 1, inflow: tile.inflow, loop: 0, rot: 0, sides: 4 };
       ctx.save();
       ctx.translate(cx, cy - depth / 2);
       ctx.scale(t, t);
@@ -91,7 +91,7 @@ export function renderThemePreview(id: ThemeId, size: number, dpr: number): HTML
     SAMPLE.forEach((tile, k) => {
       const [cx, cy] = center(tile.x, tile.y);
       const decor = makeDecor(tile.mask, 'preview:' + k, false, k === 1 ? 0 : 1);
-      const st = { mask: tile.mask, decor, isSource: false, bloom: 1, water: 1, inflow: tile.inflow, loop: 0, rot: 0 };
+      const st = { mask: tile.mask, decor, isSource: false, bloom: 1, water: 1, inflow: tile.inflow, loop: 0, rot: 0, sides: 4 };
       ctx.save();
       ctx.translate(cx, cy - (G.depth * t) / 2);
       ctx.scale(t, t);

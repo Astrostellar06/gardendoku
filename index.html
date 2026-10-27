@@ -140,6 +140,7 @@
           </ul>
           <button class="big-btn" data-close>C'est parti</button>
           <button class="link-btn" id="btn-replay-tutorial" data-close>Revoir le tutoriel</button>
+          <button class="link-btn" id="btn-replay-wrap" data-close>Revoir le tutoriel des bords reliés</button>
         </div>
       </section>
 
@@ -165,6 +166,32 @@
           </svg>
           <p>Ici, les <b>bords du jardin sont reliés</b> : l'eau qui sort d'un côté réapparaît du côté opposé.</p>
           <p class="small">Les bandes pâles autour du jardin montrent les parcelles de l'autre côté. Tu peux aussi les toucher.</p>
+          <button class="big-btn" data-close>Compris !</button>
+        </div>
+      </section>
+
+      <section id="hex-intro" class="overlay hidden">
+        <div class="card">
+          <h2>Jardin hexagonal</h2>
+          <svg class="wrap-illustration hex-illustration" viewBox="0 0 220 132" aria-hidden="true">
+            <polygon class="tile" points="92,80 81,99.05 59,99.05 48,80 59,60.95 81,60.95" />
+            <polygon class="tile" points="129.5,58.35 118.5,77.4 96.5,77.4 85.5,58.35 96.5,39.3 118.5,39.3" />
+            <polygon class="tile" points="167,80 156,99.05 134,99.05 123,80 134,60.95 156,60.95" />
+            <clipPath id="hex-dry-clip">
+              <polygon points="129.5,101.65 118.5,120.7 96.5,120.7 85.5,101.65 96.5,81.4 118.5,81.4" />
+            </clipPath>
+            <polygon class="tile dry" points="129.5,101.65 118.5,120.7 96.5,120.7 85.5,101.65 96.5,82.6 118.5,82.6" />
+            <path class="canal" d="M70 80 L107.5 58.35 L145 80" />
+            <!-- The dry tile's canal stops at its own edge. -->
+            <path class="canal" d="M107.5 101.65 L107.5 76" clip-path="url(#hex-dry-clip)" />
+            <path class="water" d="M70 80 L107.5 58.35 L145 80" />
+            <circle class="spring" cx="70" cy="80" r="9" />
+            <circle class="bloom" cx="145" cy="80" r="7" />
+            <path class="arrow" d="M129.5 53.15 A31 31 0 0 1 168.7 60.1" />
+            <path class="arrow-head" d="M168 51.5 L168.7 60.1 L160.4 58" />
+          </svg>
+          <p>Ici, les parcelles ont <b>six côtés</b> : chacune peut se relier à six voisines.</p>
+          <p class="small">Chaque toucher la fait tourner d'un sixième de tour. La règle ne change pas : tout relier à la source, sans boucle.</p>
           <button class="big-btn" data-close>Compris !</button>
         </div>
       </section>

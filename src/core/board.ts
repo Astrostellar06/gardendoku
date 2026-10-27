@@ -3,7 +3,7 @@
  * the resulting network (which tiles get water, where loops are, victory).
  */
 import { Puzzle } from './generator';
-import { Grid, opposite, rotateMask } from './grid';
+import { Grid } from './grid';
 
 export interface Analysis {
   /** Sides of each tile that are joined with the neighbouring tile. */
@@ -51,13 +51,14 @@ export class Board {
   }
 
   mask(i: number): number {
-    return rotateMask(this.base[i], this.rot[i]);
+    return this.grid.rotate(this.base[i], this.rot[i]);
   }
 
-  /** Rotate clockwise (dir = 1) or counter-clockwise (dir = -1). Returns false if locked. */
+  /** Rotate clockwise (dir = 1) or counter-clockwise (dir = -1) by one step. Returns false if locked. */
   rotate(i: number, dir: 1 | -1 = 1): boolean {
     if (!this.grid.isActive(i) || this.locked[i]) return false;
-    this.rot[i] = (this.rot[i] + dir + 4) & 3;
+    const sides = this.grid.sides;
+    this.rot[i] = (this.rot[i] + dir + sides) % sides;
     this.moves++;
     return true;
   }
@@ -85,11 +86,12 @@ export class Board {
     return this.mask(i) === this.puzzle.solution[i];
   }
 
-  /** Turn tile i to its solved orientation and lock it (hint). Returns the quarter turns applied. */
+  /** Turn tile i to its solved orientation and lock it (hint). Returns the steps applied. */
   applySolution(i: number): number {
-    for (let k = 0; k < 4; k++) {
-      if (rotateMask(this.base[i], this.rot[i] + k) === this.puzzle.solution[i]) {
-        this.rot[i] = (this.rot[i] + k) & 3;
+    const sides = this.grid.sides;
+    for (let k = 0; k < sides; k++) {
+      if (this.grid.rotate(this.base[i], this.rot[i] + k) === this.puzzle.solution[i]) {
+        this.rot[i] = (this.rot[i] + k) % sides;
         this.locked[i] = 1;
         return k;
       }
@@ -100,8 +102,8 @@ export class Board {
   /** Put every tile in its solved orientation (debug / end screen). */
   solveInstantly(): void {
     for (const i of this.grid.cells) {
-      for (let r = 0; r < 4; r++) {
-        if (rotateMask(this.base[i], r) === this.puzzle.solution[i]) {
+      for (let r = 0; r < this.grid.sides; r++) {
+        if (this.grid.rotate(this.base[i], r) === this.puzzle.solution[i]) {
           this.rot[i] = r;
           break;
         }
@@ -112,13 +114,14 @@ export class Board {
   analyze(): Analysis {
     const { grid } = this;
     const size = grid.size;
+    const sides = grid.sides;
     const linked = new Uint8Array(size);
     for (const i of grid.cells) {
       const m = this.mask(i);
-      for (let d = 0; d < 4; d++) {
+      for (let d = 0; d < sides; d++) {
         if (!(m & (1 << d))) continue;
         const j = grid.neighbor(i, d);
-        if (j >= 0 && this.mask(j) & (1 << opposite(d))) linked[i] |= 1 << d;
+        if (j >= 0 && this.mask(j) & (1 << grid.opposite(d))) linked[i] |= 1 << d;
       }
     }
 
@@ -131,13 +134,13 @@ export class Board {
     dist[this.source] = 0;
     for (let q = 0; q < order.length; q++) {
       const i = order[q];
-      for (let d = 0; d < 4; d++) {
+      for (let d = 0; d < sides; d++) {
         if (!(linked[i] & (1 << d))) continue;
         const j = grid.neighbor(i, d);
         if (watered[j]) continue;
         watered[j] = 1;
         dist[j] = dist[i] + 1;
-        inflow[j] = opposite(d);
+        inflow[j] = grid.opposite(d);
         order.push(j);
       }
     }
@@ -163,7 +166,7 @@ export class Board {
   restore(snap: BoardSnapshot): boolean {
     if (snap.rot.length !== this.grid.size || snap.locked.length !== this.grid.size) return false;
     for (let i = 0; i < this.grid.size; i++) {
-      this.rot[i] = Number(snap.rot[i]) & 3;
+      this.rot[i] = Number(snap.rot[i]) % this.grid.sides;
       this.locked[i] = snap.locked[i] === '1' ? 1 : 0;
     }
     this.moves = snap.moves;
@@ -197,11 +200,11 @@ function findLoopSides(grid: Grid, linked: Uint8Array): Uint8Array {
       const top = stackNode.length - 1;
       const u = stackNode[top];
       const d = stackDir[top];
-      if (d < 4) {
+      if (d < grid.sides) {
         stackDir[top] = d + 1;
         if (!(linked[u] & (1 << d))) continue;
         const inDir = stackIn[top];
-        if (inDir >= 0 && d === opposite(inDir)) continue; // edge back to the parent
+        if (inDir >= 0 && d === grid.opposite(inDir)) continue; // edge back to the parent
         const v = grid.neighbor(u, d);
         if (disc[v] < 0) {
           disc[v] = low[v] = time++;
@@ -220,7 +223,7 @@ function findLoopSides(grid: Grid, linked: Uint8Array): Uint8Array {
           low[p] = Math.min(low[p], low[u]);
           if (low[u] > disc[p]) {
             bridge[p] |= 1 << inDir;
-            bridge[u] |= 1 << opposite(inDir);
+            bridge[u] |= 1 << grid.opposite(inDir);
           }
         }
       }

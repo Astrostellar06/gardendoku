@@ -18,16 +18,7 @@ import { attachInput } from './ui/input';
 import { shareOrCopy } from './ui/share';
 import { advanceStreak, daysToZoneHint, liveStreak, nextReward, rewardText, streakReward, weekDay } from './streak';
 import { LevelSnapshot, loadSave, SaveData, writeSave } from './ui/storage';
-import {
-  buildTutorialBoard,
-  LAST_CELL,
-  LAST_HINT_DELAY,
-  LOCK_CELL,
-  STEP_COUNT,
-  STEPS,
-  TURN_CELL,
-  TutorialStep,
-} from './tutorial';
+import { LAST_HINT_DELAY, TutorialId, TUTORIALS, TutorialStep } from './tutorial';
 
 type Mode = 'home' | 'play' | 'tutorial';
 
@@ -52,7 +43,10 @@ export class Game {
   private resetArmedUntil = 0;
   /** Lock state applied by the current finger stroke, and how many tiles it changed. */
   private paint: { lock: boolean; count: number } | null = null;
-  private tutorialStep: TutorialStep = 'intro';
+  /** Tutorial being played, its current step, and the level it leads to. */
+  private tutorial: TutorialId = 'basics';
+  private tutorialIndex = 0;
+  private tutorialLevel = 1;
   /** Whether a lock was used on the current level (for the "no help" challenge). */
   private usedLock = false;
   /** Result of the last win, shown on the win card. */
@@ -96,7 +90,8 @@ export class Game {
       holdStart: (cell, ms) => {
         this.sound.unlock();
         this.renderer.setPressed(cell);
-        const holdable = this.mode === 'tutorial' ? this.tutorialStep === 'lock' && cell === LOCK_CELL : !this.lockMode && !this.won;
+        const step = this.tutorialStepInfo();
+        const holdable = this.mode === 'tutorial' ? step.kind === 'hold' && cell === step.cell : !this.lockMode && !this.won;
         if (holdable) this.renderer.hold = { cell, start: performance.now() / 1000, duration: ms / 1000 };
       },
       holdEnd: () => {
@@ -118,7 +113,8 @@ export class Game {
     on('btn-styles', () => this.openStyles());
     on('btn-watch-ad', () => this.watchAdForHints());
     on('btn-help', () => this.hud.openHowto());
-    on('btn-replay-tutorial', () => this.startTutorial());
+    on('btn-replay-tutorial', () => this.startTutorial('basics'));
+    on('btn-replay-wrap', () => this.startTutorial('wrap'));
     on('coach-next', () => this.advanceTutorial());
     on('coach-skip', () => this.finishTutorial());
     on('btn-levels', () => this.hud.openLevels(this.save.maxLevel, this.save.level, this.save.skipped, (n) => this.play(n)));
@@ -158,7 +154,7 @@ export class Game {
       return;
     }
     if (!this.save.seenTutorial && this.save.maxLevel <= 1 && !this.save.snapshot) {
-      this.startTutorial();
+      this.startTutorial('basics');
       return;
     }
     this.showHome();
@@ -178,17 +174,17 @@ export class Game {
   tick(dt: number) {
     if (this.mode === 'tutorial') {
       this.tutorialClock += dt;
-      if (this.tutorialStep === 'finish') {
-        if (this.tutorialSolved && this.renderer.waterComplete()) {
-          // The whole garden is watered: celebrate, then congratulate.
-          this.sound.win();
-          this.vibrate([18, 40, 18]);
-          this.renderer.celebrate(() => undefined);
-          this.setTutorialStep('bravo');
-        } else if (!this.tutorialSolved && !this.renderer.spotlight && this.tutorialClock > LAST_HINT_DELAY) {
-          // Stuck for a while: point at the tile that is still wrong.
-          this.renderer.spotlight = { cell: LAST_CELL, kind: 'tap' };
-        }
+      const step = this.tutorialStepInfo();
+      if (step.kind === 'read') return;
+      if (this.tutorialSolved && this.renderer.waterComplete()) {
+        // The whole garden is watered: celebrate, then congratulate.
+        this.sound.win();
+        this.vibrate([18, 40, 18]);
+        this.renderer.celebrate(() => undefined);
+        this.setTutorialStep(this.tutorialIndex + 1);
+      } else if (step.kind === 'free' && !this.tutorialSolved && !this.renderer.spotlight && this.tutorialClock > LAST_HINT_DELAY) {
+        // Stuck for a while: point at the tile that is still wrong.
+        this.renderer.spotlight = { cell: step.cell!, kind: 'tap' };
       }
       return;
     }
@@ -252,14 +248,19 @@ export class Game {
     this.daily = null;
     this.applyStyle(this.pickStyle(n));
     const info = levelInfo(n);
+    if (info.wrap && !this.save.seenHardIntro) {
+      // First hard level: a tiny guided garden with joined edges comes first.
+      this.startTutorial('wrap', n);
+      return;
+    }
     const snap = this.save.snapshot?.level === n ? this.save.snapshot : null;
     this.save.level = n;
     this.startGarden(info, buildLevel(n), snap);
     this.hud.setLevel(info);
 
-    if (info.wrap && !this.save.seenHardIntro) {
-      this.save.seenHardIntro = true;
-      this.renderer.after(0.5, () => this.hud.openHardIntro());
+    if (info.hex && !this.save.seenHexIntro) {
+      this.save.seenHexIntro = true;
+      this.renderer.after(0.5, () => this.hud.openHexIntro());
     } else if (!this.save.seenTutorial && n === 1) {
       this.renderer.after(0.8, () => this.hud.toast('Touche une parcelle pour la faire tourner', false, 4000));
     } else if (n === 3 && !this.save.seenLockTip) {
@@ -383,56 +384,71 @@ export class Game {
 
   // ---------- Tutorial ----------
 
-  private startTutorial() {
+  private tutorialStepInfo(): TutorialStep {
+    return TUTORIALS[this.tutorial].steps[this.tutorialIndex];
+  }
+
+  /** Play a tutorial; afterwards the game goes on with `level`. */
+  private startTutorial(id: TutorialId, level = this.save.level) {
     this.persist();
     this.mode = 'tutorial';
+    this.tutorial = id;
+    this.tutorialLevel = level;
     this.won = false;
     this.setLockMode(false);
+    this.setZoneMode(false);
     this.hud.hideWin();
     this.hud.hideToast();
     this.hud.hideHome();
     this.hud.showGameBars(false);
-    const board = buildTutorialBoard();
+    const board = TUTORIALS[id].build();
     this.board = board;
     this.tutorialSolved = false;
-    this.renderer.setBoard(board, 'tutoriel');
+    this.renderer.setBoard(board, id === 'basics' ? 'tutoriel' : 'tutoriel-bords');
     this.analysis = board.analyze();
     this.renderer.setAnalysis(this.analysis);
-    this.setTutorialStep('intro');
+    this.setTutorialStep(0);
   }
 
-  private setTutorialStep(step: TutorialStep) {
-    this.tutorialStep = step;
+  private setTutorialStep(index: number) {
+    this.tutorialIndex = index;
     this.tutorialClock = 0;
-    const info = STEPS[step];
-    this.hud.showCoach(info.text, [info.number, STEP_COUNT], info.button);
-    this.renderer.spotlight = info.focus;
+    const tutorial = TUTORIALS[this.tutorial];
+    const step = tutorial.steps[index];
+    this.hud.showCoach(step.text, [step.number, tutorial.count], step.kind === 'read' ? step.button! : null);
+    const acts = step.kind === 'turn' || step.kind === 'hold';
+    this.renderer.spotlight = acts ? { cell: step.cell!, kind: step.kind === 'hold' ? 'hold' : 'tap', ghost: step.ghost } : null;
     requestAnimationFrame(() => this.relayout());
   }
 
-  /** The coach's button: move on to the next explanation. */
+  /** The coach's button: move on to the next explanation, or start playing after the last one. */
   private advanceTutorial() {
-    if (this.mode !== 'tutorial') return;
-    if (this.tutorialStep === 'intro') this.setTutorialStep('turn');
-    else if (this.tutorialStep === 'flowing') this.setTutorialStep('lock');
-    else if (this.tutorialStep === 'bravo') this.finishTutorial();
+    if (this.mode !== 'tutorial' || this.tutorialStepInfo().kind !== 'read') return;
+    if (this.tutorialIndex + 1 < TUTORIALS[this.tutorial].steps.length) this.setTutorialStep(this.tutorialIndex + 1);
+    else this.finishTutorial();
   }
 
   private finishTutorial() {
     if (this.mode !== 'tutorial') return;
-    this.save.seenTutorial = true;
-    this.save.seenLockTip = true;
+    if (this.tutorial === 'basics') {
+      this.save.seenTutorial = true;
+      this.save.seenLockTip = true;
+    } else {
+      this.save.seenHardIntro = true;
+    }
     writeSave(this.save);
-    this.play(this.save.level);
+    this.play(this.tutorialLevel);
   }
 
   /**
-   * Tutorial taps: first only the highlighted tile turns; on the last step the
-   * player plays freely (locked tiles refuse to turn) until the garden is done.
+   * Tutorial taps: only the highlighted tile turns (or its faded copy across
+   * the edge); on a 'free' step the player plays freely (locked tiles refuse
+   * to turn) until the garden is done.
    */
   private tutorialTap(board: Board, cell: number) {
-    const free = this.tutorialStep === 'finish' && !this.tutorialSolved;
-    const allowed = (this.tutorialStep === 'turn' && cell === TURN_CELL) || (free && !board.locked[cell]);
+    const step = this.tutorialStepInfo();
+    const free = step.kind === 'free' && !this.tutorialSolved;
+    const allowed = (step.kind === 'turn' && cell === step.cell && !this.tutorialSolved) || (free && !board.locked[cell]);
     if (!allowed) {
       this.renderer.shake(cell);
       if (free) this.sound.denied();
@@ -443,12 +459,12 @@ export class Game {
     this.sound.rotate();
     this.analysis = board.analyze();
     this.renderer.setAnalysis(this.analysis);
-    if (this.tutorialStep === 'turn' && board.isCorrect(TURN_CELL)) {
-      this.setTutorialStep('flowing');
-    } else if (free && this.analysis.solved) {
+    if (this.analysis.solved) {
       // Wait for the water to reach every tile before congratulating.
       this.tutorialSolved = true;
       this.renderer.spotlight = null;
+    } else if (step.kind === 'turn' && board.isCorrect(step.cell!)) {
+      this.setTutorialStep(this.tutorialIndex + 1);
     }
   }
 
@@ -488,11 +504,12 @@ export class Game {
   private paintStart(cell: number) {
     const board = this.board;
     if (this.mode === 'tutorial' && board) {
-      if (this.tutorialStep === 'lock' && cell === LOCK_CELL) {
+      const step = this.tutorialStepInfo();
+      if (step.kind === 'hold' && cell === step.cell) {
         board.setLock(cell, true);
         this.sound.lock(true);
         this.vibrate(12);
-        this.setTutorialStep('finish');
+        this.setTutorialStep(this.tutorialIndex + 1);
       }
       return;
     }
@@ -563,12 +580,13 @@ export class Game {
     if (!pool.length) {
       const wrong = cells.filter((i) => !board.locked[i] && !board.isCorrect(i));
       // Prefer tiles at the edge of the watered network: they unblock the flow.
-      const near = wrong.filter((i) =>
-        [0, 1, 2, 3].some((d) => {
+      const near = wrong.filter((i) => {
+        for (let d = 0; d < board.grid.sides; d++) {
           const j = board.grid.neighbor(i, d);
-          return j >= 0 && an.watered[j] && board.isCorrect(j);
-        }),
-      );
+          if (j >= 0 && an.watered[j] && board.isCorrect(j)) return true;
+        }
+        return false;
+      });
       pool = near.length ? near : wrong;
     }
     if (!pool.length) return;
@@ -603,7 +621,8 @@ export class Game {
     }
     this.setLockMode(false);
     this.setZoneMode(true);
-    this.hud.toast('Touche une parcelle : le carré de 3×3 autour se remet en place', false, 3200);
+    const zone = this.board.grid.hex ? 'elle et ses 6 voisines se remettent en place' : 'le carré de 3×3 autour se remet en place';
+    this.hud.toast(`Touche une parcelle : ${zone}`, false, 3200);
   }
 
   private setZoneMode(on: boolean) {
@@ -611,30 +630,37 @@ export class Game {
     this.hud.setZoneMode(on);
   }
 
-  /** Put the 3x3 square around `cell` in its solved orientation and lock it. */
+  /**
+   * Put the 3x3 square around `cell` in its solved orientation and lock it
+   * (on hexagons: the tile and its six neighbours).
+   */
   private applyZone(center: number) {
     const board = this.board!;
     const grid = board.grid;
     const cx = center % grid.width;
     const cy = Math.floor(center / grid.width);
-    const zone: number[] = [];
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        let x = cx + dx;
-        let y = cy + dy;
-        if (grid.wrap) {
-          x = (x + grid.width) % grid.width;
-          y = (y + grid.height) % grid.height;
-        } else if (x < 0 || y < 0 || x >= grid.width || y >= grid.height) {
-          continue;
+    const zone: number[] = [center];
+    if (grid.hex) {
+      for (let d = 0; d < grid.sides; d++) if (grid.neighbor(center, d) >= 0) zone.push(grid.neighbor(center, d));
+    } else {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          let x = cx + dx;
+          let y = cy + dy;
+          if (grid.wrap) {
+            x = (x + grid.width) % grid.width;
+            y = (y + grid.height) % grid.height;
+          } else if (x < 0 || y < 0 || x >= grid.width || y >= grid.height) {
+            continue;
+          }
+          const i = y * grid.width + x;
+          if (grid.active[i] && !zone.includes(i)) zone.push(i);
         }
-        const i = y * grid.width + x;
-        if (grid.active[i] && !zone.includes(i)) zone.push(i);
       }
     }
     const todo = zone.filter((i) => !board.isCorrect(i) || !board.locked[i]);
     if (!todo.length) {
-      this.hud.toast('Ce carré est déjà en place : choisis-en un autre');
+      this.hud.toast(grid.hex ? 'Cette zone est déjà en place : choisis-en une autre' : 'Ce carré est déjà en place : choisis-en un autre');
       return;
     }
     for (const i of todo) {
