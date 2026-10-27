@@ -38,6 +38,8 @@ export interface NativeHost {
   back(): boolean;
   /** Save now: the app may be killed while in the background. */
   persist(): void;
+  /** An invitation link was opened: gardendoku://ami/CODE. */
+  friendLink(code: string): void;
 }
 
 export function setupNativeApp(host: NativeHost) {
@@ -45,6 +47,10 @@ export function setupNativeApp(host: NativeHost) {
   // Dark icons: the garden's background is always light, even in dark mode.
   SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => undefined);
   App.addListener('pause', () => host.persist());
+  App.addListener('appUrlOpen', ({ url }) => {
+    const code = /^gardendoku:\/\/ami\/([A-Za-z0-9]{6})/.exec(url)?.[1];
+    if (code) host.friendLink(code);
+  });
   // Android: from the home screen, back sends the app to the background (it keeps its state).
   App.addListener('backButton', () => {
     if (!host.back()) App.minimizeApp();

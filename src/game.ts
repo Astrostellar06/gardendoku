@@ -15,7 +15,9 @@ import type { ThemeId } from './render/themes';
 import { showRewardedAd } from './ui/ads';
 import { Hud, StreakView, StyleCard, WinView } from './ui/hud';
 import { attachInput } from './ui/input';
+import { LeagueScreen, ordinal } from './ui/league';
 import { vibrate } from './native';
+import { Social } from './online/social';
 import { shareOrCopy } from './ui/share';
 import { advanceStreak, daysToZoneHint, liveStreak, nextReward, rewardText, streakReward, weekDay } from './streak';
 import { LevelSnapshot, loadSave, SaveData, writeSave } from './ui/storage';
@@ -57,6 +59,9 @@ export class Game {
   private tutorialSolved = false;
   /** Set while playing the daily challenge. */
   private daily: DailyInfo | null = null;
+  /** Weekly leagues and friends (online). */
+  private social = new Social();
+  private league: LeagueScreen;
 
   constructor(canvas: HTMLCanvasElement) {
     // `?debloquer` unlocks every style and tops up hints (testing).
@@ -80,6 +85,17 @@ export class Game {
     this.hud.setSound(this.sound.enabled);
     this.hud.setHints(this.save.hints);
     this.hud.setZoneHints(this.save.zoneHints);
+    this.league = new LeagueScreen(this.hud, this.social, {
+      toast: (text) => this.hud.toast(text, false, 3200),
+      reward: (r) => {
+        this.save.hints += r.hints;
+        this.save.zoneHints += r.zones;
+        this.hud.setHints(this.save.hints);
+        this.hud.setZoneHints(this.save.zoneHints);
+        this.persist();
+      },
+      badge: (rank) => this.hud.setLeagueBadge(true, rank ? ordinal(rank) : 'Ligue'),
+    });
 
     attachInput(canvas, {
       cellAt: (x, y) => (this.mode === 'home' ? -1 : this.renderer.cellAt(x, y)),
@@ -120,6 +136,7 @@ export class Game {
     on('coach-skip', () => this.finishTutorial());
     on('btn-levels', () => this.hud.openLevels(this.save.maxLevel, this.save.level, this.save.skipped, (n) => this.play(n)));
     on('btn-streak', () => this.openStreak());
+    on('btn-league', () => this.league.open());
     on('btn-zone-streak', () => this.openStreak());
     on('btn-zone', () => this.toggleZoneMode());
     on('btn-skip', () => {
@@ -146,6 +163,7 @@ export class Game {
 
   /** Opens on the home screen, or straight on a level with `?niveau=60` in the URL (handy for testing). */
   start() {
+    void this.startOnline();
     const requested = Number(new URLSearchParams(location.search).get('niveau'));
     if (Number.isInteger(requested) && requested >= 1) {
       // Drop the parameter so a reload simply resumes the saved game.
@@ -208,6 +226,58 @@ export class Game {
         }
       });
     }
+  }
+
+  // ---------- Online ----------
+
+  /**
+   * Sign in, send the gardens solved offline, hand out the prizes of the weeks
+   * over, and follow an invitation (`?ami=CODE` in the address).
+   */
+  private async startOnline() {
+    if (!this.social.enabled) return;
+    this.hud.setLeagueBadge(true);
+    const params = new URLSearchParams(location.search);
+    const invite = params.get('ami');
+    if (invite || params.has('ligue')) {
+      params.delete('ami');
+      params.delete('ligue');
+      const rest = params.toString();
+      history.replaceState(null, '', location.pathname + (rest ? `?${rest}` : ''));
+    }
+    this.social.syncLevel(this.save.maxLevel);
+    if (!(await this.social.connect())) return;
+    const results = await this.social.claimRewards();
+    if (results.length) this.league.showResults(results);
+    if (invite) await this.league.addFriend(invite);
+    void this.refreshLeagueBadge();
+  }
+
+  /** Invitation link opened in the app (gardendoku://ami/CODE). */
+  friendLink(code: string) {
+    if (this.social.enabled) void this.league.addFriend(code);
+  }
+
+  /** The home badge shows the player's rank in their league of the week. */
+  private async refreshLeagueBadge() {
+    try {
+      const league = await this.social.league();
+      const k = league.members.findIndex((m) => m.me);
+      this.hud.setLeagueBadge(true, k >= 0 ? ordinal(k + 1) : 'Ligue');
+    } catch {
+      // Offline: the badge keeps its last text.
+    }
+  }
+
+  /** League points of the garden just won, added to the win card once the server has counted them. */
+  private async scoreWin() {
+    this.hud.setWinLeague(null);
+    if (!this.social.enabled || !this.info) return;
+    const [kind, ref] = this.daily ? (['daily', Number(this.daily.key.replace(/-/g, ''))] as const) : (['level', this.info.index] as const);
+    const scored = await this.social.recordSolve(kind, ref, this.save.maxLevel);
+    if (!scored || scored.points <= 0) return;
+    this.hud.setWinLeague(`+${scored.points} point${scored.points > 1 ? 's' : ''} de ligue · ${scored.weekPoints} cette semaine`);
+    void this.refreshLeagueBadge();
   }
 
   // ---------- Screens ----------
@@ -732,6 +802,8 @@ export class Game {
     if (!rewarded || this.mode !== 'play' || this.info?.index !== level) return;
     if (!this.save.skipped.includes(level)) this.save.skipped.push(level);
     this.save.maxLevel = Math.max(this.save.maxLevel, level + 1);
+    this.social.syncLevel(this.save.maxLevel);
+    void this.social.flush();
     this.save.snapshot = null;
     this.loadLevel(level + 1);
     this.hud.toast(`Niveau ${level} passé : tu pourras y revenir depuis la liste`, false, 3200);
@@ -874,6 +946,7 @@ export class Game {
     const fresh = refreshUnlocks(this.save);
     if (this.lastWin) this.lastWin.unlocked = fresh.map((id) => THEMES.find((t) => t.id === id)!.name);
     writeSave(this.save);
+    void this.scoreWin();
   }
 
   /** First garden of the day: the streak grows, and some days bring a reward. */

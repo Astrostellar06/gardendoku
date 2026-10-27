@@ -1615,3 +1615,401 @@ h1 {
 #btn-play {
   width: min(290px, 100%);
 }
+
+/* ---------- Weekly league, friends and profile ---------- */
+
+/* Home corner badge, facing the streak badge. */
+.league-badge {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  left: max(14px, env(safe-area-inset-left));
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 13px 5px 8px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: var(--edge), var(--shadow-soft);
+  font-size: 18px;
+  font-weight: 600;
+  color: #c98a12;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.league-badge:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--card-edge), var(--shadow-soft);
+}
+
+.cup-icon {
+  width: 30px;
+  height: 30px;
+  flex: none;
+}
+
+.cup-icon .cup-body,
+.cup-icon .cup-stem,
+.cup-icon .cup-base {
+  fill: #ffd45a;
+  stroke: #e0a521;
+  stroke-width: 1.5;
+}
+
+.cup-icon .cup-handle {
+  stroke: #e0a521;
+  stroke-width: 2.2;
+}
+
+.cup-icon .cup-shine {
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 1.8;
+}
+
+.win-league {
+  font-weight: 600;
+  color: #c98a12;
+}
+
+.league-card {
+  width: min(400px, 100%);
+  gap: 10px;
+}
+
+.league-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--pink-soft);
+}
+
+.league-tab {
+  padding: 8px 22px;
+  border-radius: 999px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--pink-deep);
+}
+
+.league-tab.active {
+  background: var(--card);
+  box-shadow: 0 3px 0 var(--card-edge);
+}
+
+.league-list {
+  width: 100%;
+  max-height: 46vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 2px 6px;
+}
+
+.league-empty {
+  padding: 14px 6px 6px;
+  color: var(--ink-soft);
+}
+
+.league-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 18px;
+  background: #fff7fa;
+  text-align: left;
+}
+
+.league-row.me {
+  background: var(--pink-soft);
+  box-shadow: inset 0 0 0 2px var(--pink);
+}
+
+/* The prizes stop after the fifth place. */
+.league-row.last-prize {
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.league-row.last-prize::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -8px;
+  border-bottom: 2px dashed #f3c6d6;
+}
+
+.league-rank {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.podium1 .league-rank {
+  background: #ffd45a;
+  color: #fff;
+}
+
+.podium2 .league-rank {
+  background: #c9d3e0;
+  color: #fff;
+}
+
+.podium3 .league-rank {
+  background: #f0b48a;
+  color: #fff;
+}
+
+.league-avatar {
+  flex: none;
+  width: 38px;
+  height: 38px;
+}
+
+.league-avatar svg,
+.avatar-pick svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.league-who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.league-who b {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.league-who i {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--pink-deep);
+}
+
+.league-who small,
+.league-points small {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.league-prize {
+  display: flex;
+  gap: 3px;
+}
+
+.prize-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 1px 6px 1px 3px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.prize-chip svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.2;
+}
+
+.prize-chip.zone {
+  background: var(--lilac-soft);
+  color: #7b4fc9;
+}
+
+.prize-chip.hint {
+  background: #dff3fd;
+  color: #2f9ad1;
+}
+
+.league-points {
+  flex: none;
+  min-width: 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+}
+
+.league-points b {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--pink-deep);
+}
+
+.friend-remove {
+  flex: none;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink-soft);
+}
+
+.friend-remove.armed {
+  font-size: 12px;
+  font-weight: 600;
+  background: #ffe1e6;
+  color: #d9506f;
+}
+
+.prize-table {
+  display: grid;
+  grid-template-columns: repeat(5, auto);
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.prize-table div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 14px;
+}
+
+.friend-tools {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.friend-code {
+  font-size: 18px;
+  letter-spacing: 0.12em;
+  color: var(--pink-deep);
+}
+
+.friend-add {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  justify-content: center;
+}
+
+.friend-add input,
+.profile-name {
+  min-width: 0;
+  padding: 10px 16px;
+  border: 2px solid var(--card-edge);
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+  outline: none;
+}
+
+.friend-add input {
+  width: 160px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.friend-add input::placeholder {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-soft);
+}
+
+.friend-add input:focus,
+.profile-name:focus {
+  border-color: var(--pink);
+}
+
+.league-actions {
+  display: flex;
+  gap: 18px;
+}
+
+.profile-card {
+  width: min(380px, 100%);
+}
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.avatar-pick {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  padding: 3px;
+  transition: transform 0.12s;
+}
+
+.avatar-pick.picked {
+  box-shadow: 0 0 0 3px var(--pink);
+  transform: scale(1.06);
+}
+
+.avatar-pick:active {
+  transform: scale(0.92);
+}
+
+.profile-name {
+  width: 100%;
+  max-width: 260px;
+  text-align: center;
+}
+
+.form-error:empty {
+  display: none;
+}
+
+.card .form-error {
+  color: #d9506f;
+}
+
+.result-medal {
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--pink-soft);
+  box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.06);
+  font-size: 40px;
+  font-weight: 600;
+  color: var(--pink-deep);
+}
+
+.result-medal.podium1 {
+  background: #ffd45a;
+  color: #fff;
+}
+
+.result-medal.podium2 {
+  background: #c9d3e0;
+  color: #fff;
+}
+
+.result-medal.podium3 {
+  background: #f0b48a;
+  color: #fff;
+}

@@ -211,6 +211,63 @@ On commence avec 5 indices ; le compteur est affiché sur le bouton. À 0, une f
 
 **Passer un niveau** : le bouton **»** de la barre du haut propose de regarder une vidéo (la même régie factice) pour passer au niveau suivant. Le niveau passé reste jouable : il apparaît en pointillés dans la liste des niveaux, jusqu'à ce qu'il soit réussi. Passer un niveau ne compte ni pour la série ni pour les défis de styles, sauf « Atteindre le niveau N ».
 
+## Ligues et amis (en ligne)
+
+Le badge à la coupe, en haut à gauche de l'accueil, ouvre la **ligue de la semaine**. Il affiche le rang du joueur une fois qu'il en a un.
+
+- **Ligue de 20** : on la rejoint avec son premier jardin de la semaine (du lundi 0 h au dimanche minuit, heure de Paris). On entre dans la plus ancienne ligue qui a encore de la place, ou dans une nouvelle.
+- **Points** (`src/online/points.ts`) :
+  - niveau normal : +1 ;
+  - jardin hexagonal : +2 ;
+  - bords reliés : +4 ;
+  - jardin de 100 parcelles ou plus : +1 de plus ;
+  - défi du jour : +3.
+
+  Chaque niveau ne compte qu'une fois, et un niveau passé avec une vidéo ne rapporte rien tant qu'il n'est pas résolu. C'est le serveur qui compte : il lit les points du niveau dans sa propre table, jamais ceux envoyés par l'app. Au plus 60 points par jour.
+- **Cadeaux** des 5 premiers à la fin de la semaine :
+
+  | Place | Cadeau |
+  | --- | --- |
+  | 1re | 3 zones et 5 indices |
+  | 2e | 1 zone et 3 indices |
+  | 3e | 1 zone |
+  | 4e | 2 indices |
+  | 5e | 1 indice |
+
+  Ils arrivent au lancement suivant, avec une carte qui donne le rang. Il faut au moins un point pour gagner un cadeau. À égalité de points, le premier arrivé à ce score passe devant.
+- **Amis** :
+  - chacun a un code ami de 6 caractères, que « Inviter un ami » partage ;
+  - on ajoute un ami en tapant son code, ou par un lien `?ami=CODE` (web) ou `gardendoku://ami/CODE` (app) ;
+  - l'amitié vaut dans les deux sens ;
+  - l'onglet **Amis** classe les amis par points de la semaine, sans cadeaux.
+- **Profil** : un des 12 avatars et un pseudo libre de 3 à 16 caractères (lettres, chiffres, espaces, `- _ ' .`). Le serveur refuse les mots grossiers, même avec accents, majuscules ou chiffres à la place des lettres (« C0nnard »). Les mots courts ne sont refusés que seuls (« con » oui, « Constance » non). Les classements montrent le pseudo, l'avatar et le niveau atteint.
+- **Hors ligne** : les jardins résolus attendent dans une file (localStorage) et partent dès que le réseau revient.
+- **Compte** : il est anonyme, créé sans rien demander au premier lancement et lié à l'appareil.
+
+### Mettre en route le serveur (Supabase)
+
+1. Créer un projet sur [supabase.com](https://supabase.com).
+2. Dans *Authentication › Sign In / Providers*, activer **Allow anonymous sign-ins**.
+3. Appliquer les migrations de `supabase/migrations`, dans l'ordre : coller les deux fichiers dans le *SQL Editor*, ou utiliser `npx supabase link` puis `npx supabase db push`.
+4. Créer un fichier `.env` à la racine (il est ignoré par git) :
+
+   ```
+   VITE_SUPABASE_URL=https://<projet>.supabase.co
+   VITE_SUPABASE_KEY=<clé publishable ou anon>
+   VITE_PUBLIC_URL=<adresse de la version web, facultatif : liens d'invitation>
+   ```
+
+   La clé est publique par nature : la base ne répond qu'à travers ses fonctions (sécurité au niveau des lignes activée, aucune table accessible directement).
+5. `npm run build`, ou `npm run sync` pour les apps.
+
+Sans `.env`, la ligue reste cachée.
+
+**Mode démo** : `?ligue=demo` montre les écrans avec des joueurs inventés, sans serveur (`?ligue=off` pour en sortir). Il affiche aussi une fois la carte de fin de semaine.
+
+Les tests (`tests/online.test.ts`) passent les migrations sur un vrai Postgres embarqué (PGlite), avec une imitation de Supabase Auth. Ils couvrent les ligues de 20, le barème, le plafond quotidien, les cadeaux distribués une seule fois, les amis, le filtre de pseudos et l'accès fermé aux tables.
+
+Si la génération des niveaux change, il faut régénérer les points : `npm run level-points` réécrit `supabase/migrations/20261027000100_level_points.sql` (5 000 niveaux ; au-delà, le serveur compte 4 pour les bords reliés et 1 sinon). Il faut ensuite appliquer de nouveau cette migration. Un test vérifie que la table correspond au jeu.
+
 ## Styles de jardin
 
 Dix-huit styles, choisis depuis l'écran d'accueil (bouton **Styles**, avec un aperçu dessiné de chacun) :
@@ -268,12 +325,17 @@ src/
     background.ts  Ciel pastel, nuages, collines
   audio/sound.ts   Sons synthétisés en WebAudio (aucun fichier audio)
   ui/              HUD (DOM), saisie tactile, sauvegarde localStorage, partage
+    league.ts      Cartes de la ligue, des amis, du profil et de fin de semaine
+    avatars.ts     Les 12 avatars (SVG dans la direction artistique du jeu)
+  online/          Ligues et amis : barème (points.ts), Supabase, démo, file d'attente hors ligne (social.ts)
   tutorial.ts      Mini-jardins et étapes des deux tutoriels (premiers pas, bords reliés)
   native.ts        App iOS / Android : vibrations, partage, bouton retour, sauvegarde en arrière-plan
   progress.ts      Défis qui débloquent les styles
   daily.ts         Résultat du défi du jour, texte à partager
   streak.ts        Série d'arrosage et ses récompenses
   game.ts          Contrôleur qui relie le tout
+supabase/migrations  Schéma et fonctions du serveur (ligues, amis, profils), points des niveaux
+scripts/level-points.ts  Régénère la migration des points des niveaux
 ```
 
 ## Génération des niveaux
@@ -291,8 +353,10 @@ La victoire ne compare pas avec la solution d'origine : elle est déclarée dès
 
 ## Pistes pour la suite
 
-- **Application native** : empaqueter avec [Capacitor](https://capacitorjs.com/) (iOS / Android), ajouter un service worker pour jouer hors ligne, et des icônes PNG.
+- Apps : sauvegarde dans le stockage natif (iOS peut vider celui de la vue web en manque de place), vraies vidéos récompensées, version signée pour les stores.
+- Compte : « Se connecter avec Apple / Google » pour retrouver ses amis et sa ligue sur un autre téléphone.
+- Ligues : vérifier côté serveur la solution envoyée (le niveau se régénère depuis sa seed), plutôt que le seul plafond quotidien.
+- Défi du jour : un vrai classement sur le serveur (aujourd'hui, le rang est estimé localement).
 - Zoom par pincement pour les très grandes grilles.
 - Variantes exotiques : défi du jour hexagonal, formes hexagonales en étoile ou en triangle.
 - Musique d'ambiance, réglage des vibrations, écran de statistiques.
-- Défi du jour : un classement réel demandera un petit serveur (aujourd'hui, le rang est estimé localement).

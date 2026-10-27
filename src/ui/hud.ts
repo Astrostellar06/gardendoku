@@ -53,6 +53,9 @@ export class Hud {
   readonly streak = $('streak');
   readonly zoneInfo = $('zone-info');
   readonly skip = $('skip');
+  readonly league = $('league');
+  readonly profile = $('profile');
+  readonly leagueResult = $('league-result');
   private countdownTimer = 0;
   readonly ad = $('ad');
   readonly lockBtn = $('btn-lock');
@@ -64,7 +67,10 @@ export class Hud {
   private toastTimer = 0;
 
   /** Cards the player can dismiss (tap outside, close button, back button). */
-  private closable = [this.howto, this.levels, this.hardIntro, this.hexIntro, this.styles, this.hintShop, this.dailyResult, this.streak, this.zoneInfo, this.skip];
+  private closable = [
+    this.howto, this.levels, this.hardIntro, this.hexIntro, this.styles, this.hintShop, this.dailyResult, this.streak, this.zoneInfo, this.skip,
+    this.league, this.profile, this.leagueResult,
+  ];
 
   constructor() {
     for (const overlay of this.closable) {
@@ -95,7 +101,7 @@ export class Hud {
     return true;
   }
 
-  private open(overlay: HTMLElement) {
+  open(overlay: HTMLElement) {
     overlay.classList.remove('closing', 'hidden');
   }
 
@@ -297,9 +303,20 @@ export class Hud {
 
   /** An overlay card is covering the game (the timer pauses meanwhile). */
   overlayOpen(): boolean {
-    return [this.howto, this.levels, this.hardIntro, this.hexIntro, this.styles, this.hintShop, this.ad, this.dailyResult, this.streak, this.zoneInfo, this.skip].some(
-      (o) => !o.classList.contains('hidden') && !o.classList.contains('closing'),
-    );
+    return [...this.closable, this.ad].some((o) => !o.classList.contains('hidden') && !o.classList.contains('closing'));
+  }
+
+  /** Home badge of the weekly league: hidden without a server, else "Ligue" or the player's rank. */
+  setLeagueBadge(visible: boolean, text = 'Ligue') {
+    $('btn-league').classList.toggle('hidden', !visible);
+    $('league-badge-text').textContent = text;
+  }
+
+  /** League points earned by the garden just won, on the win card (null hides the line). */
+  setWinLeague(text: string | null) {
+    const line = $('win-league');
+    line.classList.toggle('hidden', !text);
+    line.textContent = text ?? '';
   }
 
   /**

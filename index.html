@@ -78,6 +78,7 @@
       </section>
 
       <section id="home" class="screen">
+        <button class="league-badge hidden" id="btn-league" aria-label="Ligue de la semaine"><svg class="cup-icon" viewBox="0 0 32 32" aria-hidden="true"><path class="cup-handle" d="M9 9H5.5v2.5A4.5 4.5 0 0 0 10 16M23 9h3.5v2.5A4.5 4.5 0 0 1 22 16" /><path class="cup-body" d="M8.5 6h15v5.5a7.5 7.5 0 0 1-15 0Z" /><path class="cup-stem" d="M14 18.5h4l.8 5h-5.6Z" /><rect class="cup-base" x="10.5" y="23.5" width="11" height="3.5" rx="1.5" /><path class="cup-shine" d="M12 9v3" /></svg><b id="league-badge-text">Ligue</b></button>
         <button class="streak-badge" id="btn-streak" aria-label="Série d'arrosage"><svg class="can-icon" viewBox="0 0 32 32" aria-hidden="true"><path class="can-spout" d="M18.4 21 26 13" /><ellipse class="can-rose" cx="27.2" cy="11.8" rx="2.7" ry="1.6" transform="rotate(-45 27.2 11.8)" /><path class="can-handle" d="M8.6 12.8C8.6 6.4 17.6 6.4 17.6 12.8" /><path class="can-body" d="M6.4 12.8h13.6l-1.1 12.1a2.6 2.6 0 0 1-2.6 2.4h-6.2a2.6 2.6 0 0 1-2.6-2.4Z" /><path class="can-shine" d="M9.6 15.8v6.6" /><path class="can-drop" d="M29 16.4c.9 1.1 1.4 1.9 1.4 2.6a1.4 1.4 0 0 1-2.8 0c0-.7.5-1.5 1.4-2.6Z" /><path class="can-drop" d="M25.6 18.8c.7.9 1.1 1.5 1.1 2a1.1 1.1 0 0 1-2.2 0c0-.5.4-1.1 1.1-2Z" /></svg><b id="streak-count">0</b></button>
         <div class="home-top">
           <h1 class="logo" aria-label="Gardendoku"><svg class="logo-g" viewBox="-2 -2 100 105" aria-hidden="true"><defs><clipPath id="g-still"><path clip-rule="evenodd" d="M-5 -5H105V105H-5Z M0 66H30V96H0Z" /></clipPath></defs><g class="g-tile" style="--i:0"><rect class="g-side" x="0" y="4" width="30" height="30" rx="7" /><rect class="g-face" x="0" y="0" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:1"><rect class="g-side" x="33" y="4" width="30" height="30" rx="7" /><rect class="g-face" x="33" y="0" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:2"><rect class="g-side" x="66" y="4" width="30" height="30" rx="7" /><rect class="g-face" x="66" y="0" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:3"><rect class="g-side" x="0" y="37" width="30" height="30" rx="7" /><rect class="g-face" x="0" y="33" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:4"><rect class="g-side" x="33" y="37" width="30" height="30" rx="7" /><rect class="g-face" x="33" y="33" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:5"><rect class="g-side" x="66" y="37" width="30" height="30" rx="7" /><rect class="g-face" x="66" y="33" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:6"><rect class="g-side" x="0" y="70" width="30" height="30" rx="7" /><g class="g-turn"><rect class="g-face" x="0" y="66" width="30" height="30" rx="7" /><path class="g-rim" d="M30 81H15V66" /><path class="g-groove" d="M30 81H15V66" /></g></g><g class="g-tile" style="--i:7"><rect class="g-side" x="33" y="70" width="30" height="30" rx="7" /><rect class="g-face" x="33" y="66" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:8"><rect class="g-side" x="66" y="70" width="30" height="30" rx="7" /><rect class="g-face" x="66" y="66" width="30" height="30" rx="7" /></g><g class="g-canal" clip-path="url(#g-still)"><path class="g-rim" d="M48 48H81V81H15V15H81" /><path class="g-groove" d="M48 48H81V81H15V15H81" /></g><circle class="g-basin" cx="48" cy="48" r="7.5" /><circle class="g-spring" cx="48" cy="48" r="4.6" /><path class="g-water" d="M48 48H81V81H15V15H81" pathLength="100" /><path class="g-shine" d="M48 48H81V81H15V15H81" pathLength="100" /><g class="g-lotus"><ellipse class="g-petal" cx="81" cy="10.5" rx="3.6" ry="5.4" transform="rotate(0 81 15)" /><ellipse class="g-petal" cx="81" cy="10.5" rx="3.6" ry="5.4" transform="rotate(72 81 15)" /><ellipse class="g-petal" cx="81" cy="10.5" rx="3.6" ry="5.4" transform="rotate(144 81 15)" /><ellipse class="g-petal" cx="81" cy="10.5" rx="3.6" ry="5.4" transform="rotate(216 81 15)" /><ellipse class="g-petal" cx="81" cy="10.5" rx="3.6" ry="5.4" transform="rotate(288 81 15)" /><circle class="g-heart" cx="81" cy="15" r="2.6" /></g></svg><span class="logo-word">ardendoku</span></h1>
@@ -112,6 +113,7 @@
           <h2>Jardin fleuri !</h2>
           <p id="win-text">Niveau 1 terminé</p>
           <p class="win-rank" id="win-rank"></p>
+          <p class="win-league hidden" id="win-league"></p>
           <div class="win-streak-box hidden" id="win-streak">
             <div class="streak-head"><svg class="can-icon" viewBox="0 0 32 32" aria-hidden="true"><path class="can-spout" d="M18.4 21 26 13" /><ellipse class="can-rose" cx="27.2" cy="11.8" rx="2.7" ry="1.6" transform="rotate(-45 27.2 11.8)" /><path class="can-handle" d="M8.6 12.8C8.6 6.4 17.6 6.4 17.6 12.8" /><path class="can-body" d="M6.4 12.8h13.6l-1.1 12.1a2.6 2.6 0 0 1-2.6 2.4h-6.2a2.6 2.6 0 0 1-2.6-2.4Z" /><path class="can-shine" d="M9.6 15.8v6.6" /><path class="can-drop" d="M29 16.4c.9 1.1 1.4 1.9 1.4 2.6a1.4 1.4 0 0 1-2.8 0c0-.7.5-1.5 1.4-2.6Z" /><path class="can-drop" d="M25.6 18.8c.7.9 1.1 1.5 1.1 2a1.1 1.1 0 0 1-2.2 0c0-.5.4-1.1 1.1-2Z" /></svg><b id="win-streak-title">Jour 1 de suite</b></div>
             <div class="streak-track" id="win-streak-track"></div>
@@ -193,6 +195,51 @@
           <p>Ici, les parcelles ont <b>six côtés</b> : chacune peut se relier à six voisines.</p>
           <p class="small">Chaque toucher la fait tourner d'un sixième de tour. La règle ne change pas : tout relier à la source, sans boucle.</p>
           <button class="big-btn" data-close>Compris !</button>
+        </div>
+      </section>
+
+      <section id="league" class="overlay hidden">
+        <div class="card league-card">
+          <div class="league-tabs" role="tablist">
+            <button class="league-tab active" role="tab" aria-selected="true" data-tab="league">Ligue</button>
+            <button class="league-tab" role="tab" aria-selected="false" data-tab="friends">Amis</button>
+          </div>
+          <p class="small league-sub" id="league-sub"></p>
+          <div class="league-list" id="league-list"></div>
+          <div class="friend-tools hidden" id="friend-tools">
+            <p class="small">Ton code ami : <b class="friend-code" id="friend-code">······</b></p>
+            <button class="big-btn soft" id="btn-invite">Inviter un ami</button>
+            <form class="friend-add" id="friend-add" autocomplete="off">
+              <input id="friend-code-input" maxlength="6" placeholder="Code d'un ami" autocapitalize="characters" spellcheck="false" aria-label="Code d'un ami" />
+              <button class="soft-btn" type="submit">Ajouter</button>
+            </form>
+          </div>
+          <div class="league-actions">
+            <button class="link-btn" id="btn-profile">Mon profil</button>
+            <button class="link-btn" data-close>Fermer</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="profile" class="overlay hidden">
+        <div class="card profile-card">
+          <h2>Ton jardinier</h2>
+          <p class="small" id="profile-intro">Choisis un avatar et un pseudo : c'est ainsi que les autres te verront dans les classements.</p>
+          <div class="avatar-grid" id="avatar-grid" role="radiogroup" aria-label="Avatar"></div>
+          <input class="profile-name" id="profile-name" maxlength="16" placeholder="Ton pseudo" spellcheck="false" aria-label="Pseudo" />
+          <p class="small form-error" id="profile-error" aria-live="polite"></p>
+          <button class="big-btn" id="btn-profile-save">C'est moi !</button>
+          <button class="link-btn" data-close>Plus tard</button>
+        </div>
+      </section>
+
+      <section id="league-result" class="overlay hidden">
+        <div class="card">
+          <h2>Semaine terminée</h2>
+          <div class="result-medal" id="league-result-medal">2</div>
+          <p id="league-result-text"></p>
+          <p class="small" id="league-result-prize"></p>
+          <button class="big-btn" data-close>Merci !</button>
         </div>
       </section>
 
