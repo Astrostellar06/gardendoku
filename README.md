@@ -31,6 +31,35 @@ Ajouter `?debloquer` à l'adresse débloque tous les styles et met 99 indices et
 
 En mode dev, la console du navigateur expose aussi `__game` : `__game.debugSolve(5)` résout tout sauf 5 parcelles (pratique pour voir la victoire).
 
+## Applications iOS et Android
+
+Le jeu est empaqueté avec [Capacitor](https://capacitorjs.com) : le build Vite (`dist/`) tourne dans la vue web du système, dans un vrai projet natif (`android/` pour Android Studio, `ios/` pour Xcode). Identifiant de l'app : `io.github.astrostellar06.gardendoku` (dans `capacitor.config.ts`, à fixer avant la première publication sur les stores).
+
+```bash
+npm run sync      # build web + copie dans les projets natifs (à refaire après chaque changement)
+npm run android   # sync, puis ouvre le projet dans Android Studio (bouton Run pour un téléphone ou l'émulateur)
+npm run ios       # sync, puis ouvre le projet dans Xcode (Mac uniquement)
+npm run icons     # régénère icônes et écrans de lancement à partir de assets/*.png
+```
+
+APK de test sans Android Studio (Windows, avec le JDK fourni par Android Studio) :
+
+```bash
+cd android && JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./gradlew assembleDebug
+```
+
+L'APK sort dans `android/app/build/outputs/apk/debug/app-debug.apk`, à installer avec `adb install -r` ou en le copiant sur le téléphone.
+
+Ce que l'app fait en plus de la version web (`src/native.ts`) :
+
+- **vibrations** par le moteur haptique natif (l'iPhone n'a pas de vibration dans sa vue web) ;
+- **partage** du défi du jour par la feuille de partage du système (la vue web Android n'a pas `navigator.share`) ;
+- **bouton retour Android** : ferme la carte ouverte, annule l'indice de zone, puis revient à l'accueil ; depuis l'accueil, l'app passe en arrière-plan ;
+- **sauvegarde** dès que l'app passe en arrière-plan (elle peut être tuée sans autre préavis) ;
+- écran bloqué en **portrait** sur téléphone, icônes de barre d'état foncées.
+
+Les icônes viennent de `public/icon.svg`, déclinée dans `assets/` : icône pleine (iOS), avant-plan et fond (icône adaptative Android), écran de lancement.
+
 ## Commandes de jeu
 
 | Action | Geste |
@@ -236,6 +265,7 @@ src/
   audio/sound.ts   Sons synthétisés en WebAudio (aucun fichier audio)
   ui/              HUD (DOM), saisie tactile, sauvegarde localStorage, partage
   tutorial.ts      Mini-jardins et étapes des deux tutoriels (premiers pas, bords reliés)
+  native.ts        App iOS / Android : vibrations, partage, bouton retour, sauvegarde en arrière-plan
   progress.ts      Défis qui débloquent les styles
   daily.ts         Résultat du défi du jour, texte à partager
   streak.ts        Série d'arrosage et ses récompenses

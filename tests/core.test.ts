@@ -52,7 +52,8 @@ describe('generator', () => {
       }
     }
     expect(failures).toEqual([]);
-  });
+    // About 4 s alone: leave room for a busy machine.
+  }, 30_000);
 
   it('keeps level parameters stable', () => {
     const info = levelInfo(1);

@@ -1,8 +1,11 @@
 /** Share a text with the system share sheet, or copy it when sharing is not available. */
+import { isNativeApp, nativeShare } from '../native';
 
 export type ShareOutcome = 'shared' | 'copied' | 'failed';
 
 export async function shareOrCopy(text: string): Promise<ShareOutcome> {
+  // The Android web view has no navigator.share: the app uses the native sheet.
+  if (isNativeApp) return (await nativeShare(text)) ? 'shared' : 'failed';
   if (navigator.share) {
     try {
       await navigator.share({ text });

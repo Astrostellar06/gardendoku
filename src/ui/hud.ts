@@ -63,8 +63,11 @@ export class Hud {
   private toastEl = $('toast');
   private toastTimer = 0;
 
+  /** Cards the player can dismiss (tap outside, close button, back button). */
+  private closable = [this.howto, this.levels, this.hardIntro, this.hexIntro, this.styles, this.hintShop, this.dailyResult, this.streak, this.zoneInfo, this.skip];
+
   constructor() {
-    for (const overlay of [this.howto, this.levels, this.hardIntro, this.hexIntro, this.styles, this.hintShop, this.dailyResult, this.streak, this.zoneInfo, this.skip]) {
+    for (const overlay of this.closable) {
       overlay.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
         if (target === overlay || target.closest('[data-close]')) this.close(overlay);
@@ -80,6 +83,16 @@ export class Hud {
       overlay.classList.remove('closing');
       overlay.classList.add('hidden');
     }, 260);
+  }
+
+  /** Back button: close the card on top, if any. The ad plays to its end. */
+  closeTopOverlay(): boolean {
+    const shown = (o: HTMLElement) => !o.classList.contains('hidden') && !o.classList.contains('closing');
+    if (shown(this.ad)) return true;
+    const open = this.closable.filter(shown);
+    if (!open.length) return false;
+    this.close(open[open.length - 1]);
+    return true;
   }
 
   private open(overlay: HTMLElement) {

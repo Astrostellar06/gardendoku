@@ -15,6 +15,7 @@ import type { ThemeId } from './render/themes';
 import { showRewardedAd } from './ui/ads';
 import { Hud, StreakView, StyleCard, WinView } from './ui/hud';
 import { attachInput } from './ui/input';
+import { vibrate } from './native';
 import { shareOrCopy } from './ui/share';
 import { advanceStreak, daysToZoneHint, liveStreak, nextReward, rewardText, streakReward, weekDay } from './streak';
 import { LevelSnapshot, loadSave, SaveData, writeSave } from './ui/storage';
@@ -210,6 +211,19 @@ export class Game {
   }
 
   // ---------- Screens ----------
+
+  /** Android back button: close the open card, cancel the zone hint, or leave the garden. False on the home screen. */
+  back(): boolean {
+    if (this.hud.closeTopOverlay()) return true;
+    if (this.zoneMode) {
+      this.setZoneMode(false);
+      this.hud.hideToast();
+      return true;
+    }
+    if (this.mode === 'home') return false;
+    this.showHome();
+    return true;
+  }
 
   private showHome() {
     this.persist();
@@ -923,7 +937,8 @@ export class Game {
     this.saveTimer = window.setTimeout(() => this.persist(), 400);
   }
 
-  private persist() {
+  /** Save progress, and the garden in progress so it can be resumed. */
+  persist() {
     if (this.mode === 'play' && this.board && this.info && !this.won) {
       const snapshot: LevelSnapshot = {
         level: this.info.index,
@@ -940,7 +955,7 @@ export class Game {
   }
 
   private vibrate(pattern: number | number[]) {
-    if (this.save.settings.haptics) navigator.vibrate?.(pattern);
+    if (this.save.settings.haptics) vibrate(pattern);
   }
 }
 
