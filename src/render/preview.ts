@@ -11,7 +11,7 @@ import { drawTile, drawTileProps, drawTileWater, roundRectPath } from './tileArt
 const SAMPLE: Array<{ x: number; y: number; mask: number; inflow: number; dry?: boolean }> = [
   { x: 0, y: 0, mask: E | S, inflow: -1 },
   { x: 1, y: 0, mask: W, inflow: 3 },
-  { x: 0, y: 1, mask: N, inflow: 0 },
+  { x: 0, y: 1, mask: N | E, inflow: 0 },
   { x: 1, y: 1, mask: N, inflow: -1, dry: true },
 ];
 
