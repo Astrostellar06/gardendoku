@@ -82,7 +82,7 @@ const DEFAULTS: SaveData = {
   level: 1,
   maxLevel: 1,
   snapshot: null,
-  settings: { sound: true, haptics: true, theme: 'printemps' },
+  settings: { sound: true, haptics: true, theme: 'aleatoire' },
   solved: 0,
   seenTutorial: false,
   seenLockTip: false,

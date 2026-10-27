@@ -7,11 +7,12 @@ import type { ThemeId } from './themes/types';
 import { drawTile, drawTileProps, drawTileWater, roundRectPath } from './tileArt';
 
 /** A tiny 2x2 watered network: corner, end, corner, end. */
-const SAMPLE: Array<{ x: number; y: number; mask: number; inflow: number }> = [
+/** Three watered tiles, and one turned away (bottom right) to show a dry one. */
+const SAMPLE: Array<{ x: number; y: number; mask: number; inflow: number; dry?: boolean }> = [
   { x: 0, y: 0, mask: E | S, inflow: -1 },
   { x: 1, y: 0, mask: W, inflow: 3 },
   { x: 0, y: 1, mask: N | E, inflow: 0 },
-  { x: 1, y: 1, mask: W, inflow: 3 },
+  { x: 1, y: 1, mask: N, inflow: -1, dry: true },
 ];
 
 /** The "random" style: four unlocked styles side by side, with a die on top. */
@@ -75,11 +76,12 @@ export function renderThemePreview(id: ThemeId, size: number, dpr: number): HTML
       ctx.translate(cx, cy + depth / 2);
       ctx.scale(t, t);
       roundRectPath(ctx, -G.half, -G.half, G.half * 2, G.half * 2, G.corner);
-      ctx.fillStyle = P.grassSideDark;
+      ctx.fillStyle = tile.dry ? P.soilSideDark : P.grassSideDark;
       ctx.fill();
       ctx.restore();
       const decor = makeDecor(tile.mask, `preview:${k}`, false, k === 1 ? 0 : 1);
-      const st = { mask: tile.mask, decor, isSource: false, bloom: 1, water: 1, inflow: tile.inflow, loop: 0, rot: 0, sides: 4 };
+      const wet = tile.dry ? 0 : 1;
+      const st = { mask: tile.mask, decor, isSource: false, bloom: wet, water: wet, inflow: tile.inflow, loop: 0, rot: 0, sides: 4 };
       ctx.save();
       ctx.translate(cx, cy - depth / 2);
       ctx.scale(t, t);
@@ -91,7 +93,8 @@ export function renderThemePreview(id: ThemeId, size: number, dpr: number): HTML
     SAMPLE.forEach((tile, k) => {
       const [cx, cy] = center(tile.x, tile.y);
       const decor = makeDecor(tile.mask, 'preview:' + k, false, k === 1 ? 0 : 1);
-      const st = { mask: tile.mask, decor, isSource: false, bloom: 1, water: 1, inflow: tile.inflow, loop: 0, rot: 0, sides: 4 };
+      const wet = tile.dry ? 0 : 1;
+      const st = { mask: tile.mask, decor, isSource: false, bloom: wet, water: wet, inflow: tile.inflow, loop: 0, rot: 0, sides: 4 };
       ctx.save();
       ctx.translate(cx, cy - (G.depth * t) / 2);
       ctx.scale(t, t);
