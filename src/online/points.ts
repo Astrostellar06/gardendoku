@@ -8,8 +8,6 @@ import type { LevelInfo } from '../core/levels';
 /** Gardens at least this big earn one point more. */
 export const BIG_GARDEN = 100;
 export const DAILY_POINTS = 3;
-/** Points a player can score in one day (Paris time), against runaway or scripted sessions. */
-export const DAILY_CAP = 60;
 export const LEAGUE_SIZE = 20;
 
 /** Prizes of the five best of each league, rank 1 first. */

@@ -76,7 +76,7 @@ Les icônes viennent de `public/icon.svg`, déclinée dans `assets/` : icône pl
 
 Une fois le jardin réussi, les cadenas s'effacent pour le laisser voir dégagé.
 
-Chaque parcelle que l'eau atteint joue une note : la mélodie monte la gamme pentatonique d'une parcelle à l'autre, puis tourne dans son octave la plus aiguë (comme les notes du verrouillage en glissant). Elle repart du grave quand l'eau cesse d'avancer ; un coup joué pendant que l'eau coule encore la prolonge.
+Chaque parcelle que l'eau atteint joue une note : plus la parcelle est loin de la source, plus la note monte dans la gamme pentatonique. Au-delà de trois octaves, les parcelles lointaines tournent sur les cinq notes les plus aiguës (comme les notes du verrouillage en glissant) au lieu de répéter la même.
 
 ## Tutoriel
 
@@ -223,7 +223,7 @@ Le badge à la coupe, en haut à gauche de l'accueil, ouvre la **ligue de la sem
   - jardin de 100 parcelles ou plus : +1 de plus ;
   - défi du jour : +3.
 
-  Chaque niveau ne compte qu'une fois, et un niveau passé avec une vidéo ne rapporte rien tant qu'il n'est pas résolu. C'est le serveur qui compte : il lit les points du niveau dans sa propre table, jamais ceux envoyés par l'app. Au plus 60 points par jour.
+  Chaque niveau ne compte qu'une fois, et un niveau passé avec une vidéo ne rapporte rien tant qu'il n'est pas résolu. C'est le serveur qui compte : il lit les points du niveau dans sa propre table, jamais ceux envoyés par l'app. Il n'y a pas de plafond par jour pour l'instant.
 - **Cadeaux** des 5 premiers à la fin de la semaine :
 
   | Place | Cadeau |
@@ -239,7 +239,7 @@ Le badge à la coupe, en haut à gauche de l'accueil, ouvre la **ligue de la sem
   - chacun a un code ami de 6 caractères, que « Inviter un ami » partage ;
   - on ajoute un ami en tapant son code, ou par un lien `?ami=CODE` (web) ou `gardendoku://ami/CODE` (app) ;
   - l'amitié vaut dans les deux sens ;
-  - l'onglet **Amis** classe les amis par points de la semaine, sans cadeaux.
+  - l'onglet **Amis** classe les amis par points de la semaine, sans cadeaux (« Défie tes amis ! »).
 - **Profil** : un des 12 avatars et un pseudo libre de 3 à 16 caractères (lettres, chiffres, espaces, `- _ ' .`). Le serveur refuse les mots grossiers, même avec accents, majuscules ou chiffres à la place des lettres (« C0nnard »). Les mots courts ne sont refusés que seuls (« con » oui, « Constance » non). Les classements montrent le pseudo, l'avatar et le niveau atteint.
 - **Hors ligne** : les jardins résolus attendent dans une file (localStorage) et partent dès que le réseau revient.
 - **Compte** : il est anonyme, créé sans rien demander au premier lancement et lié à l'appareil.
@@ -248,7 +248,7 @@ Le badge à la coupe, en haut à gauche de l'accueil, ouvre la **ligue de la sem
 
 1. Créer un projet sur [supabase.com](https://supabase.com).
 2. Dans *Authentication › Sign In / Providers*, activer **Allow anonymous sign-ins**.
-3. Appliquer les migrations de `supabase/migrations`, dans l'ordre : coller les deux fichiers dans le *SQL Editor*, ou utiliser `npx supabase link` puis `npx supabase db push`.
+3. Appliquer les migrations de `supabase/migrations`, dans l'ordre : coller les fichiers dans le *SQL Editor*, ou utiliser `npx supabase link` puis `npx supabase db push`.
 4. Créer un fichier `.env` à la racine (il est ignoré par git) :
 
    ```
@@ -264,7 +264,7 @@ Sans `.env`, la ligue reste cachée.
 
 **Mode démo** : `?ligue=demo` montre les écrans avec des joueurs inventés, sans serveur (`?ligue=off` pour en sortir). Il affiche aussi une fois la carte de fin de semaine.
 
-Les tests (`tests/online.test.ts`) passent les migrations sur un vrai Postgres embarqué (PGlite), avec une imitation de Supabase Auth. Ils couvrent les ligues de 20, le barème, le plafond quotidien, les cadeaux distribués une seule fois, les amis, le filtre de pseudos et l'accès fermé aux tables.
+Les tests (`tests/online.test.ts`) passent les migrations sur un vrai Postgres embarqué (PGlite), avec une imitation de Supabase Auth. Ils couvrent les ligues de 20, le barème, les cadeaux distribués une seule fois, les amis, le filtre de pseudos et l'accès fermé aux tables.
 
 Si la génération des niveaux change, il faut régénérer les points : `npm run level-points` réécrit `supabase/migrations/20261027000100_level_points.sql` (5 000 niveaux ; au-delà, le serveur compte 4 pour les bords reliés et 1 sinon). Il faut ensuite appliquer de nouveau cette migration. Un test vérifie que la table correspond au jeu.
 
@@ -355,7 +355,7 @@ La victoire ne compare pas avec la solution d'origine : elle est déclarée dès
 
 - Apps : sauvegarde dans le stockage natif (iOS peut vider celui de la vue web en manque de place), vraies vidéos récompensées, version signée pour les stores.
 - Compte : « Se connecter avec Apple / Google » pour retrouver ses amis et sa ligue sur un autre téléphone.
-- Ligues : vérifier côté serveur la solution envoyée (le niveau se régénère depuis sa seed), plutôt que le seul plafond quotidien.
+- Ligues : vérifier côté serveur la solution envoyée (le niveau se régénère depuis sa seed), et peut-être un plafond de points par jour.
 - Défi du jour : un vrai classement sur le serveur (aujourd'hui, le rang est estimé localement).
 - Zoom par pincement pour les très grandes grilles.
 - Variantes exotiques : défi du jour hexagonal, formes hexagonales en étoile ou en triangle.

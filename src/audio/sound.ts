@@ -120,10 +120,10 @@ export class Sound {
   }
 
   /**
-   * A note per tile reached by water: the melody climbs the pentatonic scale
-   * tile after tile, then keeps circling in its top octave (like lockStep).
+   * A note per tile reached by water, climbing the pentatonic scale with the
+   * distance from the spring; far tiles circle through its top octave (like lockStep).
    */
-  water(step: number) {
+  water(dist: number) {
     const ctx = this.ready();
     if (!ctx) return;
     const t = ctx.currentTime;
@@ -133,7 +133,7 @@ export class Sound {
       this.notesInWindow = 0;
     }
     this.lastNote = t;
-    const semis = PENTA[step % 5] + 12 * Math.min(2, Math.floor(step / 5));
+    const semis = PENTA[dist % 5] + 12 * Math.min(2, Math.floor(dist / 5));
     this.bell(392 * 2 ** (semis / 12), t, 0.035, 1.1);
   }
 

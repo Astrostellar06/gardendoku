@@ -80,7 +80,7 @@ export class Game {
     setTheme(first);
     this.applyStyleColors(first);
     this.renderer = new GardenRenderer(canvas);
-    this.renderer.events.onWaterArrive = (_cell, step) => this.sound.water(step);
+    this.renderer.events.onWaterArrive = (_cell, dist) => this.sound.water(dist);
     this.sound.enabled = this.save.settings.sound;
     this.hud.setSound(this.sound.enabled);
     this.hud.setHints(this.save.hints);

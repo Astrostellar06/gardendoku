@@ -6,7 +6,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { readdirSync, readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { levelInfo } from '../src/core/levels';
-import { DAILY_CAP, LEAGUE_PRIZES, LEAGUE_SIZE, levelPoints } from '../src/online/points';
+import { LEAGUE_PRIZES, LEAGUE_SIZE, levelPoints } from '../src/online/points';
 
 const AUTH_STUB = `
   create role anon;
@@ -122,12 +122,14 @@ describe('online: scoring', () => {
     expect(await failure(p, 'submit_solve', 'daily', 20200101)).toBe('daily_closed');
   });
 
-  it(`caps the points of a day at ${DAILY_CAP}`, async () => {
+  it('does not cap the points of a day', async () => {
     const p = await newPlayer();
     await call(p, 'sync_level', 200);
     let week = 0;
     for (let n = 1; n <= 100; n++) week = (await call<{ week_points: number }>(p, 'submit_solve', 'level', n)).week_points;
-    expect(week).toBe(DAILY_CAP);
+    let expected = 0;
+    for (let n = 1; n <= 100; n++) expected += levelPoints(levelInfo(n));
+    expect(week).toBe(expected);
   });
 });
 
@@ -173,11 +175,11 @@ describe('online: leagues', () => {
       // Player k scores 6 - k points.
       for (const n of single.slice(0, 6 - k)) await call(p, 'submit_solve', 'level', n);
     }
-    // A seventh player joins with a garden worth nothing (their day is already capped): no prize.
+    // A seventh player is in the league without a single point: no prize.
     const late = await newPlayer();
     players.push(late);
-    await db.query(`update profiles set points_day = (now() at time zone 'Europe/Paris')::date, points_today = ${DAILY_CAP} where id = $1`, [late]);
-    expect(await call(late, 'submit_solve', 'level', 1)).toEqual({ points: 0, week_points: 0 });
+    await call(late, 'submit_solve', 'level', 1);
+    await db.query('update league_members set points = 0 where player = $1', [late]);
     expect(await call(players[0], 'claim_rewards')).toEqual([]);
 
     await endWeek();

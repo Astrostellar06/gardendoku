@@ -136,7 +136,7 @@ export class LeagueScreen {
     const list = $('league-list');
     const sub = $('league-sub');
     list.innerHTML = '<p class="league-empty">Chargement…</p>';
-    sub.textContent = tab === 'league' ? '20 jardiniers, des cadeaux pour les 5 premiers' : 'Entre amis, sans cadeaux : pour le plaisir';
+    sub.textContent = tab === 'league' ? '20 jardiniers, des cadeaux pour les 5 premiers' : 'Défie tes amis !';
     try {
       if (tab === 'league') {
         const league = await this.social.league();

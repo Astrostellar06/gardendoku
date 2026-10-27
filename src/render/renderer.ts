@@ -54,11 +54,8 @@ const emptyCache = (): Record<CacheKey, HTMLCanvasElement | null> => ({ dry: nul
 const emptyRots = (): Record<CacheKey, number> => ({ dry: -1, wet: -1, dryFg: -1, wetFg: -1 });
 
 export interface RendererEvents {
-  /**
-   * Water just filled a tile (used for the little melody). `step` counts the
-   * tiles filled before it since the water last stopped flowing.
-   */
-  onWaterArrive?: (cell: number, step: number) => void;
+  /** Water just filled a tile, `dist` tiles away from the spring (used for the little melody). */
+  onWaterArrive?: (cell: number, dist: number) => void;
 }
 
 const FILL_RATE = 6.5;
@@ -102,10 +99,9 @@ export class GardenRenderer {
   events: RendererEvents = {};
   time = 0;
   lockMode = false;
+  private bridgeSprites = new Map<string, HTMLCanvasElement>();
   /** Off once the garden is won: the padlocks fade away so it can be admired. */
   showLocks = true;
-  /** Tiles filled since the water last stopped flowing (a move made while it flows doesn't reset it). */
-  private waveStep = 0;
   hold: { cell: number; start: number; duration: number } | null = null;
   /**
    * Tutorial: tile under the spotlight, and the gesture it asks for. With
@@ -175,7 +171,6 @@ export class GardenRenderer {
     this.board = board;
     this.decorSeed = decorSeed;
     this.analysis = null;
-    this.waveStep = 0;
     this.showLocks = true;
     this.timers = [];
     this.particles.clearEffects();
@@ -575,7 +570,7 @@ export class GardenRenderer {
         v.water = Math.min(1, v.water + dt * FILL_RATE);
         if (before < 1 && v.water >= 1 && !v.arrived) {
           v.arrived = true;
-          this.events.onWaterArrive?.(i, this.waveStep++);
+          this.events.onWaterArrive?.(i, an.dist[i]);
         }
         if (before === 0 && v.water > 0 && i !== board.source) this.sparkleIfTeleported(i, an.inflow[i]);
       } else if (!settled) {
@@ -590,8 +585,6 @@ export class GardenRenderer {
       if (watered && v.water >= 0.5) v.bloom = Math.min(1, v.bloom + dt * BLOOM_RATE);
       else if (!watered) v.bloom = Math.max(0, v.bloom - dt * WILT_RATE);
     }
-    // Nothing left filling up: the next tile reached starts the melody low again.
-    if (!g.cells.some((i) => an.watered[i] === 1 && this.vis[i].water < 1)) this.waveStep = 0;
   }
 
   /** Water entering tile i through a joined edge: a little sparkle on both sides. */
@@ -934,18 +927,40 @@ export class GardenRenderer {
         const len = t - edge * 2 + over * 2;
         const [ux, uy] = this.vecs[d];
         const angle = Math.atan2(uy, ux);
+        // Drawn as one picture: layers stacked straight on the board would each
+        // soften their own ends, leaving a thin seam across the canal.
+        const sprite = this.bridgeSprite([...banks, ...waterLayers], len);
+        const h = (G.rimW + 0.04) * t;
         for (const [cx, cy] of spots) {
           ctx.save();
           ctx.translate(cx, cy);
           ctx.rotate(angle);
-          for (const [w, color] of [...banks, ...waterLayers]) {
-            ctx.fillStyle = color;
-            ctx.fillRect(edge - over, (-w * t) / 2, len, w * t);
-          }
+          ctx.drawImage(sprite, edge - over, -h / 2, len, h);
           ctx.restore();
         }
       }
     }
+  }
+
+  /** Bridge picture for these layers (outer bank first), cached while colours and size stay the same. */
+  private bridgeSprite(layers: Array<[number, string]>, len: number): HTMLCanvasElement {
+    const t = this.tile;
+    const key = `${t}:${this.dpr}:${layers.map((l) => l[1]).join()}`;
+    const hit = this.bridgeSprites.get(key);
+    if (hit) return hit;
+    if (this.bridgeSprites.size > 8) this.bridgeSprites.clear();
+    const h = (G.rimW + 0.04) * t;
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(len * this.dpr));
+    c.height = Math.max(1, Math.round(h * this.dpr));
+    const g = c.getContext('2d')!;
+    g.scale(c.width / len, c.height / h);
+    for (const [w, color] of layers) {
+      g.fillStyle = color;
+      g.fillRect(0, (h - w * t) / 2, len, w * t);
+    }
+    this.bridgeSprites.set(key, c);
+    return c;
   }
 
   private drawCellOverlay(i: number) {
