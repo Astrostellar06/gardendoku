@@ -75,7 +75,7 @@ export class Game {
     setTheme(first);
     this.applyStyleColors(first);
     this.renderer = new GardenRenderer(canvas);
-    this.renderer.events.onWaterArrive = (_cell, dist) => this.sound.water(dist);
+    this.renderer.events.onWaterArrive = (_cell, step) => this.sound.water(step);
     this.sound.enabled = this.save.settings.sound;
     this.hud.setSound(this.sound.enabled);
     this.hud.setHints(this.save.hints);
@@ -477,6 +477,7 @@ export class Game {
       // Wait for the water to reach every tile before congratulating.
       this.tutorialSolved = true;
       this.renderer.spotlight = null;
+      this.renderer.showLocks = false;
     } else if (step.kind === 'turn' && board.isCorrect(step.cell!)) {
       this.setTutorialStep(this.tutorialIndex + 1);
     }
@@ -848,6 +849,8 @@ export class Game {
     this.setZoneMode(false);
     this.hud.setSkipVisible(false);
     this.renderer.hold = null;
+    // The padlocks fade away: the garden is done, nothing left to hold in place.
+    this.renderer.showLocks = false;
     this.hud.hideToast();
     this.save.solved++;
     this.save.seenTutorial = true;

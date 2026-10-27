@@ -68,9 +68,15 @@ export const HEX_CHANCE = 0.24;
 const hexFlags: boolean[] = [false];
 const hexBefore: number[] = [0];
 
+/**
+ * Levels set by hand: the first ones (normal, normal, hexagonal, normal), and
+ * 12 rather than 11, so the first hexagons don't line up in a column of the
+ * level list.
+ */
+const SET_HEX: Record<number, boolean> = { 1: false, 2: false, 3: true, 4: false, 12: true };
+
 function drawHex(index: number, afterHex: boolean): boolean {
-  // The first ones are set: normal, normal, hexagonal, normal, hard.
-  if (index <= HARD_EVERY) return index === 3;
+  if (index in SET_HEX) return SET_HEX[index];
   if (isHardLevel(index) || afterHex || FIXED_SHAPES[index]) return false;
   return new Rng(`ruche-${index}`).chance(HEX_CHANCE);
 }
@@ -169,7 +175,7 @@ const BANDS: Band[] = [
 /** Hand-picked shapes so players meet every one of them early on. */
 const FIXED_SHAPES: Record<number, ShapeId> = {
   9: 'heart',
-  12: 'flower',
+  11: 'flower',
   14: 'circle',
   17: 'ponds',
   22: 'cloister',

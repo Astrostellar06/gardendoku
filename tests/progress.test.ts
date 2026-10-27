@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { generate } from '../src/core/generator';
 import { buildLevel } from '../src/core/levels';
 import { fasterThan, normalCdf, timeModel } from '../src/core/timing';
 import { isUnlocked, refreshUnlocks, STYLE_CHALLENGES } from '../src/progress';
@@ -26,7 +27,9 @@ describe('rank against other players', () => {
     expect(timeModel(buildLevel(60)).median).toBeGreaterThan(timeModel(buildLevel(2)).median);
     const hard = buildLevel(10);
     expect(hard.grid.wrap).toBe(true);
-    expect(timeModel(hard).median).toBeGreaterThan(timeModel(buildLevel(11)).median * 0.9);
+    // Joined edges take much longer than the same garden without them.
+    const flat = generate({ width: hard.grid.width, height: hard.grid.height, shape: 'rect', seed: 'sans-bords', windiness: 0.5 });
+    expect(timeModel(hard).median).toBeGreaterThan(timeModel(flat).median * 2);
   });
 
   it('counts hints against the player', () => {

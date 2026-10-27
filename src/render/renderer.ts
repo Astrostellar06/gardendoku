@@ -54,8 +54,11 @@ const emptyCache = (): Record<CacheKey, HTMLCanvasElement | null> => ({ dry: nul
 const emptyRots = (): Record<CacheKey, number> => ({ dry: -1, wet: -1, dryFg: -1, wetFg: -1 });
 
 export interface RendererEvents {
-  /** Water just filled a tile (used for the little melody). */
-  onWaterArrive?: (cell: number, dist: number) => void;
+  /**
+   * Water just filled a tile (used for the little melody). `step` counts the
+   * tiles filled before it since the water last stopped flowing.
+   */
+  onWaterArrive?: (cell: number, step: number) => void;
 }
 
 const FILL_RATE = 6.5;
@@ -99,6 +102,10 @@ export class GardenRenderer {
   events: RendererEvents = {};
   time = 0;
   lockMode = false;
+  /** Off once the garden is won: the padlocks fade away so it can be admired. */
+  showLocks = true;
+  /** Tiles filled since the water last stopped flowing (a move made while it flows doesn't reset it). */
+  private waveStep = 0;
   hold: { cell: number; start: number; duration: number } | null = null;
   /**
    * Tutorial: tile under the spotlight, and the gesture it asks for. With
@@ -168,6 +175,8 @@ export class GardenRenderer {
     this.board = board;
     this.decorSeed = decorSeed;
     this.analysis = null;
+    this.waveStep = 0;
+    this.showLocks = true;
     this.timers = [];
     this.particles.clearEffects();
     this.sides = board.grid.sides;
@@ -546,7 +555,7 @@ export class GardenRenderer {
       }
       const pressTarget = this.pressed === i ? 1 : 0;
       v.press += (pressTarget - v.press) * Math.min(1, dt * 20);
-      v.lock += ((board.locked[i] ? 1 : 0) - v.lock) * Math.min(1, dt * 10);
+      v.lock += (this.lockTarget(i) - v.lock) * Math.min(1, dt * 10);
       v.loop += ((an.loopSides[i] ? 1 : 0) - v.loop) * Math.min(1, dt * 6);
       if (v.shake > 0) v.shake = Math.max(0, v.shake - dt * 3.5);
     }
@@ -566,7 +575,7 @@ export class GardenRenderer {
         v.water = Math.min(1, v.water + dt * FILL_RATE);
         if (before < 1 && v.water >= 1 && !v.arrived) {
           v.arrived = true;
-          this.events.onWaterArrive?.(i, an.dist[i]);
+          this.events.onWaterArrive?.(i, this.waveStep++);
         }
         if (before === 0 && v.water > 0 && i !== board.source) this.sparkleIfTeleported(i, an.inflow[i]);
       } else if (!settled) {
@@ -581,6 +590,8 @@ export class GardenRenderer {
       if (watered && v.water >= 0.5) v.bloom = Math.min(1, v.bloom + dt * BLOOM_RATE);
       else if (!watered) v.bloom = Math.max(0, v.bloom - dt * WILT_RATE);
     }
+    // Nothing left filling up: the next tile reached starts the melody low again.
+    if (!g.cells.some((i) => an.watered[i] === 1 && this.vis[i].water < 1)) this.waveStep = 0;
   }
 
   /** Water entering tile i through a joined edge: a little sparkle on both sides. */
@@ -755,9 +766,9 @@ export class GardenRenderer {
   }
 
   /**
-   * The light outline at the top of a tile and the shade at its bottom stay
-   * off the canals running out of the tile there: they flow over its edge,
-   * banks and water alike, in the colours of the canal between the tiles.
+   * The light outline of a tile and the shade at its bottom stay off the
+   * canals running out of it: they flow over its edge, banks and water alike,
+   * in the colours of the canal between the tiles.
    */
   private clipCanalsOut(i: number, fx: number, fy: number, t: number) {
     const mask = this.board?.mask(i) ?? 0;
@@ -770,9 +781,8 @@ export class GardenRenderer {
     for (let d = 0; d < this.sides; d++) {
       if (!(mask & (1 << d))) continue;
       const [ux, uy] = this.vecs[d];
-      // Canals leaving sideways cross neither the outline nor the shade.
-      if (Math.abs(uy) < 0.3) continue;
-      const from = edge - (uy < 0 ? 0.16 : 0.26) * t;
+      // The shade covers more of the bottom of the tile than the outline does of its top and sides.
+      const from = edge - (uy > 0.3 ? 0.26 : 0.16) * t;
       const to = edge + 0.05 * t;
       const nx = -uy;
       const ny = ux;
@@ -1038,10 +1048,15 @@ export class GardenRenderer {
       const v = this.vis[i];
       if (v.angle !== v.target || v.press > 0.01 || v.shake > 0) return true;
       if ((v.water > 0 && v.water < 1) || (v.bloom > 0 && v.bloom < 1)) return true;
-      if (Math.abs(v.lock - this.board.locked[i]) > 0.01) return true;
+      if (Math.abs(v.lock - this.lockTarget(i)) > 0.01) return true;
       if (this.time - v.popAt < 0.5) return true;
     }
     return false;
+  }
+
+  /** 1 while tile i shows its padlock. */
+  private lockTarget(i: number): number {
+    return this.showLocks && this.board!.locked[i] ? 1 : 0;
   }
 
   /** True once water has reached every tile and all rotations are finished. */

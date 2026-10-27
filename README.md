@@ -74,6 +74,10 @@ Les icônes viennent de `public/icon.svg`, déclinée dans `assets/` : icône pl
 | Aide | Bouton **?** en jeu |
 | Changer de style | Bouton **Styles** sur l'écran d'accueil (dont « Aléatoire ») |
 
+Une fois le jardin réussi, les cadenas s'effacent pour le laisser voir dégagé.
+
+Chaque parcelle que l'eau atteint joue une note : la mélodie monte la gamme pentatonique d'une parcelle à l'autre, puis tourne dans son octave la plus aiguë (comme les notes du verrouillage en glissant). Elle repart du grave quand l'eau cesse d'avancer ; un coup joué pendant que l'eau coule encore la prolonge.
+
 ## Tutoriel
 
 Au premier lancement, un mini-jardin 3×3 explique le jeu en 5 étapes. Un projecteur met en valeur la parcelle à tourner, puis la parcelle à verrouiller (appui long). On peut le passer, et le revoir depuis l'aide.
@@ -128,7 +132,7 @@ Pour que ça reste lisible :
 
 Environ un niveau normal sur cinq a des **parcelles hexagonales** : six côtés, donc six voisines possibles, et chaque toucher tourne la parcelle d'un sixième de tour. La règle ne change pas.
 
-- Le niveau 3 est toujours hexagonal (les cinq premiers sont fixes : normal, normal, hexagonal, normal, difficile). Ensuite, chaque niveau normal est tiré au sort, sauf s'il suit un niveau hexagonal (jamais deux à la suite) ou s'il a une forme imposée. Les niveaux difficiles (multiples de 5) ne sont jamais hexagonaux. La chance du tirage (24 %, `HEX_CHANCE` dans `levels.ts`) est un peu au-dessus de 1/5 pour compenser les niveaux écartés : au final, un niveau normal sur cinq est hexagonal. Les premiers tombent aux niveaux 3, 6, 11, 16, 19, 34, 37, 39, 49…
+- Le niveau 3 est toujours hexagonal (les cinq premiers sont fixes : normal, normal, hexagonal, normal, difficile), et le 12 aussi, plutôt que le 11 que donnait le tirage : les premiers hexagones ne s'alignent pas dans une colonne de la liste des niveaux. Ensuite, chaque niveau normal est tiré au sort, sauf s'il suit un niveau hexagonal (jamais deux à la suite) ou s'il a une forme imposée. Les niveaux difficiles (multiples de 5) ne sont jamais hexagonaux. La chance du tirage (24 %, `HEX_CHANCE` dans `levels.ts`) est un peu au-dessus de 1/5 pour compenser les niveaux écartés : au final, un niveau normal sur cinq est hexagonal. Les premiers tombent aux niveaux 3, 6, 12, 16, 19, 34, 37, 39, 49…
 - Les hexagones ont le sommet plat et sont rangés en colonnes, les colonnes impaires décalées d'une demi-parcelle vers le bas. Les côtés se numérotent N, NE, SE, S, SO, NO (bits 1 à 32 du masque).
 - D'un jardin hexagonal au suivant, les formes s'enchaînent dans un ordre fixe, sans jamais deux fois la même à la suite, et de plus en plus grandes : alvéole de 19 parcelles (le 1er, niveau 3), rayon de miel de 25, couronne de 30, rayon de miel de 35, alvéole de 37, rayon de miel de 42, couronne de 54, rayon de miel de 49, alvéole de 61, rayon de miel de 56 (le 10e), puis un cycle des plus grandes.
 - Ils n'ont jamais de bords reliés. Ils demandent des hypothèses plus tard que les autres (à partir du niveau 43) et moins souvent : leurs six voisines suffisent déjà à les rendre exigeants.

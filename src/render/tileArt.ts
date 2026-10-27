@@ -29,6 +29,8 @@ export interface TileState {
 const TAU = Math.PI * 2;
 /** Canals are drawn a bit past the tile edge; the tile clip trims them. */
 const REACH = 0.56;
+/** How far canals run past the edge of the face (tile units, about a screen pixel). */
+const CANAL_PAST = 0.012;
 
 /** Corner rounding of hexagonal tiles (their corners are already wide). */
 export const HEX_CORNER = 0.09;
@@ -286,6 +288,22 @@ export function drawTile(ctx: CanvasRenderingContext2D, st: TileState) {
       ctx.restore();
     }
   }
+
+  // The canal runs a hair past the edge of the face: drawn inside it only,
+  // the soft edge would let the tile's side show through, as a thin line
+  // across banks and water.
+  ctx.restore();
+  ctx.save();
+  facePath(ctx, st.sides);
+  for (let d = 0; d < vecs.length; d++) {
+    if (!(mask & (1 << d))) continue;
+    const w = G.rimW + 0.04;
+    ctx.save();
+    ctx.rotate(Math.atan2(vecs[d][1], vecs[d][0]));
+    ctx.rect(H - 0.05, -w / 2, 0.05 + CANAL_PAST, w);
+    ctx.restore();
+  }
+  ctx.clip();
 
   // Canal: stone rim then sandy groove.
   ctx.lineCap = 'round';
