@@ -11,7 +11,7 @@ import { drawTile, drawTileProps, drawTileWater, roundRectPath } from './tileArt
 const SAMPLE: Array<{ x: number; y: number; mask: number; inflow: number; dry?: boolean }> = [
   { x: 0, y: 0, mask: E | S, inflow: -1 },
   { x: 1, y: 0, mask: W, inflow: 3 },
-  { x: 0, y: 1, mask: N | E, inflow: 0 },
+  { x: 0, y: 1, mask: N, inflow: 0 },
   { x: 1, y: 1, mask: N, inflow: -1, dry: true },
 ];
 
@@ -101,11 +101,10 @@ export function renderThemePreview(id: ThemeId, size: number, dpr: number): HTML
       drawTileProps(ctx, st);
       ctx.restore();
     });
-    // Join the canals across the gaps.
+    // Join the canals across the gaps (none toward the dry tile, turned away).
     for (const [a, d] of [
       [0, 1],
       [0, 2],
-      [2, 1],
     ] as const) {
       const [cx, cy] = center(SAMPLE[a].x, SAMPLE[a].y);
       const fx = cx + DX[d] * G.half * t;
