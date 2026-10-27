@@ -94,7 +94,7 @@ Chaque parcelle que l'eau atteint joue une note : plus la parcelle est loin de l
 
 Au premier lancement, un mini-jardin 3×3 explique le jeu en 5 étapes. Un projecteur met en valeur la parcelle à tourner, puis la parcelle à verrouiller (appui long). On peut le passer, et le revoir depuis l'aide.
 
-Avant le premier niveau difficile (niveau 5), un second tutoriel en 4 étapes présente les bords reliés sur un jardin 3×3 dont les bords sont reliés : on tourne une parcelle que l'eau atteint en traversant le bord gauche, puis on en tourne une autre en touchant sa copie pâle sous le jardin. On peut le revoir depuis l'aide (« Revoir le tutoriel des bords reliés »).
+Avant le premier niveau difficile (niveau 10), un second tutoriel en 4 étapes présente les bords reliés sur un jardin 3×3 dont les bords sont reliés : on tourne une parcelle que l'eau atteint en traversant le bord gauche, puis on en tourne une autre en touchant sa copie pâle sous le jardin. On peut le revoir depuis l'aide (« Revoir le tutoriel des bords reliés »).
 
 Les deux tutoriels sont décrits comme une suite d'étapes dans `src/tutorial.ts` : lire puis appuyer sur le bouton, tourner une parcelle donnée, en verrouiller une, ou finir le jardin seul.
 
@@ -129,9 +129,9 @@ Jusqu'au niveau 20, chaque jardin se résout par déductions directes. À partir
 
 ## Niveaux difficiles : bords reliés
 
-Un niveau sur 5 (5, 10, 15…) est un niveau difficile : une grille carrée ou rectangulaire dont les bords opposés sont reliés. L'eau qui sort d'un côté réapparaît du côté opposé.
+Les niveaux difficiles reviennent tous les 10 niveaux jusqu'au niveau 50 (10, 20, 30, 40, 50), puis tous les 5 (55, 60…). Ce sont une grille carrée ou rectangulaire dont les bords opposés sont reliés. L'eau qui sort d'un côté réapparaît du côté opposé.
 
-Le premier (niveau 5) ne fait que 4×4, juste après son tutoriel. Ensuite, la taille monte d'une ligne ou d'une colonne à la fois : 4×5, 5×5, 5×6, 6×6, 6×7, 7×7, 7×8, 8×8, 8×9, puis 8×10 à partir du niveau 145. Les premières marches arrivent vite, les suivantes de plus en plus lentement (`WRAP_LADDER` et `WRAP_RUNG_FROM` dans `levels.ts`). Une fois sur trois, à partir du 5×6, le jardin garde la taille de la marche précédente, pour varier sans jamais faire de saut.
+Le premier (niveau 10) ne fait que 4×4, juste après son tutoriel. Ensuite, la taille monte d'une ligne ou d'une colonne à la fois : 4×5, 5×5, 5×6, 6×6, 6×7, 7×7, 7×8, 8×8, 8×9, puis 8×10 à partir du niveau 145. Les premières marches arrivent vite, les suivantes de plus en plus lentement (`WRAP_LADDER` et `WRAP_RUNG_FROM` dans `levels.ts`). Une fois sur trois, à partir du 5×6, le jardin garde la taille de la marche précédente, pour varier sans jamais faire de saut.
 
 Pour que ça reste lisible :
 
@@ -144,9 +144,9 @@ Pour que ça reste lisible :
 
 Environ un niveau normal sur cinq a des **parcelles hexagonales** : six côtés, donc six voisines possibles, et chaque toucher tourne la parcelle d'un sixième de tour. La règle ne change pas.
 
-- Le niveau 3 est toujours hexagonal (les cinq premiers sont fixes : normal, normal, hexagonal, normal, difficile), et le 12 aussi, plutôt que le 11 que donnait le tirage : les premiers hexagones ne s'alignent pas dans une colonne de la liste des niveaux. Ensuite, chaque niveau normal est tiré au sort, sauf s'il suit un niveau hexagonal (jamais deux à la suite) ou s'il a une forme imposée. Les niveaux difficiles (multiples de 5) ne sont jamais hexagonaux. La chance du tirage (24 %, `HEX_CHANCE` dans `levels.ts`) est un peu au-dessus de 1/5 pour compenser les niveaux écartés : au final, un niveau normal sur cinq est hexagonal. Les premiers tombent aux niveaux 3, 6, 12, 16, 19, 34, 37, 39, 49…
+- Les neuf premiers niveaux sont fixés : deux jardins hexagonaux seulement, au niveau 4 (un petit de 12 parcelles) et au niveau 8. Ensuite, chaque niveau normal est tiré au sort, sauf s'il suit un niveau hexagonal (jamais deux à la suite) ou s'il a une forme imposée. Les niveaux difficiles ne sont jamais hexagonaux. La chance du tirage (24 %, `HEX_CHANCE` dans `levels.ts`) est un peu au-dessus de 1/5 pour compenser les niveaux écartés : au final, un niveau normal sur cinq est hexagonal. Les premiers tombent aux niveaux 4, 8, 16, 19, 25, 34, 37, 39, 49…
 - Les hexagones ont le sommet plat et sont rangés en colonnes, les colonnes impaires décalées d'une demi-parcelle vers le bas. Les côtés se numérotent N, NE, SE, S, SO, NO (bits 1 à 32 du masque).
-- D'un jardin hexagonal au suivant, les formes s'enchaînent dans un ordre fixe, sans jamais deux fois la même à la suite, et de plus en plus grandes : alvéole de 19 parcelles (le 1er, niveau 3), rayon de miel de 25, couronne de 30, rayon de miel de 35, alvéole de 37, rayon de miel de 42, couronne de 54, rayon de miel de 49, alvéole de 61, rayon de miel de 56 (le 10e), puis un cycle des plus grandes.
+- D'un jardin hexagonal au suivant, les formes s'enchaînent dans un ordre fixe, sans jamais deux fois la même à la suite, et de plus en plus grandes : rayon de miel de 12 parcelles (le 1er, niveau 4), alvéole de 19 (niveau 8), rayon de miel de 25, couronne de 30, rayon de miel de 35, alvéole de 37, rayon de miel de 42, couronne de 54, rayon de miel de 49, alvéole de 61, rayon de miel de 56 (le 11e), puis un cycle des plus grandes.
 - Ils n'ont jamais de bords reliés. Ils demandent des hypothèses plus tard que les autres (à partir du niveau 43) et moins souvent : leurs six voisines suffisent déjà à les rendre exigeants.
 - Une **carte d'explication** s'affiche la première fois. Le bandeau du niveau passe en jaune miel avec un petit hexagone, et ces niveaux apparaissent en alvéoles aux coins adoucis dans la liste des niveaux (contour pointillé s'ils ont été passés).
 - Les détails posés en travers d'un canal et dessinés « face écran » (ponts en 2,5D) ne connaissent que les canaux verticaux et horizontaux : ils ne sont pas utilisés sur les hexagones.
@@ -213,6 +213,7 @@ Un jour compte dans la série dès qu'un jardin fleurit : un niveau ou le défi 
 - L'icône est un **arrosoir** (la goutte sert déjà aux indices). Sur l'accueil, un badge en haut à droite montre la série : il est pâle et sans gouttes tant que le jardin du jour n'a pas fleuri, et le toucher ouvre le détail.
 - La série avance par semaines de 7 cases, avec un cadeau le **3ᵉ jour** (1 indice) et le **7ᵉ jour** (3 indices et 1 indice de zone), puis on recommence (jours 10, 14…). Les récompenses se règlent dans `WEEK_REWARDS`.
 - Le premier jardin du jour affiche la semaine sur la carte de victoire, avec la récompense gagnée ou le nombre de jours avant la prochaine.
+- La carte de la série affiche toujours la **meilleure série** atteinte (`streak.best` dans la sauvegarde).
 - Deux styles se débloquent avec la série : **Montagne** à 7 jours, **Verger** à 14 jours (meilleure série).
 
 ### Indices
@@ -278,7 +279,7 @@ Sans `.env`, la ligue reste cachée.
 
 Les tests (`tests/online.test.ts`) passent les migrations sur un vrai Postgres embarqué (PGlite), avec une imitation de Supabase Auth. Ils couvrent les ligues de 20, le barème, les cadeaux distribués une seule fois, les amis, le filtre de pseudos et l'accès fermé aux tables.
 
-Si la génération des niveaux change, il faut régénérer les points : `npm run level-points` réécrit `supabase/migrations/20261027000100_level_points.sql` (5 000 niveaux ; au-delà, le serveur compte 4 pour les bords reliés et 1 sinon). Il faut ensuite appliquer de nouveau cette migration. Un test vérifie que la table correspond au jeu.
+Si la génération des niveaux change, il faut régénérer les points : `npm run level-points` écrit `supabase/migrations/20261028000100_level_points.sql` (pour un nouveau changement, renommer d'abord `OUT` dans le script avec une nouvelle date : les migrations déjà passées ne sont pas rejouées) (5 000 niveaux ; au-delà, le serveur compte 4 pour les bords reliés et 1 sinon). Il faut ensuite appliquer cette migration sur le serveur. Un test vérifie que la table correspond au jeu.
 
 ## Styles de jardin
 
@@ -354,7 +355,7 @@ scripts/level-points.ts  Régénère la migration des points des niveaux
 
 Aucun niveau n'est stocké : le niveau `n` est entièrement reconstruit à partir de la seed `jardin-n`.
 
-1. **Paramètres** (`levels.ts`) : une seed dérivée choisit la taille (5×5 au départ, jusqu'à 9 colonnes × 12 à 15 lignes), la forme (à partir du niveau 9), et le caractère « sinueux » du réseau. La largeur est plafonnée à 9 colonnes pour garder des parcelles assez grandes sur un téléphone en portrait.
+1. **Paramètres** (`levels.ts`) : une seed dérivée choisit la taille (3×3 au niveau 1, puis 3×4, 4×4, 4×5 et 5×5 vers le niveau 10, jusqu'à 9 colonnes × 12 à 15 lignes), la forme (à partir du niveau 9), et le caractère « sinueux » du réseau. La largeur est plafonnée à 9 colonnes pour garder des parcelles assez grandes sur un téléphone en portrait.
 2. **Arbre couvrant** (`generator.ts`) : un algorithme *growing tree* part de la source et relie toutes les parcelles sans cycle (au plus 3 sorties par parcelle, 4 pour la source, carrée comme hexagonale).
 3. **Unicité** : le solveur (`solver.ts`) ne fait que des déductions sûres (accord entre voisins, interdiction des boucles, un groupe isolé doit prendre sa seule sortie, deux groupes ne doivent pas s'enfermer mutuellement). S'il reste des parcelles ambiguës, l'arbre est localement « recâblé » autour d'elles, puis on recommence. Sur les 400 premiers niveaux, 100 % ont une solution unique trouvable par pure logique, en moins de 2 ms chacun.
 4. **Mélange** : chaque parcelle reçoit une rotation aléatoire.

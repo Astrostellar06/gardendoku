@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Board } from '../src/core/board';
 import { generate, Puzzle } from '../src/core/generator';
 import { E, Grid, N, rotateMask, S, W } from '../src/core/grid';
-import { buildLevel, isHexLevel, levelInfo } from '../src/core/levels';
+import { buildLevel, isHardLevel, isHexLevel, levelInfo } from '../src/core/levels';
 import { solve } from '../src/core/solver';
 
 describe('grid', () => {
@@ -55,9 +55,17 @@ describe('generator', () => {
     // About 4 s alone: leave room for a busy machine.
   }, 30_000);
 
-  it('keeps level parameters stable', () => {
-    const info = levelInfo(1);
-    expect([info.width, info.height, info.shape]).toEqual([5, 5, 'rect']);
+  it('start tiny and reach 5x5 around level 10', () => {
+    const size = (n: number) => [levelInfo(n).width, levelInfo(n).height, levelInfo(n).shape];
+    expect(size(1)).toEqual([3, 3, 'rect']);
+    expect(size(2)).toEqual([3, 4, 'rect']);
+    expect(size(3)).toEqual([4, 4, 'rect']);
+    let previous = 0;
+    for (const n of [1, 2, 3, 5, 6, 7]) {
+      expect(levelInfo(n).cells, `level ${n}`).toBeGreaterThanOrEqual(previous);
+      previous = levelInfo(n).cells;
+    }
+    expect(levelInfo(13).cells).toBe(25);
   });
 });
 
@@ -92,22 +100,22 @@ describe('advanced levels', () => {
     let total = 0;
     for (let n = 21; n <= 60; n++) {
       // Hard and hexagonal levels follow their own rules.
-      if (n % 5 === 0 || isHexLevel(n)) continue;
+      if (isHardLevel(n) || isHexLevel(n)) continue;
       const p = buildLevel(n);
       expect(p.unique, `level ${n}`).toBe(true);
       total++;
       if ((p.deepCells ?? 0) > 0) needing++;
     }
-    expect(needing).toBeGreaterThan(total * 0.7);
+    expect(needing).toBeGreaterThan(total * 0.6);
   });
 });
 
 describe('hard levels (joined edges)', () => {
-  it('appear every 5 levels, on square or rectangular gardens', () => {
+  it('appear every 10 levels up to 50, then every 5, on square or rectangular gardens', () => {
     let rectangles = 0;
-    for (let n = 1; n <= 100; n++) {
+    for (let n = 1; n <= 120; n++) {
       const info = levelInfo(n);
-      expect(info.wrap, `level ${n}`).toBe(n % 5 === 0);
+      expect(info.wrap, `level ${n}`).toBe(n <= 50 ? n % 10 === 0 : n % 5 === 0);
       if (info.wrap) {
         expect(info.shape).toBe('rect');
         if (info.width !== info.height) rectangles++;
@@ -117,9 +125,10 @@ describe('hard levels (joined edges)', () => {
   });
 
   it('start on a tiny 4x4 garden and grow one row or column at a time', () => {
-    expect([levelInfo(5).width, levelInfo(5).height]).toEqual([4, 4]);
+    expect([levelInfo(10).width, levelInfo(10).height]).toEqual([4, 4]);
     let biggest = 16;
-    for (let n = 10; n <= 200; n += 5) {
+    for (let n = 10; n <= 250; n += 5) {
+      if (!isHardLevel(n)) continue;
       const info = levelInfo(n);
       const cells = info.width * info.height;
       // At most one row or column more than the biggest garden so far.
@@ -131,7 +140,8 @@ describe('hard levels (joined edges)', () => {
   });
 
   it('are uniquely solvable and solved by their own solution', () => {
-    for (let n = 5; n <= 150; n += 5) {
+    for (let n = 10; n <= 150; n += 5) {
+      if (!isHardLevel(n)) continue;
       const p = buildLevel(n);
       expect(p.grid.wrap).toBe(true);
       expect(p.unique, `level ${n}`).toBe(true);

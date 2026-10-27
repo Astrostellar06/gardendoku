@@ -2118,3 +2118,16 @@ h1 {
   justify-content: center;
   border-radius: 20px;
 }
+
+/* Best watering streak, in the streak card. */
+.streak-best {
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--pink-soft);
+  font-weight: 600;
+  color: var(--pink-deep);
+}
+
+.streak-best:empty {
+  display: none;
+}

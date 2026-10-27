@@ -33,7 +33,7 @@ export interface LevelInfo {
  * Bump whenever generation changes: saved games from another version are not
  * restored (they would land on a different garden).
  */
-export const GENERATOR_VERSION = 6;
+export const GENERATOR_VERSION = 7;
 
 /** From these levels on, gardens require hypothesis reasoning on part of the tiles. */
 export const ADVANCED_FROM = 21;
@@ -50,11 +50,16 @@ function advancedShare(index: number, wrap: boolean, hex = false): number {
   return 0.06 + t * 0.06;
 }
 
-/** Hard levels come back every HARD_EVERY levels. */
-export const HARD_EVERY = 5;
+/** Hard levels: every 10 levels up to HARD_EVERY_5_FROM, then every 5. */
+export const HARD_EVERY_5_FROM = 50;
 
 export function isHardLevel(index: number): boolean {
-  return index % HARD_EVERY === 0;
+  return index % (index <= HARD_EVERY_5_FROM ? 10 : 5) === 0;
+}
+
+/** Which hard level this is: 1 for level 10, 2 for level 20... */
+function hardOrdinal(index: number): number {
+  return index <= HARD_EVERY_5_FROM ? index / 10 : HARD_EVERY_5_FROM / 10 + (index - HARD_EVERY_5_FROM) / 5;
 }
 
 /**
@@ -68,12 +73,8 @@ export const HEX_CHANCE = 0.24;
 const hexFlags: boolean[] = [false];
 const hexBefore: number[] = [0];
 
-/**
- * Levels set by hand: the first ones (normal, normal, hexagonal, normal), and
- * 12 rather than 11, so the first hexagons don't line up in a column of the
- * level list.
- */
-const SET_HEX: Record<number, boolean> = { 1: false, 2: false, 3: true, 4: false, 12: true };
+/** The first levels are set by hand: hexagonal gardens at 4 (a small one) and 8. */
+const SET_HEX: Record<number, boolean> = { 1: false, 2: false, 3: false, 4: true, 5: false, 6: false, 7: false, 8: true, 9: false };
 
 function drawHex(index: number, afterHex: boolean): boolean {
   if (index in SET_HEX) return SET_HEX[index];
@@ -97,7 +98,7 @@ export function isHexLevel(index: number): boolean {
 
 /**
  * Sizes [w, h] of the hard levels' gardens, square or portrait: the first
- * one is tiny (4x4), and each rung adds one row or one column.
+ * one (level 10) is tiny (4x4), and each rung adds one row or one column.
  */
 const WRAP_LADDER: Array<[number, number]> = [
   [4, 4],
@@ -116,7 +117,7 @@ const WRAP_LADDER: Array<[number, number]> = [
 const WRAP_RUNG_FROM = [1, 2, 3, 4, 6, 8, 11, 14, 18, 23, 29];
 
 function wrapSize(index: number, rng: Rng): [number, number] {
-  const k = index / HARD_EVERY;
+  const k = hardOrdinal(index);
   let rung = 0;
   while (rung + 1 < WRAP_RUNG_FROM.length && k >= WRAP_RUNG_FROM[rung + 1]) rung++;
   // Now and then a garden one size smaller, for variety (never a bigger one).
@@ -130,6 +131,7 @@ function wrapSize(index: number, rng: Rng): [number, number] {
  * then a cycle of the biggest ones.
  */
 const HEX_LADDER: Array<[ShapeId, number, number]> = [
+  ['comb', 3, 4],
   ['hexagon', 5, 5],
   ['comb', 5, 5],
   ['crown', 7, 7],
@@ -161,12 +163,23 @@ interface Band {
   shapeChance: number;
 }
 
+/** The very first gardens, one size at a time: 3x3 to 5x5 by level 9. */
+const FIRST_SIZES: Record<number, [number, number]> = {
+  1: [3, 3],
+  2: [3, 4],
+  3: [4, 4],
+  5: [4, 4],
+  6: [4, 5],
+  7: [4, 5],
+  9: [5, 5],
+};
+
 const BANDS: Band[] = [
-  { upTo: 2, sizes: [[5, 5]], shapeChance: 0 },
-  { upTo: 6, sizes: [[5, 5], [5, 6], [6, 6]], shapeChance: 0 },
-  { upTo: 12, sizes: [[6, 6], [6, 7], [7, 7]], shapeChance: 0.3 },
-  { upTo: 20, sizes: [[6, 8], [7, 8], [7, 7]], shapeChance: 0.4 },
-  { upTo: 32, sizes: [[7, 9], [8, 8], [8, 9]], shapeChance: 0.45 },
+  { upTo: 9, sizes: [[5, 5]], shapeChance: 0 },
+  { upTo: 14, sizes: [[5, 5], [5, 6]], shapeChance: 0.2 },
+  { upTo: 20, sizes: [[5, 6], [6, 6], [6, 7]], shapeChance: 0.3 },
+  { upTo: 28, sizes: [[6, 7], [7, 7], [6, 8]], shapeChance: 0.4 },
+  { upTo: 36, sizes: [[7, 8], [7, 9], [8, 8]], shapeChance: 0.45 },
   { upTo: 48, sizes: [[8, 10], [8, 9], [9, 9]], shapeChance: 0.5 },
   { upTo: 70, sizes: [[8, 11], [9, 10], [9, 11]], shapeChance: 0.5 },
   { upTo: Infinity, sizes: [[8, 12], [9, 11], [9, 12]], shapeChance: 0.5 },
@@ -270,7 +283,8 @@ export function levelInfo(index: number): LevelInfo {
     };
   }
   const band = BANDS.find((b) => index <= b.upTo)!;
-  const [bw, bh] = rng.pick(band.sizes);
+  const picked0 = rng.pick(band.sizes);
+  const [bw, bh] = FIRST_SIZES[index] ?? picked0;
   const windiness = rng.float(0.25, 0.85);
 
   let shape: ShapeId = 'rect';

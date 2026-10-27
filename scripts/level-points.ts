@@ -10,7 +10,8 @@ import { levelInfo } from '../src/core/levels';
 import { levelPoints } from '../src/online/points';
 
 export const LEVEL_POINTS_COUNT = 5000;
-const OUT = 'supabase/migrations/20261027000100_level_points.sql';
+// A new file per change of the levels (the earlier ones stay: they are already applied).
+const OUT = 'supabase/migrations/20261028000100_level_points.sql';
 
 const rows: string[] = [];
 for (let n = 1; n <= LEVEL_POINTS_COUNT; n++) rows.push(`(${n},${levelPoints(levelInfo(n))})`);

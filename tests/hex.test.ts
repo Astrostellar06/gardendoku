@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Board } from '../src/core/board';
 import { Puzzle } from '../src/core/generator';
 import { distinctRotations, Grid, HN, HNE, HS, HSE, HSW, HNW, rotateMask } from '../src/core/grid';
-import { buildLevel, isHexLevel, levelInfo } from '../src/core/levels';
+import { buildLevel, isHardLevel, isHexLevel, levelInfo } from '../src/core/levels';
 import { buildShape, HEX_SHAPES } from '../src/core/shapes';
 import { solve } from '../src/core/solver';
 import { timeModel } from '../src/core/timing';
@@ -80,11 +80,12 @@ function hexLevels(count: number): number[] {
 
 describe('hexagonal levels', () => {
   it('come about once in five normal levels, never two in a row', () => {
-    expect([1, 2, 3, 4, 5].map((n) => levelInfo(n).hex)).toEqual([false, false, true, false, false]);
+    // Set by hand at first: hexagonal at 4 and 8 only.
+    expect(Array.from({ length: 9 }, (_, k) => levelInfo(k + 1).hex)).toEqual([false, false, false, true, false, false, false, true, false]);
     let normal = 0;
     let hex = 0;
     for (let n = 1; n <= 1000; n++) {
-      if (n % 5 === 0) {
+      if (isHardLevel(n)) {
         expect(isHexLevel(n), `level ${n}`).toBe(false);
         continue;
       }
@@ -99,14 +100,15 @@ describe('hexagonal levels', () => {
 
   it('grow one garden after the other, never with the same shape twice in a row', () => {
     const infos = hexLevels(30).map(levelInfo);
-    expect(infos[0].cells).toBe(19);
+    // A small first one (12 tiles), then 19.
+    expect([infos[0].cells, infos[1].cells]).toEqual([12, 19]);
     infos.forEach((info, k) => {
       expect(info.hex).toBe(true);
       expect(info.wrap).toBe(false);
       expect(HEX_SHAPES).toContain(info.shape);
       if (k > 0) expect(info.shape, `level ${info.index}`).not.toBe(infos[k - 1].shape);
     });
-    expect(infos[9].cells).toBeGreaterThan(50);
+    expect(infos[10].cells).toBeGreaterThan(50);
   });
 
   it('are uniquely solvable', () => {

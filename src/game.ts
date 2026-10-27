@@ -796,8 +796,9 @@ export class Game {
       days <= 0
         ? t('streak.rewardToday', { reward: rewardText(next.reward) })
         : tn('streak.rewardIn', days, { reward: rewardText(next.reward) });
-    const best = this.save.streak.best;
-    this.hud.openStreak(view, status, nextText, best > 1 ? t('streak.best', { n: best }) : '');
+    // The best streak so far, always shown (the current one counts too).
+    const best = Math.max(this.save.streak.best, liveStreak(this.save.streak, dayKey()));
+    this.hud.openStreak(view, status, nextText, best > 0 ? tn('streak.best', best) : '');
   }
 
   /** Pass the level after a rewarded video; it stays playable from the level list. */

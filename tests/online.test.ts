@@ -102,9 +102,9 @@ describe('online: scoring', () => {
     expect(await call(p, 'submit_solve', 'level', 1)).toEqual({ points: 0, week_points: 1 });
     expect(await failure(p, 'submit_solve', 'level', 9)).toBe('level_locked');
     await call(p, 'sync_level', 10);
-    // Level 3 is hexagonal (2 points), level 5 has joined edges (4).
-    expect(await call(p, 'submit_solve', 'level', 3)).toEqual({ points: 2, week_points: 3 });
-    expect(await call(p, 'submit_solve', 'level', 5)).toEqual({ points: 4, week_points: 7 });
+    // Level 4 is hexagonal (2 points), level 10 has joined edges (4).
+    expect(await call(p, 'submit_solve', 'level', 4)).toEqual({ points: 2, week_points: 3 });
+    expect(await call(p, 'submit_solve', 'level', 10)).toEqual({ points: 4, week_points: 7 });
     expect(await failure(p, 'submit_solve', 'other', 5)).toBe('bad_kind');
   });
 
@@ -166,7 +166,7 @@ describe('online: leagues', () => {
   it('hands out the prizes of the five best once the week is over, once', async () => {
     await db.exec('truncate leagues cascade');
     // Levels worth one point each.
-    const single = [1, 2, 4, 7, 8, 9];
+    const single = [1, 2, 3, 5, 6, 7];
     const players: string[] = [];
     for (let k = 0; k < 6; k++) {
       const p = await newPlayer();
