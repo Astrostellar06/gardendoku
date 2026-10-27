@@ -1,4 +1,4 @@
-/** Summer: sunflowers, parasols, watermelon, lemonade stands, sandcastles and pool floats. */
+/** Summer: sunflowers, parasols, surfboards, watermelon, lemonade stands, sandcastles and pool floats. */
 import { SPRING } from '../palette';
 import { plankBridge, swimOffset } from './common';
 import { circle, ellipse, eyes, groundShadow, leaf, line, poly, rrect, TAU } from './kit';
@@ -44,25 +44,87 @@ const parasol: PropDef = {
     ellipse(ctx, 0, r * 0.75, r * 0.85, r * 0.3, 0, 'rgba(70,45,40,0.16)');
     rrect(ctx, -r * 0.7, r * 0.55, r * 1.1, r * 0.35, r * 0.06, v > 0.5 ? '#FFD45A' : '#B9A0F2');
     rrect(ctx, -r * 0.7, r * 0.66, r * 1.1, r * 0.06, r * 0.02, 'rgba(255,255,255,0.6)');
-    line(ctx, r * 0.06, r * 0.85, 0, -r * 0.9, r * 0.06, '#F2F2F2');
-    // Dome canopy with a scalloped edge, cut into coloured gores.
-    const edge = -r * 0.32;
+    line(ctx, r * 0.04, r * 0.85, 0, -r * 0.9, r * 0.06, '#F2F2F2');
+    // Dome canopy: each gore runs from the tip to the scalloped rim between two curved ribs.
+    const tipY = -r * 0.95;
+    const rim = -r * 0.32;
     const n = 6;
     const xs = Array.from({ length: n + 1 }, (_, k) => -r * 0.9 + (k * r * 1.8) / n);
-    ctx.save();
+    for (let k = 0; k < n; k++) {
+      const a = xs[k];
+      const b = xs[k + 1];
+      ctx.fillStyle = colors[k % 2];
+      ctx.beginPath();
+      ctx.moveTo(0, tipY);
+      ctx.quadraticCurveTo(a * 0.95, tipY, a, rim);
+      ctx.quadraticCurveTo((a + b) / 2, rim + r * 0.13, b, rim);
+      ctx.quadraticCurveTo(b * 0.95, tipY, 0, tipY);
+      ctx.fill();
+    }
+    // Soft shade on the right half, sheen on the left.
+    ctx.fillStyle = 'rgba(80, 60, 90, 0.08)';
     ctx.beginPath();
-    ctx.moveTo(xs[0], edge);
-    ctx.quadraticCurveTo(-r * 0.85, -r * 0.95, 0, -r * 0.95);
-    ctx.quadraticCurveTo(r * 0.85, -r * 0.95, xs[n], edge);
-    for (let k = n; k > 0; k--) ctx.quadraticCurveTo((xs[k] + xs[k - 1]) / 2, edge + r * 0.12, xs[k - 1], edge);
-    ctx.closePath();
-    ctx.fillStyle = colors[1];
+    ctx.moveTo(0, tipY);
+    ctx.quadraticCurveTo(xs[n] * 0.95, tipY, xs[n], rim);
+    ctx.lineTo(xs[n - 2], rim);
+    ctx.quadraticCurveTo(xs[n - 2] * 0.95, tipY, 0, tipY);
     ctx.fill();
-    ctx.clip();
-    for (let k = 0; k < n; k += 2) poly(ctx, [0, -r * 0.95, xs[k] * 1.1, edge + r * 0.2, xs[k + 1] * 1.1, edge + r * 0.2], colors[0]);
-    ellipse(ctx, -r * 0.35, -r * 0.7, r * 0.3, r * 0.1, -0.3, 'rgba(255,255,255,0.3)');
-    ctx.restore();
-    circle(ctx, 0, -r * 0.97, r * 0.06, colors[0]);
+    ellipse(ctx, -r * 0.42, -r * 0.68, r * 0.22, r * 0.07, -0.5, 'rgba(255,255,255,0.35)');
+    circle(ctx, 0, tipY - r * 0.02, r * 0.06, colors[0]);
+  },
+};
+
+const surfboards: PropDef = {
+  id: 'surfboards',
+  place: 'ground',
+  size: [0.08, 0.1],
+  weight: 2,
+  when: 'always',
+  upright: true,
+  drawScale: 1.6,
+  draw(ctx, { r, v }) {
+    const palettes = [
+      ['#FF8FB6', '#FFFFFF'],
+      ['#4FC3E8', '#FFE066'],
+      ['#FFC94D', '#FF7A6B'],
+      ['#9BE3C4', '#FFFFFF'],
+    ];
+    groundShadow(ctx, 0, r * 0.9, r * 0.75);
+    // Boards stuck nose up in a little heap of sand.
+    const board = (x: number, tilt: number, len: number, k: number) => {
+      const [body, stripe] = palettes[(Math.floor(v * 4) + k) % palettes.length];
+      ctx.save();
+      ctx.translate(x, r * 0.75);
+      ctx.rotate(tilt);
+      const half = r * 0.17;
+      const top = -r * len;
+      ctx.beginPath();
+      ctx.moveTo(0, top);
+      ctx.bezierCurveTo(half * 1.2, top + r * 0.25, half, r * 0.1, half * 0.85, r * 0.15);
+      ctx.lineTo(-half * 0.85, r * 0.15);
+      ctx.bezierCurveTo(-half, r * 0.1, -half * 1.2, top + r * 0.25, 0, top);
+      ctx.fillStyle = body;
+      ctx.fill();
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = stripe;
+      ctx.fillRect(-half * 1.3, top + r * 0.45, half * 2.6, r * 0.1);
+      ctx.fillRect(-r * 0.02, top, r * 0.04, r * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.fillRect(-half, top, half * 0.45, r * 2);
+      ctx.restore();
+      ctx.restore();
+    };
+    board(-r * 0.3, -0.14, 1.35, 0);
+    board(r * 0.32, 0.18, 1.15, 1);
+    board(r * 0.02, 0.02, 1.05, 2);
+    ctx.fillStyle = '#F2CF8E';
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.75, r * 0.92);
+    ctx.quadraticCurveTo(0, r * 0.45, r * 0.75, r * 0.92);
+    ctx.closePath();
+    ctx.fill();
+    ellipse(ctx, -r * 0.2, r * 0.8, r * 0.18, r * 0.05, 0, 'rgba(255,255,255,0.4)');
   },
 };
 
@@ -273,7 +335,7 @@ export const ete: Theme = {
   creature: 'butterfly',
   propChance: 0.8,
   extraChance: 0.35,
-  props: [sunflowers, parasol, watermelon, lemonade, deckchair, sandcastle, plankBridge('#F0C890', '#DDB078', '#C99A60'), swimRing, rubberDuck],
+  props: [sunflowers, parasol, surfboards, watermelon, lemonade, deckchair, sandcastle, plankBridge('#F0C890', '#DDB078', '#C99A60'), swimRing, rubberDuck],
   scenery(ctx, w, h) {
     sun(ctx, w * 0.8, h * 0.12, Math.min(w, h) * 0.08, 'rgba(255, 220, 110, ALPHA)');
     cloud(ctx, w * 0.1, h * 0.08, 0.6);

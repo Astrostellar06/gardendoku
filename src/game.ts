@@ -5,17 +5,18 @@ import { buildDaily, DailyInfo, dailyInfo, dayKey, msUntilTomorrow } from './cor
 import { generate, Puzzle } from './core/generator';
 import { buildLevel, GENERATOR_VERSION, LevelInfo, levelInfo } from './core/levels';
 import { hashString } from './core/rng';
-import { fasterThan, formatTime, timeModel } from './core/timing';
-import { advanceStreak, dailyThemeId, liveStreak, shareText } from './daily';
+import { fasterThan, formatTime, timeModel, ZONE_HINT_WEIGHT } from './core/timing';
+import { dailyThemeId, shareText } from './daily';
 import { isUnlocked, RANDOM_STYLE, refreshUnlocks, STYLE_CHALLENGES } from './progress';
 import { renderRandomPreview, renderThemePreview } from './render/preview';
 import { GardenRenderer } from './render/renderer';
 import { setTheme, THEMES } from './render/themes';
 import type { ThemeId } from './render/themes';
 import { showRewardedAd } from './ui/ads';
-import { Hud, StyleCard } from './ui/hud';
+import { Hud, StreakView, StyleCard, WinView } from './ui/hud';
 import { attachInput } from './ui/input';
 import { shareOrCopy } from './ui/share';
+import { advanceStreak, daysToZoneHint, liveStreak, nextReward, rewardText, streakReward, weekDay } from './streak';
 import { LevelSnapshot, loadSave, SaveData, writeSave } from './ui/storage';
 import {
   buildTutorialBoard,
@@ -44,6 +45,9 @@ export class Game {
   private celebrated = false;
   private elapsed = 0;
   private hints = 0;
+  /** Zone hints used on the current garden, and whether the next tap places one. */
+  private zones = 0;
+  private zoneMode = false;
   private saveTimer = 0;
   private resetArmedUntil = 0;
   /** Lock state applied by the current finger stroke, and how many tiles it changed. */
@@ -52,7 +56,7 @@ export class Game {
   /** Whether a lock was used on the current level (for the "no help" challenge). */
   private usedLock = false;
   /** Result of the last win, shown on the win card. */
-  private lastWin: { rank: number; unlocked: string[] } | null = null;
+  private lastWin: { rank: number; unlocked: string[]; streak?: WinView['streak'] } | null = null;
   /** Seconds spent on the current tutorial step, and whether the last tile has been turned. */
   private tutorialClock = 0;
   private tutorialSolved = false;
@@ -65,6 +69,7 @@ export class Game {
     if (params.has('debloquer')) {
       this.save.unlocked = THEMES.map((t) => t.id);
       this.save.hints = Math.max(this.save.hints, 99);
+      this.save.zoneHints = Math.max(this.save.zoneHints, 99);
       params.delete('debloquer');
       const rest = params.toString();
       history.replaceState(null, '', location.pathname + (rest ? `?${rest}` : ''));
@@ -79,6 +84,7 @@ export class Game {
     this.sound.enabled = this.save.settings.sound;
     this.hud.setSound(this.sound.enabled);
     this.hud.setHints(this.save.hints);
+    this.hud.setZoneHints(this.save.zoneHints);
 
     attachInput(canvas, {
       cellAt: (x, y) => (this.mode === 'home' ? -1 : this.renderer.cellAt(x, y)),
@@ -115,7 +121,14 @@ export class Game {
     on('btn-replay-tutorial', () => this.startTutorial());
     on('coach-next', () => this.advanceTutorial());
     on('coach-skip', () => this.finishTutorial());
-    on('btn-levels', () => this.hud.openLevels(this.save.maxLevel, this.save.level, (n) => this.play(n)));
+    on('btn-levels', () => this.hud.openLevels(this.save.maxLevel, this.save.level, this.save.skipped, (n) => this.play(n)));
+    on('btn-streak', () => this.openStreak());
+    on('btn-zone-streak', () => this.openStreak());
+    on('btn-zone', () => this.toggleZoneMode());
+    on('btn-skip', () => {
+      if (this.mode === 'play' && !this.won && !this.daily) this.hud.openSkip();
+    });
+    on('btn-skip-watch', () => this.skipLevel());
     on('btn-home', () => this.showHome());
     on('btn-sound', () => this.toggleSound());
     on('btn-lock', () => this.setLockMode(!this.lockMode));
@@ -186,8 +199,15 @@ export class Game {
       this.vibrate([18, 40, 18]);
       this.renderer.celebrate(() => {
         if (this.mode === 'play' && this.won) {
-          const daily = this.daily ? { streak: this.save.streak.count } : undefined;
-          this.hud.showWin(this.info!.index, this.elapsed, this.board!.moves, this.lastWin?.rank ?? null, this.lastWin?.unlocked ?? [], daily);
+          this.hud.showWin({
+            level: this.info!.index,
+            seconds: this.elapsed,
+            moves: this.board!.moves,
+            rank: this.lastWin?.rank ?? null,
+            unlocked: this.lastWin?.unlocked ?? [],
+            daily: !!this.daily,
+            streak: this.lastWin?.streak,
+          });
         }
       });
     }
@@ -202,12 +222,14 @@ export class Game {
     this.mode = 'home';
     this.won = false;
     this.setLockMode(false);
+    this.setZoneMode(false);
     this.hud.hideWin();
     this.hud.hideToast();
     this.hud.showGameBars(false);
     this.hud.showHome(this.save.level);
     this.daily = null;
     this.updateHomeDaily();
+    this.hud.setHomeStreak(liveStreak(this.save.streak, dayKey()), this.save.streak.last === dayKey());
     // A small decorative garden blooms behind the title.
     const demo = new Board(generate({ width: 7, height: 7, shape: 'flower', seed: 'accueil', windiness: 0.5 }));
     demo.solveInstantly();
@@ -255,13 +277,17 @@ export class Game {
     this.celebrated = false;
     this.elapsed = 0;
     this.hints = 0;
+    this.zones = 0;
     this.setLockMode(false);
+    this.setZoneMode(false);
+    this.hud.setSkipVisible(!this.daily);
     this.hud.hideWin();
     this.hud.setWonBar(false);
     this.hud.hideToast();
     if (snap && snap.version === GENERATOR_VERSION && board.restore(snap)) {
       this.elapsed = snap.time;
       this.hints = snap.hints ?? 0;
+      this.zones = snap.zones ?? 0;
     }
     this.usedLock = !!snap?.usedLock || board.locked.some((l) => l === 1);
     this.renderer.setBoard(board, info.seed);
@@ -291,12 +317,11 @@ export class Game {
   private updateHomeDaily() {
     const today = dayKey();
     const d = this.save.daily;
-    const streak = liveStreak(this.save.streak, today);
     if (d && d.key === today && d.result) {
-      this.hud.setHomeDaily(`Réussi en ${formatTime(d.result.time)}${streak >= 2 ? ` · ${streak} jours de suite` : ''}`, true);
+      this.hud.setHomeDaily(`Réussi en ${formatTime(d.result.time)}`, true);
     } else {
       const style = THEMES.find((t) => t.id === dailyThemeId(today, THEMES))!.name;
-      this.hud.setHomeDaily(`Style du jour : ${style}${streak >= 1 ? ` · série de ${streak}` : ''}`, false);
+      this.hud.setHomeDaily(`Style du jour : ${style}`, false);
     }
   }
 
@@ -331,7 +356,7 @@ export class Game {
     if (!d?.result) return;
     const streak = liveStreak(this.save.streak, dayKey());
     this.hud.openDailyResult(
-      `Réussi en ${formatTime(d.result.time)}${d.result.hints ? `, avec ${d.result.hints} indice${d.result.hints > 1 ? 's' : ''}` : ', sans indice'}`,
+      `Réussi en ${formatTime(d.result.time)}${helpText(d.result.hints, d.result.zones ?? 0)}`,
       `Plus rapide que ${d.result.rank} % des joueurs`,
       streak >= 2 ? `${streak} jours de suite !` : '',
       () => {
@@ -441,6 +466,10 @@ export class Game {
       return;
     }
     if (this.mode !== 'play' || this.won || !board) return;
+    if (this.zoneMode) {
+      this.applyZone(cell);
+      return;
+    }
     if (board.locked[cell]) {
       this.renderer.shake(cell);
       this.sound.denied();
@@ -468,6 +497,11 @@ export class Game {
       return;
     }
     if (this.mode !== 'play' || this.won || !board) return;
+    if (this.zoneMode) {
+      // A long press while the zone hint is armed places it too.
+      this.applyZone(cell);
+      return;
+    }
     const lock = !board.locked[cell];
     board.setLock(cell, lock);
     if (lock) this.usedLock = true;
@@ -492,6 +526,7 @@ export class Game {
   }
 
   private setLockMode(on: boolean) {
+    if (on) this.setZoneMode(false);
     this.lockMode = on;
     this.renderer.lockMode = on;
     this.hud.setLockMode(on);
@@ -517,6 +552,7 @@ export class Game {
     const board = this.board;
     const an = this.analysis;
     if (!board || !an || this.won) return;
+    this.setZoneMode(false);
     if (this.save.hints <= 0) {
       this.hud.openHintShop();
       return;
@@ -546,6 +582,119 @@ export class Game {
     this.sound.lock(true);
     this.hints++;
     this.afterChange();
+  }
+
+  /** Zone button: arm the zone hint (the next tap picks the square), or explain how to get more. */
+  private toggleZoneMode() {
+    if (this.mode !== 'play' || this.won || !this.board) return;
+    if (this.zoneMode) {
+      this.setZoneMode(false);
+      this.hud.hideToast();
+      return;
+    }
+    if (this.save.zoneHints <= 0) {
+      const today = dayKey();
+      const ahead = daysToZoneHint(liveStreak(this.save.streak, today));
+      // Not watered yet today: the first of these days is today.
+      const days = this.save.streak.last === today ? ahead : ahead - 1;
+      const when = days <= 0 ? "le prochain aujourd'hui, en finissant ce jardin" : `le prochain dans ${days} jour${days > 1 ? 's' : ''}`;
+      this.hud.openZoneInfo(`Tu n'en as plus. Ta série d'arrosage en offre un tous les 7 jours : ${when}.`);
+      return;
+    }
+    this.setLockMode(false);
+    this.setZoneMode(true);
+    this.hud.toast('Touche une parcelle : le carré de 3×3 autour se remet en place', false, 3200);
+  }
+
+  private setZoneMode(on: boolean) {
+    this.zoneMode = on;
+    this.hud.setZoneMode(on);
+  }
+
+  /** Put the 3x3 square around `cell` in its solved orientation and lock it. */
+  private applyZone(center: number) {
+    const board = this.board!;
+    const grid = board.grid;
+    const cx = center % grid.width;
+    const cy = Math.floor(center / grid.width);
+    const zone: number[] = [];
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        let x = cx + dx;
+        let y = cy + dy;
+        if (grid.wrap) {
+          x = (x + grid.width) % grid.width;
+          y = (y + grid.height) % grid.height;
+        } else if (x < 0 || y < 0 || x >= grid.width || y >= grid.height) {
+          continue;
+        }
+        const i = y * grid.width + x;
+        if (grid.active[i] && !zone.includes(i)) zone.push(i);
+      }
+    }
+    const todo = zone.filter((i) => !board.isCorrect(i) || !board.locked[i]);
+    if (!todo.length) {
+      this.hud.toast('Ce carré est déjà en place : choisis-en un autre');
+      return;
+    }
+    for (const i of todo) {
+      const turns = board.applySolution(i);
+      if (turns) this.renderer.rotate(i, turns);
+      const [x, y] = this.renderer.cellCenter(i);
+      this.renderer.particles.sparkle(x, y, 3, 16);
+    }
+    this.save.zoneHints--;
+    this.hud.setZoneHints(this.save.zoneHints);
+    this.zones++;
+    this.setZoneMode(false);
+    this.hud.hideToast();
+    this.sound.lock(true);
+    this.vibrate([10, 30, 10]);
+    this.afterChange();
+  }
+
+  /** Week track of the streak: watered slots, and the slot waiting for today. */
+  private streakView(): StreakView {
+    const today = dayKey();
+    const count = liveStreak(this.save.streak, today);
+    if (this.save.streak.last === today) return { count, filled: weekDay(count), next: -1 };
+    // Not watered yet today: a finished week starts over on the first slot.
+    const filled = weekDay(count) === 7 ? 0 : weekDay(count);
+    return { count, filled, next: filled + 1 };
+  }
+
+  private openStreak() {
+    const view = this.streakView();
+    const watered = this.save.streak.last === dayKey();
+    const status = watered
+      ? "Ton jardin a fleuri aujourd'hui. À demain !"
+      : view.count > 0
+        ? "Fais fleurir un jardin aujourd'hui (un niveau ou le défi du jour) pour garder ta série."
+        : "Fais fleurir un jardin chaque jour (un niveau ou le défi du jour) pour lancer une série.";
+    // Not watered yet today: the first of these days is today.
+    const next = nextReward(view.count);
+    const days = watered ? next.inDays : next.inDays - 1;
+    const nextText =
+      days <= 0
+        ? `Récompense du jour, en faisant fleurir un jardin : ${rewardText(next.reward)}.`
+        : `Prochaine récompense dans ${days} jour${days > 1 ? 's' : ''} : ${rewardText(next.reward)}.`;
+    const best = this.save.streak.best;
+    this.hud.openStreak(view, status, nextText, best > 1 ? `Meilleure série : ${best} jours` : '');
+  }
+
+  /** Pass the level after a rewarded video; it stays playable from the level list. */
+  private async skipLevel() {
+    this.hud.close(this.hud.skip);
+    if (this.mode !== 'play' || this.won || this.daily || !this.info) return;
+    const level = this.info.index;
+    const rewarded = await showRewardedAd();
+    if (!rewarded || this.mode !== 'play' || this.info?.index !== level) return;
+    if (!this.save.skipped.includes(level)) this.save.skipped.push(level);
+    this.save.maxLevel = Math.max(this.save.maxLevel, level + 1);
+    this.save.snapshot = null;
+    this.loadLevel(level + 1);
+    this.hud.toast(`Niveau ${level} passé : tu pourras y revenir depuis la liste`, false, 3200);
+    this.persist();
   }
 
   // ---------- Styles ----------
@@ -647,36 +796,67 @@ export class Game {
     this.recordWin(this.info, this.board);
     this.won = true;
     this.setLockMode(false);
+    this.setZoneMode(false);
+    this.hud.setSkipVisible(false);
     this.renderer.hold = null;
     this.hud.hideToast();
     this.save.solved++;
     this.save.seenTutorial = true;
     if (this.daily && this.save.daily) {
-      this.save.daily.result = { time: Math.round(this.elapsed), moves: this.board.moves, hints: this.hints, rank: this.lastWin!.rank };
+      this.save.daily.result = {
+        time: Math.round(this.elapsed),
+        moves: this.board.moves,
+        hints: this.hints,
+        zones: this.zones,
+        rank: this.lastWin!.rank,
+      };
       this.save.daily.snapshot = null;
-      this.save.streak = advanceStreak(this.save.streak, this.daily.key);
       this.save.stats.dailyDone++;
     } else {
       this.save.maxLevel = Math.max(this.save.maxLevel, this.info.index + 1);
       this.save.level = this.info.index + 1;
       this.save.snapshot = null;
+      this.save.skipped = this.save.skipped.filter((n) => n !== this.info!.index);
     }
+    this.waterStreak();
     const fresh = refreshUnlocks(this.save);
     if (this.lastWin) this.lastWin.unlocked = fresh.map((id) => THEMES.find((t) => t.id === id)!.name);
     writeSave(this.save);
   }
 
+  /** First garden of the day: the streak grows, and some days bring a reward. */
+  private waterStreak() {
+    const today = dayKey();
+    if (this.save.streak.last === today) return;
+    this.save.streak = advanceStreak(this.save.streak, today);
+    const count = this.save.streak.count;
+    const reward = streakReward(count);
+    let note: string;
+    if (reward) {
+      this.save.hints += reward.hints;
+      this.save.zoneHints += reward.zoneHints;
+      this.hud.setHints(this.save.hints);
+      this.hud.setZoneHints(this.save.zoneHints);
+      note = `Récompense : ${rewardText(reward)} !`;
+    } else {
+      const next = nextReward(count);
+      note = `Encore ${next.inDays} jour${next.inDays > 1 ? 's' : ''} pour gagner ${rewardText(next.reward)}.`;
+    }
+    if (this.lastWin) this.lastWin.streak = { count, filled: weekDay(count), next: -1, note };
+  }
+
   /** Rank against other players, and the numbers behind the style challenges. */
   private recordWin(info: LevelInfo, board: Board) {
-    const rank = fasterThan(this.elapsed, timeModel(board.puzzle), this.hints);
+    const rank = fasterThan(this.elapsed, timeModel(board.puzzle), this.hints + ZONE_HINT_WEIGHT * this.zones);
     const stats = this.save.stats;
     const key = this.daily ? this.daily.key : String(info.index);
     stats.bestTimes[key] = Math.min(stats.bestTimes[key] ?? Infinity, Math.round(this.elapsed));
     stats.bestFasterThan = Math.max(stats.bestFasterThan, rank);
     const tiles = board.grid.cells.length;
     if (info.wrap && !this.daily && !stats.hardSolved.includes(info.index)) stats.hardSolved.push(info.index);
-    if (!this.usedLock && this.hints === 0) stats.noHelpBest = Math.max(stats.noHelpBest, tiles);
-    if (this.hints === 0) {
+    const helped = this.hints > 0 || this.zones > 0;
+    if (!this.usedLock && !helped) stats.noHelpBest = Math.max(stats.noHelpBest, tiles);
+    if (!helped) {
       stats.noHintBest = Math.max(stats.noHintBest, tiles);
       stats.noHintStreak++;
       stats.noHintBestStreak = Math.max(stats.noHintBestStreak, stats.noHintStreak);
@@ -715,6 +895,7 @@ export class Game {
         ...this.board.snapshot(this.elapsed),
         version: GENERATOR_VERSION,
         hints: this.hints,
+        zones: this.zones,
         usedLock: this.usedLock,
       };
       if (this.daily && this.save.daily) this.save.daily.snapshot = snapshot;
@@ -726,4 +907,13 @@ export class Game {
   private vibrate(pattern: number | number[]) {
     if (this.save.settings.haptics) navigator.vibrate?.(pattern);
   }
+}
+
+/** ", sans indice" / ", avec 2 indices et 1 zone" for the daily result card. */
+function helpText(hints: number, zones: number): string {
+  if (!hints && !zones) return ', sans indice';
+  const parts: string[] = [];
+  if (hints) parts.push(`${hints} indice${hints > 1 ? 's' : ''}`);
+  if (zones) parts.push(`${zones} zone${zones > 1 ? 's' : ''}`);
+  return `, avec ${parts.join(' et ')}`;
 }

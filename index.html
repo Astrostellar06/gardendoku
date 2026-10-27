@@ -16,9 +16,14 @@
       <canvas id="garden"></canvas>
 
       <header id="topbar" class="bar top hidden">
-        <button class="icon-btn" id="btn-home" aria-label="Accueil">
-          <svg viewBox="0 0 24 24"><path d="M4 11.2 12 4.5l8 6.7" /><path d="M6.5 9.8V19h11V9.8" /><path d="M10.2 19v-4.6h3.6V19" /></svg>
-        </button>
+        <div class="bar-group">
+          <button class="icon-btn" id="btn-home" aria-label="Accueil">
+            <svg viewBox="0 0 24 24"><path d="M4 11.2 12 4.5l8 6.7" /><path d="M6.5 9.8V19h11V9.8" /><path d="M10.2 19v-4.6h3.6V19" /></svg>
+          </button>
+          <button class="icon-btn" id="btn-skip" aria-label="Passer le niveau">
+            <svg viewBox="0 0 24 24"><path d="M5.5 6.5 11 12l-5.5 5.5" /><path d="M11.5 6.5 17 12l-5.5 5.5" /><path d="M19.5 6.5v11" /></svg>
+          </button>
+        </div>
         <div class="level-pill">
           <div class="level-title" id="level-title">Niveau 1</div>
           <div class="level-sub" id="level-sub">Parterre · 25 parcelles</div>
@@ -48,6 +53,11 @@
           <span>Indice</span>
           <span class="count" id="hint-count">5</span>
         </button>
+        <button class="tool-btn toggle" id="btn-zone" aria-pressed="false">
+          <svg viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="3.2" /><path d="M9.5 4.5v15M14.5 4.5v15M4.5 9.5h15M4.5 14.5h15" /></svg>
+          <span>Zone</span>
+          <span class="count zone" id="zone-count">3</span>
+        </button>
         <button class="big-btn hidden" id="btn-next-float">Niveau suivant</button>
       </footer>
 
@@ -68,6 +78,7 @@
       </section>
 
       <section id="home" class="screen">
+        <button class="streak-badge" id="btn-streak" aria-label="Série d'arrosage"><svg class="can-icon" viewBox="0 0 32 32" aria-hidden="true"><path class="can-spout" d="M18.4 21 26 13" /><ellipse class="can-rose" cx="27.2" cy="11.8" rx="2.7" ry="1.6" transform="rotate(-45 27.2 11.8)" /><path class="can-handle" d="M8.6 12.8C8.6 6.4 17.6 6.4 17.6 12.8" /><path class="can-body" d="M6.4 12.8h13.6l-1.1 12.1a2.6 2.6 0 0 1-2.6 2.4h-6.2a2.6 2.6 0 0 1-2.6-2.4Z" /><path class="can-shine" d="M9.6 15.8v6.6" /><path class="can-drop" d="M29 16.4c.9 1.1 1.4 1.9 1.4 2.6a1.4 1.4 0 0 1-2.8 0c0-.7.5-1.5 1.4-2.6Z" /><path class="can-drop" d="M25.6 18.8c.7.9 1.1 1.5 1.1 2a1.1 1.1 0 0 1-2.2 0c0-.5.4-1.1 1.1-2Z" /></svg><b id="streak-count">0</b></button>
         <div class="home-top">
           <div class="logo">
             <svg class="logo-drop" viewBox="0 0 48 48"><path d="M24 5c6 7.3 13 14.7 13 22.4a13 13 0 0 1-26 0C11 19.7 18 12.3 24 5Z" /><path class="shine" d="M18.5 29a6 6 0 0 0 5.5 5.5" /></svg>
@@ -104,7 +115,11 @@
           <h2>Jardin fleuri !</h2>
           <p id="win-text">Niveau 1 terminé</p>
           <p class="win-rank" id="win-rank"></p>
-          <p class="win-streak" id="win-streak"></p>
+          <div class="win-streak-box hidden" id="win-streak">
+            <div class="streak-head"><svg class="can-icon" viewBox="0 0 32 32" aria-hidden="true"><path class="can-spout" d="M18.4 21 26 13" /><ellipse class="can-rose" cx="27.2" cy="11.8" rx="2.7" ry="1.6" transform="rotate(-45 27.2 11.8)" /><path class="can-handle" d="M8.6 12.8C8.6 6.4 17.6 6.4 17.6 12.8" /><path class="can-body" d="M6.4 12.8h13.6l-1.1 12.1a2.6 2.6 0 0 1-2.6 2.4h-6.2a2.6 2.6 0 0 1-2.6-2.4Z" /><path class="can-shine" d="M9.6 15.8v6.6" /><path class="can-drop" d="M29 16.4c.9 1.1 1.4 1.9 1.4 2.6a1.4 1.4 0 0 1-2.8 0c0-.7.5-1.5 1.4-2.6Z" /><path class="can-drop" d="M25.6 18.8c.7.9 1.1 1.5 1.1 2a1.1 1.1 0 0 1-2.2 0c0-.5.4-1.1 1.1-2Z" /></svg><b id="win-streak-title">Jour 1 de suite</b></div>
+            <div class="streak-track" id="win-streak-track"></div>
+            <p class="streak-note" id="win-streak-note"></p>
+          </div>
           <div class="stats">
             <div><b id="win-time">0:00</b><span>temps</span></div>
             <div><b id="win-moves">0</b><span id="win-moves-label">rotations</span></div>
@@ -166,6 +181,41 @@
           <p class="small" id="daily-countdown"></p>
           <button class="big-btn" id="btn-daily-share">Partager</button>
           <button class="link-btn" data-close>Fermer</button>
+        </div>
+      </section>
+
+      <section id="streak" class="overlay hidden">
+        <div class="card">
+          <svg class="can-icon big" viewBox="0 0 32 32" aria-hidden="true"><path class="can-spout" d="M18.4 21 26 13" /><ellipse class="can-rose" cx="27.2" cy="11.8" rx="2.7" ry="1.6" transform="rotate(-45 27.2 11.8)" /><path class="can-handle" d="M8.6 12.8C8.6 6.4 17.6 6.4 17.6 12.8" /><path class="can-body" d="M6.4 12.8h13.6l-1.1 12.1a2.6 2.6 0 0 1-2.6 2.4h-6.2a2.6 2.6 0 0 1-2.6-2.4Z" /><path class="can-shine" d="M9.6 15.8v6.6" /><path class="can-drop" d="M29 16.4c.9 1.1 1.4 1.9 1.4 2.6a1.4 1.4 0 0 1-2.8 0c0-.7.5-1.5 1.4-2.6Z" /><path class="can-drop" d="M25.6 18.8c.7.9 1.1 1.5 1.1 2a1.1 1.1 0 0 1-2.2 0c0-.5.4-1.1 1.1-2Z" /></svg>
+          <h2>Série d'arrosage</h2>
+          <p class="streak-count-text" id="streak-title">0 jour</p>
+          <div class="streak-track" id="streak-track"></div>
+          <p id="streak-status"></p>
+          <p class="small" id="streak-next"></p>
+          <p class="small" id="streak-best"></p>
+          <button class="big-btn" data-close>Fermer</button>
+        </div>
+      </section>
+
+      <section id="zone-info" class="overlay hidden">
+        <div class="card">
+          <svg class="zone-illustration" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="6" width="36" height="36" rx="8" /><path d="M18 6v36M30 6v36M6 18h36M6 30h36" /></svg>
+          <h2>Indice de zone</h2>
+          <p>Touche une parcelle : elle et ses voisines, sur un carré de <b>3×3</b>, se remettent dans le bon sens et se verrouillent.</p>
+          <p class="small" id="zone-info-text">Tu n'en as plus. Ta série d'arrosage en offre un tous les 7 jours.</p>
+          <button class="big-btn" id="btn-zone-streak" data-close>Voir ma série</button>
+          <button class="link-btn" data-close>Fermer</button>
+        </div>
+      </section>
+
+      <section id="skip" class="overlay hidden">
+        <div class="card">
+          <svg class="skip-illustration" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 6.5 11 12l-5.5 5.5" /><path d="M11.5 6.5 17 12l-5.5 5.5" /><path d="M19.5 6.5v11" /></svg>
+          <h2>Passer ce niveau ?</h2>
+          <p>Regarde une courte vidéo pour passer au niveau suivant.</p>
+          <p class="small">Tu pourras revenir le finir quand tu veux depuis la liste des niveaux.</p>
+          <button class="big-btn" id="btn-skip-watch">Regarder une vidéo</button>
+          <button class="link-btn" data-close>Continuer à chercher</button>
         </div>
       </section>
 

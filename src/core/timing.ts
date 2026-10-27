@@ -23,6 +23,8 @@ export function formatTime(seconds: number): string {
 
 /** Seconds added to the player's time for each hint used. */
 export const HINT_PENALTY = 25;
+/** A zone hint fixes up to 9 tiles: it weighs as much as 3 hints. */
+export const ZONE_HINT_WEIGHT = 3;
 
 export function timeModel(puzzle: Puzzle): TimeModel {
   const tiles = puzzle.grid.cells.length;

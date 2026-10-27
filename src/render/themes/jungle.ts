@@ -1,4 +1,4 @@
-/** Jungle: lush green, monstera leaves, hibiscus, toucans, tiki idols and turtles. */
+/** Jungle: lush green, monstera leaves, hibiscus, toucans, tiki idols, turtles and crocodiles. */
 import { SPRING } from '../palette';
 import { plankBridge, rockProp, swimOffset } from './common';
 import { circle, ellipse, groundShadow, leaf, line, poly, rrect, TAU } from './kit';
@@ -243,10 +243,100 @@ const turtle: PropDef = {
   },
 };
 
+const CROC = '#5FA85A';
+const CROC_LIGHT = '#86C474';
+const CROC_DARK = '#468A45';
+
+/** Crocodile gliding along the canal, seen from above (snout toward +y). */
+const crocSwim: PropDef = {
+  id: 'croc-swim',
+  place: 'water',
+  size: [0.065, 0.075],
+  weight: 2,
+  when: 'bloom',
+  animated: true,
+  draw(ctx, { r, time, v, water }) {
+    if (water < 1) return;
+    const { y, dir } = swimOffset(time * 0.45, v, 0.07);
+    ctx.translate(0, y);
+    if (dir < 0) ctx.rotate(Math.PI);
+    const swish = Math.sin(time * 3 + v * 10) * 0.35;
+    ellipse(ctx, 0.004, 0.008, r * 0.5, r * 1.2, 0, 'rgba(20, 80, 70, 0.18)');
+    // Tail sways from the hips.
+    ctx.save();
+    ctx.translate(0, -r * 0.55);
+    ctx.rotate(swish);
+    poly(ctx, [-r * 0.26, 0, r * 0.26, 0, 0, -r * 0.85], CROC);
+    for (let k = 0; k < 3; k++) poly(ctx, [-r * 0.05, -r * (0.15 + k * 0.22), r * 0.05, -r * (0.15 + k * 0.22), 0, -r * (0.27 + k * 0.22)], CROC_DARK);
+    ctx.restore();
+    // Little legs paddling.
+    const paddle = Math.sin(time * 5 + v * 7) * 0.4;
+    for (const [x, yy, a] of [
+      [-0.46, 0.3, -0.8 + paddle],
+      [0.46, 0.3, 0.8 - paddle],
+      [-0.44, -0.35, -2.3 - paddle],
+      [0.44, -0.35, 2.3 + paddle],
+    ]) {
+      ellipse(ctx, x * r, yy * r, r * 0.22, r * 0.09, a, CROC);
+    }
+    ellipse(ctx, 0, 0, r * 0.42, r * 0.75, 0, CROC);
+    // Long snout, eyes and nostrils poking out of the water.
+    rrect(ctx, -r * 0.24, r * 0.45, r * 0.48, r * 0.72, r * 0.2, CROC);
+    for (let k = 0; k < 4; k++) {
+      circle(ctx, -r * 0.1, -r * 0.4 + k * r * 0.25, r * 0.06, CROC_DARK);
+      circle(ctx, r * 0.1, -r * 0.4 + k * r * 0.25, r * 0.06, CROC_DARK);
+    }
+    ellipse(ctx, 0, -r * 0.05, r * 0.12, r * 0.45, 0, CROC_LIGHT);
+    circle(ctx, -r * 0.16, r * 0.55, r * 0.11, CROC_LIGHT);
+    circle(ctx, r * 0.16, r * 0.55, r * 0.11, CROC_LIGHT);
+    circle(ctx, -r * 0.16, r * 0.58, r * 0.055, '#3E3440');
+    circle(ctx, r * 0.16, r * 0.58, r * 0.055, '#3E3440');
+    circle(ctx, -r * 0.07, r * 1.08, r * 0.035, CROC_DARK);
+    circle(ctx, r * 0.07, r * 1.08, r * 0.035, CROC_DARK);
+  },
+};
+
+/** Crocodile basking on the bank, side view, with a big friendly smile. */
+const crocBank: PropDef = {
+  id: 'croc-bank',
+  place: 'ground',
+  size: [0.09, 0.11],
+  weight: 2,
+  when: 'bloom',
+  upright: true,
+  drawScale: 1.5,
+  draw(ctx, { r, v }) {
+    ctx.scale(v > 0.5 ? 1 : -1, 1);
+    groundShadow(ctx, 0, r * 0.8, r * 0.8);
+    // Tail, body, short legs.
+    poly(ctx, [-r * 0.35, r * 0.25, -r * 0.35, r * 0.72, -r * 1.0, r * 0.7], CROC);
+    for (const x of [-0.25, 0.3]) rrect(ctx, x * r - r * 0.08, r * 0.45, r * 0.16, r * 0.32, r * 0.06, CROC_DARK);
+    ellipse(ctx, 0, r * 0.45, r * 0.55, r * 0.28, 0, CROC);
+    ellipse(ctx, 0, r * 0.58, r * 0.45, r * 0.12, 0, '#C9E3A0');
+    for (let k = 0; k < 5; k++) circle(ctx, -r * 0.4 + k * r * 0.18, r * 0.2, r * 0.07, CROC_DARK);
+    // Head with a long snout and a smile full of tiny teeth.
+    rrect(ctx, r * 0.35, r * 0.18, r * 0.65, r * 0.3, r * 0.12, CROC);
+    ellipse(ctx, r * 0.45, r * 0.25, r * 0.22, r * 0.2, 0, CROC);
+    ctx.strokeStyle = '#3E5A3E';
+    ctx.lineWidth = r * 0.04;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(r * 0.4, r * 0.36);
+    ctx.quadraticCurveTo(r * 0.7, r * 0.44, r * 0.95, r * 0.32);
+    ctx.stroke();
+    for (let k = 0; k < 4; k++) poly(ctx, [r * (0.5 + k * 0.11), r * 0.385, r * (0.55 + k * 0.11), r * 0.385, r * (0.525 + k * 0.11), r * 0.45], '#FFFFFF');
+    circle(ctx, r * 0.45, r * 0.06, r * 0.12, CROC);
+    circle(ctx, r * 0.47, r * 0.05, r * 0.08, '#FFFFFF');
+    circle(ctx, r * 0.49, r * 0.06, r * 0.045, '#3E3440');
+    circle(ctx, r * 0.92, r * 0.2, r * 0.03, CROC_DARK);
+    circle(ctx, r * 0.58, r * 0.3, r * 0.05, 'rgba(255,140,170,0.5)');
+  },
+};
+
 export const jungle: Theme = {
   id: 'jungle',
   name: 'Jungle',
-  blurb: 'Monsteras, toucans et tortues',
+  blurb: 'Monsteras, toucans et crocodiles',
   palette: {
     ...SPRING,
     bgTop: '#C9F0DA',
@@ -296,6 +386,8 @@ export const jungle: Theme = {
     rockProp('#B8B09A', '#948A74', '#DCD6C6', '#5DBA6A'),
     plankBridge('#B8875A', '#A67648', '#8A6A48', 1, { vines: '#5DB05A' }),
     turtle,
+    crocSwim,
+    crocBank,
   ],
   tuft(ctx, s) {
     for (const a of [-0.7, 0, 0.7]) leaf(ctx, 0, s * 0.4, s * 1.1, s * 0.22, a, '#2F9450');

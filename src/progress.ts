@@ -70,11 +70,11 @@ export const STYLE_CHALLENGES: Partial<Record<ThemeId, Challenge>> = {
   champs: counted("Finir 5 niveaux d'affilée sans indice", (s) => s.stats.noHintBestStreak, 5),
   savane: reachLevel(25),
   desert: fasterThan(80),
-  verger: reachLevel(40),
+  verger: counted('Jardiner 14 jours de suite', (s) => s.streak.best, 14),
   francais: bigGarden("Finir un jardin d'au moins 80 parcelles sans indice", (s) => s.stats.noHintBest, 80),
   jungle: hardLevels(10),
   urbain: bigGarden("Finir un jardin d'au moins 100 parcelles", (s) => s.stats.biggestSolved, 100),
-  montagne: counted('Réussir le défi du jour 7 jours de suite', (s) => s.streak.best, 7),
+  montagne: counted('Jardiner 7 jours de suite', (s) => s.streak.best, 7),
   sauvage: fasterThan(95),
   canyon: hardLevels(20),
   parcs: counted(

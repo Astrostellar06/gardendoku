@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildDaily, dailyInfo, dayKey, parseDayKey, previousDay } from '../src/core/daily';
-import { advanceStreak, liveStreak, shareText } from '../src/daily';
+import { shareText } from '../src/daily';
+import { advanceStreak, liveStreak } from '../src/streak';
 import { solve } from '../src/core/solver';
 
 describe('daily challenge', () => {

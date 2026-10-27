@@ -100,7 +100,7 @@ svg {
 .bar.bottom {
   bottom: 0;
   justify-content: center;
-  gap: 12px;
+  gap: 9px;
   padding-bottom: max(16px, env(safe-area-inset-bottom));
 }
 
@@ -121,8 +121,9 @@ svg {
 }
 
 .icon-btn {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
+  flex: none;
   border-radius: 50%;
   background: var(--card);
   box-shadow: var(--edge), var(--shadow-soft);
@@ -162,7 +163,7 @@ svg {
   background: var(--card);
   box-shadow: var(--edge), var(--shadow-soft);
   border-radius: 999px;
-  padding: 6px 12px 7px;
+  padding: 6px 10px 7px;
   text-align: center;
   min-width: 0;
 }
@@ -187,6 +188,9 @@ svg {
   font-size: 12px;
   line-height: 1.2;
   color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tool-btn {
@@ -194,8 +198,8 @@ svg {
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  min-width: 86px;
-  padding: 9px 12px 8px;
+  min-width: 72px;
+  padding: 9px 8px 8px;
   border-radius: 22px;
   background: var(--card);
   box-shadow: var(--edge), var(--shadow-soft);
@@ -228,6 +232,12 @@ svg {
   font-weight: 600;
   line-height: 22px;
   box-shadow: 0 2px 0 var(--pink-edge);
+}
+
+/* Zone hints: a rarer bonus, in lilac. */
+.tool-btn .count.zone {
+  background: var(--lilac);
+  box-shadow: 0 2px 0 #8a63c9;
 }
 
 .tool-btn .count.empty {
@@ -1102,6 +1112,21 @@ h1 {
   cursor: default;
 }
 
+/* Passed with a video: dashed, to come back to. */
+.level-btn.skipped {
+  background: #fff;
+  color: var(--ink-soft);
+  box-shadow: inset 0 0 0 2px #c9d9c4;
+  outline: 2px dashed #9fd19a;
+  outline-offset: -5px;
+}
+
+.level-btn.skipped.current {
+  color: #fff;
+  background: var(--pink);
+  outline-color: #fff;
+}
+
 .level-btn:not(.locked):active {
   transform: scale(0.9);
 }
@@ -1110,4 +1135,220 @@ h1 {
   .tool-btn {
     min-width: 110px;
   }
+}
+
+/* ---------- Watering streak ---------- */
+
+.can-icon {
+  width: 30px;
+  height: 30px;
+  flex: none;
+}
+
+.can-icon .can-spout {
+  stroke: #e8749f;
+  stroke-width: 2.6;
+}
+
+.can-icon .can-rose,
+.can-icon .can-body {
+  fill: #ff9ec0;
+  stroke: #e8749f;
+  stroke-width: 1.5;
+}
+
+.can-icon .can-handle {
+  stroke: #e8749f;
+  stroke-width: 2.3;
+}
+
+.can-icon .can-shine {
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 1.8;
+}
+
+.can-icon .can-drop {
+  fill: var(--blue);
+  stroke: none;
+}
+
+.can-icon.big {
+  width: 64px;
+  height: 64px;
+}
+
+/* Home screen corner badge. */
+.streak-badge {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 13px 5px 8px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: var(--edge), var(--shadow-soft);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--pink-deep);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.streak-badge:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--card-edge), var(--shadow-soft);
+}
+
+/* Not watered yet today: a paler can, without drops, gently nodding. */
+.streak-badge.pending {
+  color: var(--ink-soft);
+}
+
+.streak-badge.pending .can-icon .can-drop {
+  display: none;
+}
+
+.streak-badge.pending .can-icon .can-body,
+.streak-badge.pending .can-icon .can-rose {
+  fill: #ffe3ee;
+}
+
+.streak-badge.pending .can-icon {
+  animation: can-nod 2.6s ease-in-out infinite;
+  transform-origin: 40% 80%;
+}
+
+@keyframes can-nod {
+  0%,
+  70%,
+  100% {
+    transform: rotate(0);
+  }
+  80% {
+    transform: rotate(14deg);
+  }
+  90% {
+    transform: rotate(-4deg);
+  }
+}
+
+.streak-count-text {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--pink-deep);
+}
+
+/* Seven days of the week; gifts on the reward days. */
+.streak-track {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 2px 0;
+}
+
+.streak-track .slot {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #f6eef8;
+  color: #c4b3cf;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 2px #ece0f2;
+}
+
+.streak-track .slot svg {
+  width: 19px;
+  height: 19px;
+  stroke-width: 1.8;
+}
+
+.streak-track .slot.big svg {
+  width: 22px;
+  height: 22px;
+}
+
+.streak-track .slot.gift {
+  color: #c9a6ef;
+}
+
+.streak-track .slot.done {
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 0 2px 0 #3fafe9;
+}
+
+.streak-track .slot.done.gift {
+  background: var(--lilac);
+  box-shadow: 0 2px 0 #8a63c9;
+}
+
+.streak-track .slot.next {
+  background: #fff;
+  color: var(--pink-deep);
+  box-shadow: inset 0 0 0 2.5px var(--pink);
+  animation: slot-wait 1.6s ease-in-out infinite;
+}
+
+@keyframes slot-wait {
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+.streak-track .slot.pop {
+  animation: slot-pop 0.6s cubic-bezier(0.2, 1.6, 0.4, 1) 0.35s both;
+}
+
+@keyframes slot-pop {
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+}
+
+/* Win card: the streak grew today. */
+.win-streak-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px 9px;
+  border-radius: 20px;
+  background: #fff3f7;
+}
+
+.streak-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pink-deep);
+  font-size: 16px;
+}
+
+.streak-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* ---------- Zone hint and skip cards ---------- */
+
+.zone-illustration {
+  width: 56px;
+  height: 56px;
+  fill: var(--lilac-soft);
+  stroke: var(--lilac);
+  stroke-width: 2.6;
+}
+
+.skip-illustration {
+  width: 50px;
+  height: 50px;
+  color: var(--pink-deep);
+  stroke-width: 2.2;
 }

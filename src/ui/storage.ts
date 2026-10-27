@@ -1,6 +1,7 @@
 /** Progress persistence (localStorage). Levels themselves are never stored: only the seed index. */
 import type { BoardSnapshot } from '../core/board';
-import type { DailyResult, Streak } from '../daily';
+import type { DailyResult } from '../daily';
+import type { Streak } from '../streak';
 
 const KEY = 'jardin-des-sources:v1';
 
@@ -42,7 +43,7 @@ export interface DailyState {
 }
 
 /** In-progress level: rotations and locks, plus what the challenges need to know. */
-export type LevelSnapshot = BoardSnapshot & { level: number; hints?: number; usedLock?: boolean };
+export type LevelSnapshot = BoardSnapshot & { level: number; hints?: number; zones?: number; usedLock?: boolean };
 
 export interface SaveData {
   /** Level currently being played. */
@@ -58,16 +59,22 @@ export interface SaveData {
   seenHardIntro: boolean;
   /** Hints left. */
   hints: number;
+  /** Zone hints left (fix a 3x3 square at once). */
+  zoneHints: number;
+  /** Levels passed with a video without being solved. */
+  skipped: number[];
   /** Styles unlocked so far. */
   unlocked: string[];
   stats: Stats;
   /** Today's (or the last played) daily challenge. */
   daily: DailyState | null;
+  /** Days in a row with at least one garden finished. */
   streak: Streak;
 }
 
 /** Hints a new player starts with. */
 export const STARTING_HINTS = 5;
+export const STARTING_ZONE_HINTS = 3;
 
 const DEFAULTS: SaveData = {
   level: 1,
@@ -79,6 +86,8 @@ const DEFAULTS: SaveData = {
   seenLockTip: false,
   seenHardIntro: false,
   hints: STARTING_HINTS,
+  zoneHints: STARTING_ZONE_HINTS,
+  skipped: [],
   unlocked: ['printemps'],
   stats: {
     hardSolved: [],

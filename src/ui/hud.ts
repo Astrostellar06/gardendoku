@@ -6,7 +6,26 @@ export { formatTime };
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
+/** Watering streak, as shown on the win card and in the streak card. */
+export interface StreakView {
+  count: number;
+  /** Slots of the 7-day track already watered. */
+  filled: number;
+  /** Slot waiting for today's watering (streak card), or -1. */
+  next: number;
+}
 
+/** What the win card shows. */
+export interface WinView {
+  level: number;
+  seconds: number;
+  moves: number;
+  rank: number | null;
+  unlocked: string[];
+  daily: boolean;
+  /** Set when this win extended the streak (first garden of the day). */
+  streak?: StreakView & { note: string };
+}
 
 export interface StyleCard {
   id: string;
@@ -30,16 +49,21 @@ export class Hud {
   readonly coach = $('coach');
   readonly hintShop = $('hint-shop');
   readonly dailyResult = $('daily-result');
+  readonly streak = $('streak');
+  readonly zoneInfo = $('zone-info');
+  readonly skip = $('skip');
   private countdownTimer = 0;
   readonly ad = $('ad');
   readonly lockBtn = $('btn-lock');
+  readonly zoneBtn = $('btn-zone');
+  readonly skipBtn = $('btn-skip');
   readonly soundBtn = $('btn-sound');
   readonly nextFloat = $('btn-next-float');
   private toastEl = $('toast');
   private toastTimer = 0;
 
   constructor() {
-    for (const overlay of [this.howto, this.levels, this.hardIntro, this.styles, this.hintShop, this.dailyResult]) {
+    for (const overlay of [this.howto, this.levels, this.hardIntro, this.styles, this.hintShop, this.dailyResult, this.streak, this.zoneInfo, this.skip]) {
       overlay.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
         if (target === overlay || target.closest('[data-close]')) this.close(overlay);
@@ -110,6 +134,15 @@ export class Hud {
     this.lockBtn.setAttribute('aria-pressed', String(on));
   }
 
+  setZoneMode(on: boolean) {
+    this.zoneBtn.setAttribute('aria-pressed', String(on));
+  }
+
+  /** The skip button only makes sense on regular levels. */
+  setSkipVisible(on: boolean) {
+    this.skipBtn.classList.toggle('hidden', !on);
+  }
+
   setSound(on: boolean) {
     this.soundBtn.classList.toggle('muted', !on);
   }
@@ -153,28 +186,87 @@ export class Hud {
     badge.classList.toggle('empty', count <= 0);
   }
 
+  /** Zone hints left, on the zone button. */
+  setZoneHints(count: number) {
+    const badge = $('zone-count');
+    badge.textContent = String(count);
+    badge.classList.toggle('empty', count <= 0);
+  }
+
   openHintShop() {
     this.open(this.hintShop);
   }
 
-  showWin(level: number, seconds: number, moves: number, rank: number | null = null, unlocked: string[] = [], daily?: { streak: number }) {
-    $('win-text').textContent = daily ? 'Défi du jour réussi' : `Niveau ${level} terminé`;
-    $('win-streak').textContent = daily && daily.streak >= 2 ? `${daily.streak} jours de suite !` : '';
-    $('btn-share').classList.toggle('hidden', !daily);
-    $('btn-next').textContent = daily ? "Retour à l'accueil" : 'Niveau suivant';
-    $('btn-next').classList.toggle('soft', !!daily);
-    $('win-rank').textContent = rank === null ? '' : `Plus rapide que ${rank} % des joueurs !`;
+  /** Explains the zone hint; `text` says how to get more. */
+  openZoneInfo(text: string) {
+    $('zone-info-text').textContent = text;
+    this.open(this.zoneInfo);
+  }
+
+  openSkip() {
+    this.open(this.skip);
+  }
+
+  /** Home screen corner: current streak, highlighted once today's garden has bloomed. */
+  setHomeStreak(count: number, wateredToday: boolean) {
+    $('streak-count').textContent = String(count);
+    $('btn-streak').classList.toggle('pending', !wateredToday);
+  }
+
+  openStreak(view: StreakView, status: string, next: string, best: string) {
+    $('streak-title').textContent = view.count > 1 ? `${view.count} jours de suite` : `${view.count} jour`;
+    this.fillTrack($('streak-track'), view, false);
+    $('streak-status').textContent = status;
+    $('streak-next').textContent = next;
+    $('streak-best').textContent = best;
+    this.open(this.streak);
+  }
+
+  /** Seven slots for the week of the streak; gifts on the reward days. */
+  private fillTrack(track: HTMLElement, view: StreakView, popLast: boolean) {
+    track.textContent = '';
+    for (let day = 1; day <= 7; day++) {
+      const slot = document.createElement('span');
+      slot.className = 'slot';
+      if (day <= view.filled) slot.classList.add('done');
+      if (day === view.next) slot.classList.add('next');
+      if (popLast && day === view.filled) slot.classList.add('pop');
+      if (day === 3 || day === 7) {
+        slot.classList.add('gift');
+        if (day === 7) slot.classList.add('big');
+        slot.innerHTML =
+          '<svg viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="9.5" rx="2" /><path d="M3.5 7h17v3h-17zM12 7v12.5M12 7c-1.6-3.2-5.2-3-4.6-.6.4 1.3 3 .6 4.6.6Zm0 0c1.6-3.2 5.2-3 4.6-.6-.4 1.3-3 .6-4.6.6Z" /></svg>';
+      } else {
+        slot.textContent = String(day);
+      }
+      track.appendChild(slot);
+    }
+  }
+
+  showWin(w: WinView) {
+    $('win-text').textContent = w.daily ? 'Défi du jour réussi' : `Niveau ${w.level} terminé`;
+    const box = $('win-streak');
+    box.classList.toggle('hidden', !w.streak);
+    if (w.streak) {
+      $('win-streak-title').textContent = w.streak.count > 1 ? `Arrosé ${w.streak.count} jours de suite !` : 'Premier jour de ta série !';
+      this.fillTrack($('win-streak-track'), w.streak, true);
+      $('win-streak-note').textContent = w.streak.note;
+    }
+    $('btn-share').classList.toggle('hidden', !w.daily);
+    $('btn-next').textContent = w.daily ? "Retour à l'accueil" : 'Niveau suivant';
+    $('btn-next').classList.toggle('soft', w.daily);
+    $('win-rank').textContent = w.rank === null ? '' : `Plus rapide que ${w.rank} % des joueurs !`;
     const list = $('win-unlocks');
     list.textContent = '';
-    for (const name of unlocked) {
+    for (const name of w.unlocked) {
       const line = document.createElement('div');
       line.className = 'unlock-line';
       line.textContent = `Nouveau style débloqué : ${name} !`;
       list.appendChild(line);
     }
-    $('win-time').textContent = formatTime(seconds);
-    $('win-moves').textContent = String(moves);
-    $('win-moves-label').textContent = moves > 1 ? 'rotations' : 'rotation';
+    $('win-time').textContent = formatTime(w.seconds);
+    $('win-moves').textContent = String(w.moves);
+    $('win-moves-label').textContent = w.moves > 1 ? 'rotations' : 'rotation';
     this.open(this.win);
   }
 
@@ -184,7 +276,7 @@ export class Hud {
 
   /** An overlay card is covering the game (the timer pauses meanwhile). */
   overlayOpen(): boolean {
-    return [this.howto, this.levels, this.hardIntro, this.styles, this.hintShop, this.ad, this.dailyResult].some(
+    return [this.howto, this.levels, this.hardIntro, this.styles, this.hintShop, this.ad, this.dailyResult, this.streak, this.zoneInfo, this.skip].some(
       (o) => !o.classList.contains('hidden') && !o.classList.contains('closing'),
     );
   }
@@ -281,7 +373,8 @@ export class Hud {
     this.open(this.howto);
   }
 
-  openLevels(maxLevel: number, current: number, onPick: (level: number) => void) {
+  /** Level grid; skipped levels are marked so the player can come back to them. */
+  openLevels(maxLevel: number, current: number, skipped: number[], onPick: (level: number) => void) {
     const grid = $('levels-grid');
     grid.textContent = '';
     const shown = Math.max(maxLevel + 4, 20);
@@ -291,6 +384,10 @@ export class Hud {
       b.textContent = String(n);
       if (n === current) b.classList.add('current');
       if (isHardLevel(n)) b.classList.add('hard');
+      if (skipped.includes(n)) {
+        b.classList.add('skipped');
+        b.title = 'Niveau passé';
+      }
       if (n > maxLevel) {
         b.classList.add('locked');
         b.disabled = true;

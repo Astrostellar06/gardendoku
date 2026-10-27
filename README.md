@@ -23,7 +23,7 @@ Ajouter `?reset` à l'adresse, par exemple `http://localhost:5173/?reset` : la s
 
 ### Débloquer tous les styles (tests)
 
-Ajouter `?debloquer` à l'adresse débloque tous les styles et met 99 indices. Le paramètre se combine avec `?niveau=N`.
+Ajouter `?debloquer` à l'adresse débloque tous les styles et met 99 indices et 99 indices de zone. Le paramètre se combine avec `?niveau=N`.
 
 En mode dev, la console du navigateur expose aussi `__game` : `__game.debugSolve(5)` résout tout sauf 5 parcelles (pratique pour voir la victoire).
 
@@ -35,6 +35,8 @@ En mode dev, la console du navigateur expose aussi `__game` : `__game.debugSolve
 | Verrouiller / déverrouiller | Appui long, ou bouton **Verrou** puis tap (clic droit sur ordinateur) |
 | Verrouiller plusieurs parcelles | Après l'appui long (ou en mode Verrou), glisser le doigt : chaque parcelle touchée prend l'état de la première |
 | Indice | Bouton **Indice** : remet une parcelle dans le bon sens et la verrouille |
+| Indice de zone | Bouton **Zone**, puis toucher une parcelle : le carré de 3×3 autour se remet en place et se verrouille |
+| Passer le niveau | Bouton **»** en haut, contre une courte vidéo (pas pendant le défi du jour) |
 | Recommencer | Bouton **Recommencer**, à toucher deux fois |
 | Aide | Bouton **?** en jeu |
 | Changer de style | Bouton **Styles** sur l'écran d'accueil (dont « Aléatoire ») |
@@ -105,11 +107,11 @@ Seul le printemps est disponible au départ ; chaque autre style se débloque pa
 | Champs | Finir 5 niveaux d'affilée sans indice |
 | Savane | Atteindre le niveau 25 |
 | Désert | Finir un niveau plus vite que 80 % des joueurs |
-| Verger | Atteindre le niveau 40 |
 | Jardin à la française | Finir un jardin d'au moins 80 parcelles sans indice |
 | Jungle | Réussir 10 niveaux difficiles |
 | Parc urbain | Finir un jardin d'au moins 100 parcelles |
-| Montagne | Réussir le défi du jour 7 jours de suite |
+| Montagne | Jardiner 7 jours de suite |
+| Verger | Jardiner 14 jours de suite |
 | Sauvage | Finir un niveau plus vite que 95 % des joueurs |
 | Canyon | Réussir 20 niveaux difficiles |
 | Grands parcs | Finir un jardin de chaque forme (les 9 formes) |
@@ -122,7 +124,7 @@ Le bouton **Défi du jour** de l'accueil ouvre un jardin commun à tous les joue
 
 - La partie en cours est sauvegardée à part, sans toucher à la progression des niveaux.
 - Une fois réussi, le bouton affiche le temps ; le toucher ouvre le résultat avec le compte à rebours jusqu'au prochain défi.
-- La **série** compte les jours consécutifs réussis (et la meilleure série).
+- Réussir le défi compte pour la **série d'arrosage** (voir plus bas).
 - **Partager** envoie un texte court sans rien dévoiler du jardin : date, temps, rang, une barre de 1 à 5 fleurs, indices utilisés et série. Sur téléphone, c'est la feuille de partage du système ; ailleurs, le texte est copié dans le presse-papiers.
 
 ```
@@ -130,12 +132,25 @@ Le bouton **Défi du jour** de l'accueil ouvre un jardin commun à tous les joue
 ⏱️ 1:42 · plus rapide que 73 % des joueurs
 🌸🌸🌸🌸🌱
 💧 Sans indice
-🔥 4 jours de suite
+🪴 Arrosé 4 jours de suite
 ```
+
+### Série d'arrosage
+
+Un jour compte dans la série dès qu'un jardin fleurit : un niveau ou le défi du jour (`src/streak.ts`). Ouvrir le jeu ne suffit pas : il faut finir un jardin, et un jour sans jardin fleuri remet la série à zéro.
+
+- L'icône est un **arrosoir** (la goutte sert déjà aux indices). Sur l'accueil, un badge en haut à droite montre la série : il est pâle et sans gouttes tant que le jardin du jour n'a pas fleuri, et le toucher ouvre le détail.
+- La série avance par semaines de 7 cases, avec un cadeau le **3ᵉ jour** (1 indice) et le **7ᵉ jour** (3 indices et 1 indice de zone), puis on recommence (jours 10, 14…). Les récompenses se règlent dans `WEEK_REWARDS`.
+- Le premier jardin du jour affiche la semaine sur la carte de victoire, avec la récompense gagnée ou le nombre de jours avant la prochaine.
+- Deux styles se débloquent avec la série : **Montagne** à 7 jours, **Verger** à 14 jours (meilleure série).
 
 ### Indices
 
 On commence avec 5 indices ; le compteur est affiché sur le bouton. À 0, une fenêtre propose de regarder une vidéo pour en gagner 3. **Pour l'instant, la vidéo est un exemple factice** (`src/ui/ads.ts`, 3 secondes) : il faudra y brancher une vraie régie publicitaire (par exemple AdMob via Capacitor).
+
+**Indice de zone** : un bonus plus rare. On en a 3 au départ, puis on en gagne avec la série d'arrosage. Toucher **Zone** l'arme (le bouton passe en lilas), puis toucher une parcelle remet en place et verrouille le carré de 3×3 autour, y compris par-dessus les bords reliés. Un carré déjà juste ne consomme rien. Pour le rang, un indice de zone compte comme 3 indices ; les défis « sans indice » le comptent comme une aide.
+
+**Passer un niveau** : le bouton **»** de la barre du haut propose de regarder une vidéo (la même régie factice) pour passer au niveau suivant. Le niveau passé reste jouable : il apparaît en pointillés dans la liste des niveaux, jusqu'à ce qu'il soit réussi. Passer un niveau ne compte ni pour la série ni pour les défis de styles, sauf « Atteindre le niveau N ».
 
 ## Styles de jardin
 
@@ -149,10 +164,10 @@ Dix-huit styles, choisis depuis l'écran d'accueil (bouton **Styles**, avec un a
 | Hiver | Tuiles enneigées, bonshommes de neige, sapins (illuminés quand l'eau arrive), cadeaux, sucres d'orge, houx, pingouins, luges |
 | Savane | Terre craquelée, acacias, baobabs, termitières, girafes, éléphants, suricates, hippopotames dans l'eau |
 | Désert | Sable ondulé, oasis verte, saguaros (qui fleurissent), cactus tonneaux, palmiers, jarres, chameaux, lézards |
-| Jungle | Monsteras, fougères, hibiscus, bambous, toucans, statues tiki, bananiers, grenouilles, tortues |
+| Jungle | Monsteras, fougères, hibiscus, bambous, toucans, statues tiki, bananiers, grenouilles, tortues, crocodiles (dans les canaux et sur les berges) |
 | Sauvage | Roseaux et massettes, fleurs des champs, bûches moussues, grenouilles sur nénuphar, canards, libellules |
 | Jardin de l'amitié | Topiaires en cœur, pique-niques, lapins câlins, ballons en cœur, lettres d'amour, lampadaires en cœur, bateaux en papier, pluie de petits cœurs, arc-en-ciel |
-| Été | Tournesols, parasols, pastèques, stand de limonade, transats, châteaux de sable, bouées et canards en plastique, plage et voilier au fond |
+| Été | Tournesols, parasols, planches de surf plantées dans le sable, pastèques, stand de limonade, transats, châteaux de sable, bouées et canards en plastique, plage et voilier au fond |
 | Roseraie | Rosiers qui fleurissent avec l'eau, arches de roses, bains d'oiseaux, topiaires, bancs blancs, vasques, pétales sur l'eau, kiosque |
 | Verger | Pommiers et cerisiers chargés de fruits, potager, carottes, tomates, épouvantails, brouettes, ruches, poules, grange rouge |
 | Champs | Bottes de foin, moulins (ailes qui tournent), coquelicots, lavande, gerbes de blé, lapins, tracteurs, collines en patchwork |
@@ -192,7 +207,8 @@ src/
   ui/              HUD (DOM), saisie tactile, sauvegarde localStorage, partage
   tutorial.ts      Mini-jardin et étapes du tutoriel
   progress.ts      Défis qui débloquent les styles
-  daily.ts         Résultat du défi du jour, série, texte à partager
+  daily.ts         Résultat du défi du jour, texte à partager
+  streak.ts        Série d'arrosage et ses récompenses
   game.ts          Contrôleur qui relie le tout
 ```
 
