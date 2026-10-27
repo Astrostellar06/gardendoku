@@ -181,8 +181,6 @@ const paperBoat: PropDef = {
 
 export const amitie: Theme = {
   id: 'amitie',
-  name: "Jardin de l'amitié",
-  blurb: 'Pique-niques, lapins câlins et ballons en cœur',
   palette: {
     ...SPRING,
     bgTop: '#FFCFE6',

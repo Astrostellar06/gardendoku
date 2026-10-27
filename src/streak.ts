@@ -3,6 +3,7 @@
  * or the daily challenge). Each week of the streak brings rewards.
  */
 import { previousDay } from './core/daily';
+import { listJoin, tn } from './i18n';
 
 export interface Streak {
   /** Last day a garden bloomed. */
@@ -59,9 +60,10 @@ export function daysToZoneHint(count: number): number {
   return 7;
 }
 
+/** "3 indices et 1 indice de zone", in the current language. */
 export function rewardText(reward: StreakReward): string {
   const parts: string[] = [];
-  if (reward.hints) parts.push(`${reward.hints} indice${reward.hints > 1 ? 's' : ''}`);
-  if (reward.zoneHints) parts.push(`${reward.zoneHints} indice${reward.zoneHints > 1 ? 's' : ''} de zone`);
-  return parts.join(' et ');
+  if (reward.hints) parts.push(tn('count.hint', reward.hints));
+  if (reward.zoneHints) parts.push(tn('count.zoneHint', reward.zoneHints));
+  return listJoin(parts);
 }

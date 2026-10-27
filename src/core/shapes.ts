@@ -26,21 +26,6 @@ export type ShapeId =
 /** Shapes of hexagonal gardens. */
 export const HEX_SHAPES: ShapeId[] = ['hexagon', 'comb', 'crown'];
 
-export const SHAPE_NAMES: Record<ShapeId, string> = {
-  rect: 'Parterre',
-  cloister: 'Cloître',
-  circle: 'Rond-point',
-  diamond: 'Losange',
-  plus: 'Croisée',
-  heart: 'Cœur',
-  flower: 'Trèfle',
-  hourglass: 'Sablier',
-  ponds: 'Étangs',
-  hexagon: 'Alvéole',
-  comb: 'Rayon de miel',
-  crown: 'Couronne',
-};
-
 export function centerOf(width: number, height: number): number {
   return Math.floor(height / 2) * width + Math.floor(width / 2);
 }

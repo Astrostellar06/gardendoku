@@ -5,7 +5,7 @@
  */
 import { Capacitor, SystemBars, SystemBarsStyle } from '@capacitor/core';
 import { App } from '@capacitor/app';
-import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Share } from '@capacitor/share';
 
 export const isNativeApp = Capacitor.isNativePlatform();
@@ -16,12 +16,28 @@ export function vibrate(pattern: number | number[]) {
     navigator.vibrate?.(pattern);
     return;
   }
-  // iOS has no vibration API in its web view: use the Taptic Engine instead.
-  const done = Array.isArray(pattern)
-    ? Haptics.notification({ type: NotificationType.Success })
-    : Haptics.impact({ style: pattern <= 8 ? ImpactStyle.Light : ImpactStyle.Medium });
-  done.catch(() => undefined);
+  if (!Array.isArray(pattern)) {
+    // iOS has no vibration API in its web view: use the Taptic Engine instead.
+    Haptics.impact({ style: pattern <= 8 ? ImpactStyle.Light : ImpactStyle.Medium }).catch(() => undefined);
+    return;
+  }
+  // A pattern (on, off, on... in ms): each pulse in turn, a real buzz on
+  // Android, a strong tap on iOS (where vibrate() ignores the duration).
+  const android = Capacitor.getPlatform() === 'android';
+  let at = 0;
+  pattern.forEach((ms, k) => {
+    if (k % 2 === 0) {
+      setTimeout(() => {
+        const done = android ? Haptics.vibrate({ duration: ms }) : Haptics.impact({ style: ImpactStyle.Heavy });
+        done.catch(() => undefined);
+      }, at);
+    }
+    at += ms;
+  });
 }
+
+/** Celebration when a garden is won. */
+export const WIN_BUZZ = [40, 70, 40, 70, 90];
 
 /** System share sheet in the app; false when the player closed it. */
 export async function nativeShare(text: string): Promise<boolean> {

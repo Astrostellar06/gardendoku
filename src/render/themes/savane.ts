@@ -240,8 +240,6 @@ const hippo: PropDef = {
 
 export const savane: Theme = {
   id: 'savane',
-  name: 'Savane',
-  blurb: 'Acacias, girafes et suricates',
   palette: {
     ...SPRING,
     bgTop: '#FFE0A3',

@@ -151,19 +151,6 @@ svg {
   box-shadow: 0 1px 0 var(--card-edge), var(--shadow-soft);
 }
 
-#btn-sound .off {
-  display: none;
-}
-
-#btn-sound.muted .on {
-  display: none;
-}
-
-#btn-sound.muted .off {
-  display: block;
-  color: var(--ink-soft);
-}
-
 .level-pill {
   flex: 1 1 auto;
   max-width: 260px;
@@ -414,7 +401,8 @@ svg {
 
 .home-top {
   text-align: center;
-  margin-top: max(30px, 3vh);
+  /* Below the corner badges, which sit as low as the status bar pushes them (the garden shrinks to fit). */
+  margin-top: max(50px, 3vh);
   animation: float-in 0.9s cubic-bezier(0.2, 1.3, 0.4, 1) both;
 }
 
@@ -2012,4 +2000,107 @@ h1 {
 .result-medal.podium3 {
   background: #f0b48a;
   color: #fff;
+}
+
+/* On the white card, the friends' buttons and field take a light tint. */
+.friend-tools .big-btn.soft,
+.friend-add .soft-btn {
+  background: var(--pink-soft);
+}
+
+.friend-add input {
+  background: #fff7fa;
+}
+
+/* ---------- Settings ---------- */
+
+.soft-btn.icon-only {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  padding: 0;
+}
+
+.soft-btn.icon-only svg {
+  width: 22px;
+  height: 22px;
+}
+
+.settings-card {
+  gap: 14px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  max-width: 290px;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.switch {
+  position: relative;
+  flex: none;
+  width: 54px;
+  height: 32px;
+  border-radius: 999px;
+  background: #eadfe9;
+  transition: background 0.2s;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(150, 90, 130, 0.3);
+  transition: transform 0.2s;
+}
+
+.switch.on {
+  background: var(--pink);
+}
+
+.switch.on::after {
+  transform: translateX(22px);
+}
+
+/* Language: two pills, like the league tabs. */
+.lang-pick {
+  display: flex;
+  flex: none;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--pink-soft);
+}
+
+.lang-opt {
+  padding: 6px 11px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--pink-deep);
+}
+
+.lang-opt.active {
+  background: var(--card);
+  box-shadow: 0 2px 0 var(--card-edge);
+}
+
+/* Four buttons on one line, down to 360 px wide phones. */
+.home-row {
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+.home-row .soft-btn:not(.icon-only) {
+  padding: 10px 12px;
 }

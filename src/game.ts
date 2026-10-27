@@ -7,6 +7,7 @@ import { buildLevel, GENERATOR_VERSION, LevelInfo, levelInfo } from './core/leve
 import { hashString } from './core/rng';
 import { fasterThan, formatTime, timeModel, ZONE_HINT_WEIGHT } from './core/timing';
 import { dailyThemeId, shareText } from './daily';
+import { isLang, type Lang, lang, listJoin, t, themeBlurb, themeName, tn } from './i18n';
 import { isUnlocked, RANDOM_STYLE, refreshUnlocks, STYLE_CHALLENGES } from './progress';
 import { renderRandomPreview, renderThemePreview } from './render/preview';
 import { GardenRenderer } from './render/renderer';
@@ -16,7 +17,7 @@ import { showRewardedAd } from './ui/ads';
 import { Hud, StreakView, StyleCard, WinView } from './ui/hud';
 import { attachInput } from './ui/input';
 import { LeagueScreen, ordinal } from './ui/league';
-import { vibrate } from './native';
+import { vibrate, WIN_BUZZ } from './native';
 import { Social } from './online/social';
 import { shareOrCopy } from './ui/share';
 import { advanceStreak, daysToZoneHint, liveStreak, nextReward, rewardText, streakReward, weekDay } from './streak';
@@ -82,7 +83,6 @@ export class Game {
     this.renderer = new GardenRenderer(canvas);
     this.renderer.events.onWaterArrive = (_cell, dist) => this.sound.water(dist);
     this.sound.enabled = this.save.settings.sound;
-    this.hud.setSound(this.sound.enabled);
     this.hud.setHints(this.save.hints);
     this.hud.setZoneHints(this.save.zoneHints);
     this.league = new LeagueScreen(this.hud, this.social, {
@@ -94,7 +94,7 @@ export class Game {
         this.hud.setZoneHints(this.save.zoneHints);
         this.persist();
       },
-      badge: (rank) => this.hud.setLeagueBadge(true, rank ? ordinal(rank) : 'Ligue'),
+      badge: (rank) => this.hud.setLeagueBadge(true, rank ? ordinal(rank) : t('league.badge')),
     });
 
     attachInput(canvas, {
@@ -144,7 +144,15 @@ export class Game {
     });
     on('btn-skip-watch', () => this.skipLevel());
     on('btn-home', () => this.showHome());
-    on('btn-sound', () => this.toggleSound());
+    on('btn-settings', () => this.openSettings());
+    on('btn-home-settings', () => this.openSettings());
+    on('set-sound', () => this.toggleSound());
+    on('set-haptics', () => this.toggleHaptics());
+    for (const b of document.querySelectorAll<HTMLElement>('#set-lang [data-lang]')) {
+      b.addEventListener('click', () => {
+        if (isLang(b.dataset.lang)) this.chooseLang(b.dataset.lang);
+      });
+    }
     on('btn-lock', () => this.setLockMode(!this.lockMode));
     on('btn-reset', () => this.reset());
     on('btn-hint', () => this.hint());
@@ -152,7 +160,7 @@ export class Game {
     on('btn-next-float', () => this.next());
     on('btn-admire', () => {
       this.hud.hideWin();
-      this.hud.setWonBar(true, this.daily ? "Retour à l'accueil" : 'Niveau suivant');
+      this.hud.setWonBar(true, this.daily ? t('win.backHome') : t('win.nextLevel'));
     });
 
     document.addEventListener('visibilitychange', () => {
@@ -198,7 +206,7 @@ export class Game {
       if (this.tutorialSolved && this.renderer.waterComplete()) {
         // The whole garden is watered: celebrate, then congratulate.
         this.sound.win();
-        this.vibrate([18, 40, 18]);
+        this.vibrate(WIN_BUZZ);
         this.renderer.celebrate(() => undefined);
         this.setTutorialStep(this.tutorialIndex + 1);
       } else if (step.kind === 'free' && !this.tutorialSolved && !this.renderer.spotlight && this.tutorialClock > LAST_HINT_DELAY) {
@@ -211,7 +219,7 @@ export class Game {
     if (this.won && !this.celebrated && this.renderer.waterComplete()) {
       this.celebrated = true;
       this.sound.win();
-      this.vibrate([18, 40, 18]);
+      this.vibrate(WIN_BUZZ);
       this.renderer.celebrate(() => {
         if (this.mode === 'play' && this.won) {
           this.hud.showWin({
@@ -263,7 +271,7 @@ export class Game {
     try {
       const league = await this.social.league();
       const k = league.members.findIndex((m) => m.me);
-      this.hud.setLeagueBadge(true, k >= 0 ? ordinal(k + 1) : 'Ligue');
+      this.hud.setLeagueBadge(true, k >= 0 ? ordinal(k + 1) : t('league.badge'));
     } catch {
       // Offline: the badge keeps its last text.
     }
@@ -276,7 +284,7 @@ export class Game {
     const [kind, ref] = this.daily ? (['daily', Number(this.daily.key.replace(/-/g, ''))] as const) : (['level', this.info.index] as const);
     const scored = await this.social.recordSolve(kind, ref, this.save.maxLevel);
     if (!scored || scored.points <= 0) return;
-    this.hud.setWinLeague(`+${scored.points} point${scored.points > 1 ? 's' : ''} de ligue · ${scored.weekPoints} cette semaine`);
+    this.hud.setWinLeague(tn('win.leaguePoints', scored.points, { week: scored.weekPoints }));
     void this.refreshLeagueBadge();
   }
 
@@ -346,10 +354,10 @@ export class Game {
       this.save.seenHexIntro = true;
       this.renderer.after(0.5, () => this.hud.openHexIntro());
     } else if (!this.save.seenTutorial && n === 1) {
-      this.renderer.after(0.8, () => this.hud.toast('Touche une parcelle pour la faire tourner', false, 4000));
+      this.renderer.after(0.8, () => this.hud.toast(t('toast.tapToTurn'), false, 4000));
     } else if (n === 3 && !this.save.seenLockTip) {
       this.save.seenLockTip = true;
-      this.renderer.after(0.8, () => this.hud.toast('Astuce : appui long puis glisse pour verrouiller', false, 4200));
+      this.renderer.after(0.8, () => this.hud.toast(t('toast.lockTip'), false, 4200));
     }
   }
 
@@ -403,10 +411,10 @@ export class Game {
     const today = dayKey();
     const d = this.save.daily;
     if (d && d.key === today && d.result) {
-      this.hud.setHomeDaily(`Réussi en ${formatTime(d.result.time)}`, true);
+      this.hud.setHomeDaily(t('daily.doneIn', { time: formatTime(d.result.time) }), true);
     } else {
-      const style = THEMES.find((t) => t.id === dailyThemeId(today, THEMES))!.name;
-      this.hud.setHomeDaily(`Style du jour : ${style}`, false);
+      const style = themeName(dailyThemeId(today, THEMES));
+      this.hud.setHomeDaily(t('daily.styleOfDay', { style }), false);
     }
   }
 
@@ -429,7 +437,7 @@ export class Game {
     this.applyStyle(styleId);
     if (this.save.daily?.key !== key) this.save.daily = { key, snapshot: null, result: null };
     this.startGarden(info, buildDaily(key), this.save.daily.snapshot);
-    this.hud.setDaily(info, THEMES.find((t) => t.id === styleId)!.name);
+    this.hud.setDaily(info, themeName(styleId));
     if (info.wrap && !this.save.seenHardIntro) {
       this.save.seenHardIntro = true;
       this.renderer.after(0.5, () => this.hud.openHardIntro());
@@ -441,12 +449,12 @@ export class Game {
     if (!d?.result) return;
     const streak = liveStreak(this.save.streak, dayKey());
     this.hud.openDailyResult(
-      `Réussi en ${formatTime(d.result.time)}${helpText(d.result.hints, d.result.zones ?? 0)}`,
-      `Plus rapide que ${d.result.rank} % des joueurs`,
-      streak >= 2 ? `${streak} jours de suite !` : '',
+      t('daily.doneIn', { time: formatTime(d.result.time) }) + helpText(d.result.hints, d.result.zones ?? 0),
+      t('daily.fasterThan', { rank: d.result.rank }),
+      streak >= 2 ? t('daily.streak', { n: streak }) : '',
       () => {
         const min = Math.ceil(msUntilTomorrow() / 60000);
-        return `Prochain défi dans ${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}`;
+        return t('daily.next', { h: Math.floor(min / 60), m: String(min % 60).padStart(2, '0') });
       },
     );
   }
@@ -459,10 +467,14 @@ export class Game {
     if (outcome === 'failed') return;
     this.save.stats.shared++;
     const fresh = refreshUnlocks(this.save);
-    const names = fresh.map((id) => THEMES.find((t) => t.id === id)!.name);
-    const copied = outcome === 'copied' ? 'Résultat copié : colle-le à tes amis !' : '';
-    if (names.length) this.hud.toast(`${copied ? 'Résultat copié. ' : ''}Nouveau style débloqué : ${names.join(', ')} !`, false, 4200);
-    else if (copied) this.hud.toast(copied, false, 3000);
+    const names = fresh.map((id) => themeName(id));
+    const copied = outcome === 'copied';
+    if (names.length) {
+      const unlocked = tn('unlock.newStyle', names.length, { names: listJoin(names) });
+      this.hud.toast(copied ? `${t('toast.copiedShort')} ${unlocked}` : unlocked, false, 4200);
+    } else if (copied) {
+      this.hud.toast(t('toast.resultCopied'), false, 3000);
+    }
     this.persist();
   }
 
@@ -499,7 +511,7 @@ export class Game {
     this.tutorialClock = 0;
     const tutorial = TUTORIALS[this.tutorial];
     const step = tutorial.steps[index];
-    this.hud.showCoach(step.text, [step.number, tutorial.count], step.kind === 'read' ? step.button! : null);
+    this.hud.showCoach(t(step.text), [step.number, tutorial.count], step.kind === 'read' ? t(step.button!) : null);
     const acts = step.kind === 'turn' || step.kind === 'hold';
     this.renderer.spotlight = acts ? { cell: step.cell!, kind: step.kind === 'hold' ? 'hold' : 'tap', ghost: step.ghost } : null;
     requestAnimationFrame(() => this.relayout());
@@ -632,7 +644,7 @@ export class Game {
     this.lockMode = on;
     this.renderer.lockMode = on;
     this.hud.setLockMode(on);
-    if (on && this.mode === 'play') this.hud.toast('Mode verrou : touche ou glisse sur les parcelles', false, 2400);
+    if (on && this.mode === 'play') this.hud.toast(t('toast.lockMode'), false, 2400);
   }
 
   private reset() {
@@ -640,7 +652,7 @@ export class Game {
     const now = performance.now();
     if (now > this.resetArmedUntil) {
       this.resetArmedUntil = now + 2500;
-      this.hud.toast('Touche encore pour recommencer le niveau');
+      this.hud.toast(t('toast.resetConfirm'));
       return;
     }
     this.resetArmedUntil = 0;
@@ -700,14 +712,13 @@ export class Game {
       const ahead = daysToZoneHint(liveStreak(this.save.streak, today));
       // Not watered yet today: the first of these days is today.
       const days = this.save.streak.last === today ? ahead : ahead - 1;
-      const when = days <= 0 ? "le prochain aujourd'hui, en finissant ce jardin" : `le prochain dans ${days} jour${days > 1 ? 's' : ''}`;
-      this.hud.openZoneInfo(`Tu n'en as plus. Ta série d'arrosage en offre un tous les 7 jours : ${when}.`);
+      const when = days <= 0 ? t('zone.nextToday') : tn('zone.nextIn', days);
+      this.hud.openZoneInfo(t('zone.noneLeft', { when }));
       return;
     }
     this.setLockMode(false);
     this.setZoneMode(true);
-    const zone = this.board.grid.hex ? 'elle et ses 6 voisines se remettent en place' : 'le carré de 3×3 autour se remet en place';
-    this.hud.toast(`Touche une parcelle : ${zone}`, false, 3200);
+    this.hud.toast(t(this.board.grid.hex ? 'toast.zoneHex' : 'toast.zoneSquare'), false, 3200);
   }
 
   private setZoneMode(on: boolean) {
@@ -745,7 +756,7 @@ export class Game {
     }
     const todo = zone.filter((i) => !board.isCorrect(i) || !board.locked[i]);
     if (!todo.length) {
-      this.hud.toast(grid.hex ? 'Cette zone est déjà en place : choisis-en une autre' : 'Ce carré est déjà en place : choisis-en un autre');
+      this.hud.toast(t(grid.hex ? 'toast.zoneDoneHex' : 'toast.zoneDoneSquare'));
       return;
     }
     for (const i of todo) {
@@ -777,20 +788,16 @@ export class Game {
   private openStreak() {
     const view = this.streakView();
     const watered = this.save.streak.last === dayKey();
-    const status = watered
-      ? "Ton jardin a fleuri aujourd'hui. À demain !"
-      : view.count > 0
-        ? "Fais fleurir un jardin aujourd'hui (un niveau ou le défi du jour) pour garder ta série."
-        : "Fais fleurir un jardin chaque jour (un niveau ou le défi du jour) pour lancer une série.";
+    const status = t(watered ? 'streak.statusDone' : view.count > 0 ? 'streak.statusKeep' : 'streak.statusStart');
     // Not watered yet today: the first of these days is today.
     const next = nextReward(view.count);
     const days = watered ? next.inDays : next.inDays - 1;
     const nextText =
       days <= 0
-        ? `Récompense du jour, en faisant fleurir un jardin : ${rewardText(next.reward)}.`
-        : `Prochaine récompense dans ${days} jour${days > 1 ? 's' : ''} : ${rewardText(next.reward)}.`;
+        ? t('streak.rewardToday', { reward: rewardText(next.reward) })
+        : tn('streak.rewardIn', days, { reward: rewardText(next.reward) });
     const best = this.save.streak.best;
-    this.hud.openStreak(view, status, nextText, best > 1 ? `Meilleure série : ${best} jours` : '');
+    this.hud.openStreak(view, status, nextText, best > 1 ? t('streak.best', { n: best }) : '');
   }
 
   /** Pass the level after a rewarded video; it stays playable from the level list. */
@@ -806,7 +813,7 @@ export class Game {
     void this.social.flush();
     this.save.snapshot = null;
     this.loadLevel(level + 1);
-    this.hud.toast(`Niveau ${level} passé : tu pourras y revenir depuis la liste`, false, 3200);
+    this.hud.toast(t('toast.skipped', { level }), false, 3200);
     this.persist();
   }
 
@@ -832,15 +839,15 @@ export class Game {
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     const unlockedIds = THEMES.filter((t) => isUnlocked(this.save, t.id)).map((t) => t.id);
     const cards: StyleCard[] = [
-      { id: RANDOM_STYLE, name: 'Aléatoire', blurb: 'Un style au hasard parmi tes styles, à chaque niveau', locked: false },
-      ...THEMES.map((t) => {
-        const challenge = STYLE_CHALLENGES[t.id];
+      { id: RANDOM_STYLE, name: t('styles.randomName'), blurb: t('styles.randomBlurb'), locked: false },
+      ...THEMES.map((theme) => {
+        const challenge = STYLE_CHALLENGES[theme.id];
         return {
-          id: t.id,
-          name: t.name,
-          blurb: t.blurb,
-          locked: !isUnlocked(this.save, t.id),
-          challenge: challenge?.text,
+          id: theme.id,
+          name: themeName(theme.id),
+          blurb: themeBlurb(theme.id),
+          locked: !isUnlocked(this.save, theme.id),
+          challenge: challenge?.text(),
           progress: challenge?.state(this.save).progress,
         };
       }),
@@ -850,7 +857,7 @@ export class Game {
       this.save.settings.theme,
       (id, size) => (id === RANDOM_STYLE ? renderRandomPreview(unlockedIds, size, dpr) : renderThemePreview(id as ThemeId, size, dpr)),
       (id) => this.chooseTheme(id),
-      (card) => this.hud.toast(`${card.name} : ${card.challenge} (${card.progress})`, false, 3600),
+      (card) => this.hud.toast(t('styles.lockedToast', { name: card.name, challenge: card.challenge ?? '', progress: card.progress ?? '' }), false, 3600),
     );
   }
 
@@ -871,7 +878,7 @@ export class Game {
     if (!rewarded) return;
     this.save.hints += 3;
     this.hud.setHints(this.save.hints);
-    this.hud.toast('+3 indices !');
+    this.hud.toast(t('toast.hintsGained', { n: 3 }));
     this.persist();
   }
 
@@ -891,10 +898,30 @@ export class Game {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.palette.bgTop);
   }
 
+  private openSettings() {
+    this.hud.openSettings(this.sound.enabled, this.save.settings.haptics, lang());
+  }
+
+  /** Switch language: save, then reload so every text is rebuilt (the garden in progress is in the save). */
+  private chooseLang(l: Lang) {
+    if (l === lang()) return;
+    this.save.settings.lang = l;
+    this.persist();
+    location.reload();
+  }
+
   private toggleSound() {
     this.sound.enabled = !this.sound.enabled;
     this.save.settings.sound = this.sound.enabled;
-    this.hud.setSound(this.sound.enabled);
+    this.hud.setSwitch('set-sound', this.sound.enabled);
+    this.persist();
+  }
+
+  private toggleHaptics() {
+    this.save.settings.haptics = !this.save.settings.haptics;
+    this.hud.setSwitch('set-haptics', this.save.settings.haptics);
+    // A little buzz to feel the vibrations coming back.
+    this.vibrate(12);
     this.persist();
   }
 
@@ -907,7 +934,7 @@ export class Game {
 
     if (an.loopCells > 0 && (!prev || an.loopCells > prev.loopCells)) {
       this.sound.loop();
-      this.hud.toast("Oups, une boucle ! L'eau tourne en rond.", true);
+      this.hud.toast(t('toast.loop'), true);
     }
     if (an.solved) this.onWin();
     this.persistSoon();
@@ -944,7 +971,7 @@ export class Game {
     }
     this.waterStreak();
     const fresh = refreshUnlocks(this.save);
-    if (this.lastWin) this.lastWin.unlocked = fresh.map((id) => THEMES.find((t) => t.id === id)!.name);
+    if (this.lastWin) this.lastWin.unlocked = fresh.map((id) => themeName(id));
     writeSave(this.save);
     void this.scoreWin();
   }
@@ -962,10 +989,10 @@ export class Game {
       this.save.zoneHints += reward.zoneHints;
       this.hud.setHints(this.save.hints);
       this.hud.setZoneHints(this.save.zoneHints);
-      note = `Récompense : ${rewardText(reward)} !`;
+      note = t('streak.rewardNow', { reward: rewardText(reward) });
     } else {
       const next = nextReward(count);
-      note = `Encore ${next.inDays} jour${next.inDays > 1 ? 's' : ''} pour gagner ${rewardText(next.reward)}.`;
+      note = tn('streak.moreDays', next.inDays, { reward: rewardText(next.reward) });
     }
     if (this.lastWin) this.lastWin.streak = { count, filled: weekDay(count), next: -1, note };
   }
@@ -1037,9 +1064,9 @@ export class Game {
 
 /** ", sans indice" / ", avec 2 indices et 1 zone" for the daily result card. */
 function helpText(hints: number, zones: number): string {
-  if (!hints && !zones) return ', sans indice';
+  if (!hints && !zones) return t('daily.noHint');
   const parts: string[] = [];
-  if (hints) parts.push(`${hints} indice${hints > 1 ? 's' : ''}`);
-  if (zones) parts.push(`${zones} zone${zones > 1 ? 's' : ''}`);
-  return `, avec ${parts.join(' et ')}`;
+  if (hints) parts.push(tn('count.hint', hints));
+  if (zones) parts.push(tn('count.zone', zones));
+  return t('daily.withHelp', { help: listJoin(parts) });
 }

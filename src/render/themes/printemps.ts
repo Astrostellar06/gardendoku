@@ -147,8 +147,6 @@ const duckling: PropDef = {
 
 export const printemps: Theme = {
   id: 'printemps',
-  name: 'Printemps',
-  blurb: 'Tulipes, coccinelles et canetons',
   palette: SPRING,
   ambient: 'petals',
   ambientColors: ['#FFC4D6', '#FFD9E4', '#FFF0B8', '#FFFFFF'],

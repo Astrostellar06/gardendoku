@@ -1,9 +1,13 @@
 /** Player avatars: small round badges in the garden's art style (pick one in the profile). */
+import { t } from '../i18n';
+
+type AvatarKey = 'lotus' | 'sunflower' | 'mushroom' | 'ladybug' | 'snail' | 'frog' | 'hedgehog' | 'bee' | 'duck' | 'rabbit' | 'butterfly' | 'cactus';
+
 export interface Avatar {
   /** Stable id stored on the server: never reorder or reuse ids. */
   id: number;
-  /** French name, shown as a tooltip / accessible label, e.g. 'Hérisson'. */
-  name: string;
+  /** Name key (`avatar.<key>` in src/i18n), shown as a tooltip / accessible label. */
+  key: AvatarKey;
   /** A complete standalone SVG string: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">…</svg> */
   svg: string;
 }
@@ -392,19 +396,24 @@ function cactus(): string {
 }
 
 export const AVATARS: Avatar[] = [
-  { id: 0, name: 'Lotus', svg: lotus() },
-  { id: 1, name: 'Tournesol', svg: sunflower() },
-  { id: 2, name: 'Champignon', svg: mushroom() },
-  { id: 3, name: 'Coccinelle', svg: ladybug() },
-  { id: 4, name: 'Escargot', svg: snail() },
-  { id: 5, name: 'Grenouille', svg: frog() },
-  { id: 6, name: 'Hérisson', svg: hedgehog() },
-  { id: 7, name: 'Abeille', svg: bee() },
-  { id: 8, name: 'Canard', svg: duck() },
-  { id: 9, name: 'Lapin', svg: rabbit() },
-  { id: 10, name: 'Papillon', svg: butterfly() },
-  { id: 11, name: 'Cactus', svg: cactus() },
+  { id: 0, key: 'lotus', svg: lotus() },
+  { id: 1, key: 'sunflower', svg: sunflower() },
+  { id: 2, key: 'mushroom', svg: mushroom() },
+  { id: 3, key: 'ladybug', svg: ladybug() },
+  { id: 4, key: 'snail', svg: snail() },
+  { id: 5, key: 'frog', svg: frog() },
+  { id: 6, key: 'hedgehog', svg: hedgehog() },
+  { id: 7, key: 'bee', svg: bee() },
+  { id: 8, key: 'duck', svg: duck() },
+  { id: 9, key: 'rabbit', svg: rabbit() },
+  { id: 10, key: 'butterfly', svg: butterfly() },
+  { id: 11, key: 'cactus', svg: cactus() },
 ];
+
+/** Name of an avatar in the current language. */
+export function avatarName(a: Avatar): string {
+  return t(`avatar.${a.key}`);
+}
 
 /** The SVG of an avatar; unknown ids fall back to the first one. */
 export function avatarSvg(id: number): string {

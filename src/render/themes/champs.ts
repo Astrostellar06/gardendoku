@@ -192,8 +192,6 @@ const tractor: PropDef = {
 
 export const champs: Theme = {
   id: 'champs',
-  name: 'Champs',
-  blurb: 'Blé, coquelicots, lavande et moulins',
   palette: {
     ...SPRING,
     bgTop: '#FFE4A8',

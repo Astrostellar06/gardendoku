@@ -1,6 +1,7 @@
 /** Progress persistence (localStorage). Levels themselves are never stored: only the seed index. */
 import type { BoardSnapshot } from '../core/board';
 import type { DailyResult } from '../daily';
+import type { Lang } from '../i18n';
 import type { Streak } from '../streak';
 
 const KEY = 'jardin-des-sources:v1';
@@ -10,6 +11,8 @@ export interface Settings {
   haptics: boolean;
   /** Garden style id, or 'aleatoire' for a random unlocked style on each level. */
   theme: string;
+  /** Language picked in the settings; missing: follow the device. */
+  lang?: Lang;
 }
 
 /** Numbers behind the style challenges. */

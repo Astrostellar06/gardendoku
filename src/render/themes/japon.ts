@@ -252,8 +252,6 @@ const maple: PropDef = {
 
 export const japon: Theme = {
   id: 'japon',
-  name: 'Japon',
-  blurb: 'Ponts rouges, lanternes et carpes koï',
   palette: {
     ...SPRING,
     bgTop: '#FFD9E6',

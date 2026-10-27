@@ -7,6 +7,8 @@
  * and resolve true only when the network reports the reward as earned.
  */
 
+import { t } from '../i18n';
+
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
 
 export function showRewardedAd(durationMs = 3000): Promise<boolean> {
@@ -15,7 +17,7 @@ export function showRewardedAd(durationMs = 3000): Promise<boolean> {
   const close = $('ad-close') as HTMLButtonElement;
   overlay.classList.remove('hidden', 'closing');
   close.disabled = true;
-  close.textContent = 'Patiente…';
+  close.textContent = t('ad.wait');
   bar.style.transition = 'none';
   bar.style.width = '0%';
   void bar.offsetWidth;
@@ -24,7 +26,7 @@ export function showRewardedAd(durationMs = 3000): Promise<boolean> {
   return new Promise((resolve) => {
     window.setTimeout(() => {
       close.disabled = false;
-      close.textContent = 'Récupérer la récompense';
+      close.textContent = t('ad.claim');
       close.onclick = () => {
         close.onclick = null;
         overlay.classList.add('closing');

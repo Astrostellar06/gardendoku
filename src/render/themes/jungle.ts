@@ -335,8 +335,6 @@ const crocBank: PropDef = {
 
 export const jungle: Theme = {
   id: 'jungle',
-  name: 'Jungle',
-  blurb: 'Monsteras, toucans et crocodiles',
   palette: {
     ...SPRING,
     bgTop: '#C9F0DA',

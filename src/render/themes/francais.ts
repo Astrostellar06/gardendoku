@@ -181,8 +181,6 @@ const swan: PropDef = {
 
 export const francais: Theme = {
   id: 'francais',
-  name: 'Jardin à la française',
-  blurb: 'Topiaires, statues et bassins de château',
   palette: {
     ...SPRING,
     bgTop: '#D4E4FF',

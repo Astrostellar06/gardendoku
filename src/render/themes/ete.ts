@@ -297,8 +297,6 @@ const rubberDuck: PropDef = {
 
 export const ete: Theme = {
   id: 'ete',
-  name: 'Été',
-  blurb: 'Tournesols, parasols et canards en plastique',
   palette: {
     ...SPRING,
     bgTop: '#FFE6A0',

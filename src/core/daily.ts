@@ -6,13 +6,11 @@
 import { generate, Puzzle } from './generator';
 import { fitShape, LevelInfo, SHAPES } from './levels';
 import { Rng } from './rng';
-import { buildShape, ShapeId, SHAPE_NAMES } from './shapes';
+import { buildShape, ShapeId } from './shapes';
 
 export interface DailyInfo extends LevelInfo {
   /** Day key, 'YYYY-MM-DD' (local time). */
   key: string;
-  /** "lundi 27 octobre". */
-  label: string;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -73,15 +71,12 @@ export function dailyInfo(key: string): DailyInfo {
     if (shape !== 'ponds') [width, height] = fitShape(shape, bw * bh, rng.fork('fit'));
   }
   const cells = buildShape(shape, width, height, new Rng(seed).fork('shape')).reduce((a, b) => a + b, 0);
-  const label = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   return {
     key,
-    label,
     index: 0,
     width,
     height,
     shape,
-    shapeName: plan.wrap ? 'Bords reliés' : SHAPE_NAMES[shape],
     windiness,
     seed,
     cells,

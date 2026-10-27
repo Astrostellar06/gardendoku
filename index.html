@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#FFD6E5" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="description" content="Gardendoku, un jeu de puzzle zen : guide l'eau de la source et fais fleurir ton jardin." />
+    <meta name="description" data-i18n-attr="content:meta.description" content="Gardendoku, un jeu de puzzle zen : guide l'eau de la source et fais fleurir ton jardin." />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <title>Gardendoku</title>
@@ -17,10 +17,10 @@
 
       <header id="topbar" class="bar top hidden">
         <div class="bar-group">
-          <button class="icon-btn" id="btn-home" aria-label="Accueil">
+          <button class="icon-btn" id="btn-home" aria-label="Accueil" data-i18n-attr="aria-label:nav.home">
             <svg viewBox="0 0 24 24"><path d="M4 11.2 12 4.5l8 6.7" /><path d="M6.5 9.8V19h11V9.8" /><path d="M10.2 19v-4.6h3.6V19" /></svg>
           </button>
-          <button class="icon-btn" id="btn-skip" aria-label="Passer le niveau">
+          <button class="icon-btn" id="btn-skip" aria-label="Passer le niveau" data-i18n-attr="aria-label:nav.skipLevel">
             <svg viewBox="0 0 24 24"><path d="M5.5 6.5 11 12l-5.5 5.5" /><path d="M11.5 6.5 17 12l-5.5 5.5" /><path d="M19.5 6.5v11" /></svg>
           </button>
         </div>
@@ -29,36 +29,33 @@
           <div class="level-sub" id="level-sub">Parterre · 25 parcelles</div>
         </div>
         <div class="bar-group">
-          <button class="icon-btn" id="btn-help" aria-label="Comment jouer">
+          <button class="icon-btn" id="btn-help" aria-label="Comment jouer" data-i18n-attr="aria-label:howto.title">
             <svg viewBox="0 0 24 24"><path d="M9.2 9.3a2.9 2.9 0 1 1 4.1 2.6c-.8.4-1.3 1.1-1.3 2v.6" /><circle cx="12" cy="17.6" r="0.6" fill="currentColor" /></svg>
           </button>
-          <button class="icon-btn" id="btn-sound" aria-label="Son">
-            <svg class="on" viewBox="0 0 24 24"><path d="M9 17.5V6.2l9-1.9v11.3" /><circle cx="6.6" cy="17.5" r="2.4" /><circle cx="15.6" cy="15.6" r="2.4" /></svg>
-            <svg class="off" viewBox="0 0 24 24"><path d="M9 17.5V6.2l9-1.9v11.3" /><circle cx="6.6" cy="17.5" r="2.4" /><circle cx="15.6" cy="15.6" r="2.4" /><path d="M4 4l16 16" /></svg>
-          </button>
+          <button class="icon-btn" id="btn-settings" aria-label="Paramètres" data-i18n-attr="aria-label:settings.title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M12 3.5v2.3M12 18.2v2.3M3.5 12h2.3M18.2 12h2.3M6 6l1.6 1.6M16.4 16.4 18 18M6 18l1.6-1.6M16.4 7.6 18 6" /></svg></button>
         </div>
       </header>
 
       <footer id="bottombar" class="bar bottom hidden">
         <button class="tool-btn" id="btn-reset">
           <svg viewBox="0 0 24 24"><path d="M5.5 12a6.5 6.5 0 1 0 2-4.7" /><path d="M5 4.5v3.8h3.8" /></svg>
-          <span>Recommencer</span>
+          <span data-i18n="tools.reset">Recommencer</span>
         </button>
         <button class="tool-btn toggle" id="btn-lock" aria-pressed="false">
           <svg viewBox="0 0 24 24"><rect x="5.5" y="10.5" width="13" height="9" rx="2.6" /><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" /></svg>
-          <span>Verrou</span>
+          <span data-i18n="tools.lock">Verrou</span>
         </button>
         <button class="tool-btn" id="btn-hint">
           <svg viewBox="0 0 24 24"><path d="M12 3.5c2.6 3.1 5.5 6.3 5.5 9.6a5.5 5.5 0 0 1-11 0c0-3.3 2.9-6.5 5.5-9.6Z" /><path d="M9.8 14.2a2.3 2.3 0 0 0 2.2 2.2" /></svg>
-          <span>Indice</span>
+          <span data-i18n="tools.hint">Indice</span>
           <span class="count" id="hint-count">5</span>
         </button>
         <button class="tool-btn toggle" id="btn-zone" aria-pressed="false">
           <svg viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="3.2" /><path d="M9.5 4.5v15M14.5 4.5v15M4.5 9.5h15M4.5 14.5h15" /></svg>
-          <span>Zone</span>
+          <span data-i18n="tools.zone">Zone</span>
           <span class="count zone" id="zone-count">3</span>
         </button>
-        <button class="big-btn hidden" id="btn-next-float">Niveau suivant</button>
+        <button class="big-btn hidden" id="btn-next-float" data-i18n="win.nextLevel">Niveau suivant</button>
       </footer>
 
       <div id="toast" class="toast"></div>
@@ -66,34 +63,35 @@
       <section id="coach" class="coach hidden" aria-live="polite">
         <div class="coach-card">
           <div class="coach-head">
-            <span class="coach-badge">Tutoriel</span>
+            <span class="coach-badge" data-i18n="coach.badge">Tutoriel</span>
             <span class="coach-step" id="coach-step">1 / 5</span>
           </div>
           <p id="coach-text"></p>
           <div class="coach-actions">
-            <button class="link-btn" id="coach-skip">Passer</button>
-            <button class="big-btn coach-next" id="coach-next">Suivant</button>
+            <button class="link-btn" id="coach-skip" data-i18n="coach.skip">Passer</button>
+            <button class="big-btn coach-next" id="coach-next" data-i18n="common.next">Suivant</button>
           </div>
         </div>
       </section>
 
       <section id="home" class="screen">
-        <button class="league-badge hidden" id="btn-league" aria-label="Ligue de la semaine"><svg class="cup-icon" viewBox="0 0 32 32" aria-hidden="true"><path class="cup-handle" d="M9 9H5.5v2.5A4.5 4.5 0 0 0 10 16M23 9h3.5v2.5A4.5 4.5 0 0 1 22 16" /><path class="cup-body" d="M8.5 6h15v5.5a7.5 7.5 0 0 1-15 0Z" /><path class="cup-stem" d="M14 18.5h4l.8 5h-5.6Z" /><rect class="cup-base" x="10.5" y="23.5" width="11" height="3.5" rx="1.5" /><path class="cup-shine" d="M12 9v3" /></svg><b id="league-badge-text">Ligue</b></button>
-        <button class="streak-badge" id="btn-streak" aria-label="Série d'arrosage"><svg class="can-icon" viewBox="0 0 32 32" aria-hidden="true"><path class="can-spout" d="M18.4 21 26 13" /><ellipse class="can-rose" cx="27.2" cy="11.8" rx="2.7" ry="1.6" transform="rotate(-45 27.2 11.8)" /><path class="can-handle" d="M8.6 12.8C8.6 6.4 17.6 6.4 17.6 12.8" /><path class="can-body" d="M6.4 12.8h13.6l-1.1 12.1a2.6 2.6 0 0 1-2.6 2.4h-6.2a2.6 2.6 0 0 1-2.6-2.4Z" /><path class="can-shine" d="M9.6 15.8v6.6" /><path class="can-drop" d="M29 16.4c.9 1.1 1.4 1.9 1.4 2.6a1.4 1.4 0 0 1-2.8 0c0-.7.5-1.5 1.4-2.6Z" /><path class="can-drop" d="M25.6 18.8c.7.9 1.1 1.5 1.1 2a1.1 1.1 0 0 1-2.2 0c0-.5.4-1.1 1.1-2Z" /></svg><b id="streak-count">0</b></button>
+        <button class="league-badge hidden" id="btn-league" aria-label="Ligue de la semaine" data-i18n-attr="aria-label:league.weekly"><svg class="cup-icon" viewBox="0 0 32 32" aria-hidden="true"><path class="cup-handle" d="M9 9H5.5v2.5A4.5 4.5 0 0 0 10 16M23 9h3.5v2.5A4.5 4.5 0 0 1 22 16" /><path class="cup-body" d="M8.5 6h15v5.5a7.5 7.5 0 0 1-15 0Z" /><path class="cup-stem" d="M14 18.5h4l.8 5h-5.6Z" /><rect class="cup-base" x="10.5" y="23.5" width="11" height="3.5" rx="1.5" /><path class="cup-shine" d="M12 9v3" /></svg><b id="league-badge-text" data-i18n="league.badge">Ligue</b></button>
+        <button class="streak-badge" id="btn-streak" aria-label="Série d'arrosage" data-i18n-attr="aria-label:streak.title"><svg class="can-icon" viewBox="0 0 32 32" aria-hidden="true"><path class="can-spout" d="M18.4 21 26 13" /><ellipse class="can-rose" cx="27.2" cy="11.8" rx="2.7" ry="1.6" transform="rotate(-45 27.2 11.8)" /><path class="can-handle" d="M8.6 12.8C8.6 6.4 17.6 6.4 17.6 12.8" /><path class="can-body" d="M6.4 12.8h13.6l-1.1 12.1a2.6 2.6 0 0 1-2.6 2.4h-6.2a2.6 2.6 0 0 1-2.6-2.4Z" /><path class="can-shine" d="M9.6 15.8v6.6" /><path class="can-drop" d="M29 16.4c.9 1.1 1.4 1.9 1.4 2.6a1.4 1.4 0 0 1-2.8 0c0-.7.5-1.5 1.4-2.6Z" /><path class="can-drop" d="M25.6 18.8c.7.9 1.1 1.5 1.1 2a1.1 1.1 0 0 1-2.2 0c0-.5.4-1.1 1.1-2Z" /></svg><b id="streak-count">0</b></button>
         <div class="home-top">
           <h1 class="logo" aria-label="Gardendoku"><svg class="logo-g" viewBox="-2 -2 100 105" aria-hidden="true"><defs><clipPath id="g-still"><path clip-rule="evenodd" d="M-5 -5H105V105H-5Z M0 66H30V96H0Z" /></clipPath></defs><g class="g-tile" style="--i:0"><rect class="g-side" x="0" y="4" width="30" height="30" rx="7" /><rect class="g-face" x="0" y="0" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:1"><rect class="g-side" x="33" y="4" width="30" height="30" rx="7" /><rect class="g-face" x="33" y="0" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:2"><rect class="g-side" x="66" y="4" width="30" height="30" rx="7" /><rect class="g-face" x="66" y="0" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:3"><rect class="g-side" x="0" y="37" width="30" height="30" rx="7" /><rect class="g-face" x="0" y="33" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:4"><rect class="g-side" x="33" y="37" width="30" height="30" rx="7" /><rect class="g-face" x="33" y="33" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:5"><rect class="g-side" x="66" y="37" width="30" height="30" rx="7" /><rect class="g-face" x="66" y="33" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:6"><rect class="g-side" x="0" y="70" width="30" height="30" rx="7" /><g class="g-turn"><rect class="g-face" x="0" y="66" width="30" height="30" rx="7" /><path class="g-rim" d="M30 81H15V66" /><path class="g-groove" d="M30 81H15V66" /></g></g><g class="g-tile" style="--i:7"><rect class="g-side" x="33" y="70" width="30" height="30" rx="7" /><rect class="g-face" x="33" y="66" width="30" height="30" rx="7" /></g><g class="g-tile" style="--i:8"><rect class="g-side" x="66" y="70" width="30" height="30" rx="7" /><rect class="g-face" x="66" y="66" width="30" height="30" rx="7" /></g><g class="g-canal" clip-path="url(#g-still)"><path class="g-rim" d="M48 48H81V81H15V15H81" /><path class="g-groove" d="M48 48H81V81H15V15H81" /></g><circle class="g-basin" cx="48" cy="48" r="7.5" /><circle class="g-spring" cx="48" cy="48" r="4.6" /><path class="g-water" d="M48 48H81V81H15V15H81" pathLength="100" /><path class="g-shine" d="M48 48H81V81H15V15H81" pathLength="100" /><g class="g-lotus"><ellipse class="g-petal" cx="81" cy="10.5" rx="3.6" ry="5.4" transform="rotate(0 81 15)" /><ellipse class="g-petal" cx="81" cy="10.5" rx="3.6" ry="5.4" transform="rotate(72 81 15)" /><ellipse class="g-petal" cx="81" cy="10.5" rx="3.6" ry="5.4" transform="rotate(144 81 15)" /><ellipse class="g-petal" cx="81" cy="10.5" rx="3.6" ry="5.4" transform="rotate(216 81 15)" /><ellipse class="g-petal" cx="81" cy="10.5" rx="3.6" ry="5.4" transform="rotate(288 81 15)" /><circle class="g-heart" cx="81" cy="15" r="2.6" /></g></svg><span class="logo-word">ardendoku</span></h1>
-          <p class="tagline">Guide l'eau, fais fleurir ton jardin.</p>
+          <p class="tagline" data-i18n="home.tagline">Guide l'eau, fais fleurir ton jardin.</p>
         </div>
         <div class="home-bottom">
-          <button class="big-btn" id="btn-play">Jouer<small id="play-level">Niveau 1</small></button>
+          <button class="big-btn" id="btn-play"><span data-i18n="home.play">Jouer</span><small id="play-level">Niveau 1</small></button>
           <button class="daily-btn" id="btn-daily">
             <svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14" rx="3" /><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" /><path d="M9.5 14.5l1.8 1.8 3.4-3.6" class="tick" /></svg>
-            <span class="daily-text"><b>Défi du jour</b><small id="daily-sub">Une grille par jour, la même pour tous</small></span>
+            <span class="daily-text"><b data-i18n="daily.title">Défi du jour</b><small id="daily-sub">Une grille par jour, la même pour tous</small></span>
           </button>
           <div class="home-row">
-            <button class="soft-btn" id="btn-levels">Niveaux</button>
-            <button class="soft-btn" id="btn-styles">Styles</button>
-            <button class="soft-btn" id="btn-howto">Comment jouer</button>
+            <button class="soft-btn" id="btn-levels" data-i18n="levels.title">Niveaux</button>
+            <button class="soft-btn" id="btn-styles" data-i18n="home.styles">Styles</button>
+            <button class="soft-btn" id="btn-howto" data-i18n="howto.title">Comment jouer</button>
+            <button class="soft-btn icon-only" id="btn-home-settings" aria-label="Paramètres" data-i18n-attr="aria-label:settings.title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M12 3.5v2.3M12 18.2v2.3M3.5 12h2.3M18.2 12h2.3M6 6l1.6 1.6M16.4 16.4 18 18M6 18l1.6-1.6M16.4 7.6 18 6" /></svg></button>
           </div>
         </div>
       </section>
@@ -110,7 +108,7 @@
               <circle r="8" class="heart" />
             </g>
           </svg>
-          <h2>Jardin fleuri !</h2>
+          <h2 data-i18n="win.title">Jardin fleuri !</h2>
           <p id="win-text">Niveau 1 terminé</p>
           <p class="win-rank" id="win-rank"></p>
           <p class="win-league hidden" id="win-league"></p>
@@ -120,35 +118,35 @@
             <p class="streak-note" id="win-streak-note"></p>
           </div>
           <div class="stats">
-            <div><b id="win-time">0:00</b><span>temps</span></div>
+            <div><b id="win-time">0:00</b><span data-i18n="win.time">temps</span></div>
             <div><b id="win-moves">0</b><span id="win-moves-label">rotations</span></div>
           </div>
           <div class="win-unlocks" id="win-unlocks"></div>
-          <button class="big-btn hidden" id="btn-share">Partager</button>
-          <button class="big-btn" id="btn-next">Niveau suivant</button>
-          <button class="link-btn" id="btn-admire">Admirer le jardin</button>
+          <button class="big-btn hidden" id="btn-share" data-i18n="common.share">Partager</button>
+          <button class="big-btn" id="btn-next" data-i18n="win.nextLevel">Niveau suivant</button>
+          <button class="link-btn" id="btn-admire" data-i18n="win.admire">Admirer le jardin</button>
         </div>
       </section>
 
       <section id="howto" class="overlay hidden">
         <div class="card">
-          <h2>Comment jouer</h2>
+          <h2 data-i18n="howto.title">Comment jouer</h2>
           <ul class="howto-list">
-            <li><span class="dot pink">1</span><span>Touche une parcelle pour la faire <b>tourner</b>.</span></li>
-            <li><span class="dot green">2</span><span>Relie <b>toutes les parcelles</b> à la source centrale : l'eau coule et le jardin fleurit.</span></li>
-            <li><span class="dot blue">3</span><span>Évite les <b>boucles</b> : l'eau doit former un seul réseau, sans cercle.</span></li>
-            <li><span class="dot yellow">4</span><span><b>Appui long</b> (ou mode Verrou) pour verrouiller une parcelle bien placée. Glisse ensuite le doigt pour en verrouiller plusieurs d'un coup.</span></li>
-            <li><span class="dot lilac">5</span><span>Tous les 5 niveaux, un <b>niveau difficile</b> : les bords du jardin sont reliés, l'eau qui sort d'un côté revient par le côté opposé.</span></li>
+            <li><span class="dot pink">1</span><span data-i18n-html="howto.step1">Touche une parcelle pour la faire <b>tourner</b>.</span></li>
+            <li><span class="dot green">2</span><span data-i18n-html="howto.step2">Relie <b>toutes les parcelles</b> à la source centrale : l'eau coule et le jardin fleurit.</span></li>
+            <li><span class="dot blue">3</span><span data-i18n-html="howto.step3">Évite les <b>boucles</b> : l'eau doit former un seul réseau, sans cercle.</span></li>
+            <li><span class="dot yellow">4</span><span data-i18n-html="howto.step4"><b>Appui long</b> (ou mode Verrou) pour verrouiller une parcelle bien placée. Glisse ensuite le doigt pour en verrouiller plusieurs d'un coup.</span></li>
+            <li><span class="dot lilac">5</span><span data-i18n-html="howto.step5">Tous les 5 niveaux, un <b>niveau difficile</b> : les bords du jardin sont reliés, l'eau qui sort d'un côté revient par le côté opposé.</span></li>
           </ul>
-          <button class="big-btn" data-close>C'est parti</button>
-          <button class="link-btn" id="btn-replay-tutorial" data-close>Revoir le tutoriel</button>
-          <button class="link-btn" id="btn-replay-wrap" data-close>Revoir le tutoriel des bords reliés</button>
+          <button class="big-btn" data-close data-i18n="howto.go">C'est parti</button>
+          <button class="link-btn" id="btn-replay-tutorial" data-close data-i18n="howto.replayTutorial">Revoir le tutoriel</button>
+          <button class="link-btn" id="btn-replay-wrap" data-close data-i18n="howto.replayWrap">Revoir le tutoriel des bords reliés</button>
         </div>
       </section>
 
       <section id="hard-intro" class="overlay hidden">
         <div class="card">
-          <h2>Niveau difficile</h2>
+          <h2 data-i18n="hard.title">Niveau difficile</h2>
           <svg class="wrap-illustration" viewBox="0 0 220 132" aria-hidden="true">
             <rect class="tray" x="14" y="44" width="192" height="70" rx="16" />
             <rect class="ghost" x="20" y="52" width="16" height="54" rx="6" />
@@ -166,15 +164,15 @@
             <path class="arrow" d="M196 66 C196 14, 24 14, 24 66" />
             <path class="arrow-head" d="M17 58 L24 68 L31 58" />
           </svg>
-          <p>Ici, les <b>bords du jardin sont reliés</b> : l'eau qui sort d'un côté réapparaît du côté opposé.</p>
-          <p class="small">Les bandes pâles autour du jardin montrent les parcelles de l'autre côté. Tu peux aussi les toucher.</p>
-          <button class="big-btn" data-close>Compris !</button>
+          <p data-i18n-html="hard.text">Ici, les <b>bords du jardin sont reliés</b> : l'eau qui sort d'un côté réapparaît du côté opposé.</p>
+          <p class="small" data-i18n="hard.small">Les bandes pâles autour du jardin montrent les parcelles de l'autre côté. Tu peux aussi les toucher.</p>
+          <button class="big-btn" data-close data-i18n="common.gotIt">Compris !</button>
         </div>
       </section>
 
       <section id="hex-intro" class="overlay hidden">
         <div class="card">
-          <h2>Jardin hexagonal</h2>
+          <h2 data-i18n="hex.title">Jardin hexagonal</h2>
           <svg class="wrap-illustration hex-illustration" viewBox="0 0 220 132" aria-hidden="true">
             <polygon class="tile" points="92,80 81,99.05 59,99.05 48,80 59,60.95 81,60.95" />
             <polygon class="tile" points="129.5,58.35 118.5,77.4 96.5,77.4 85.5,58.35 96.5,39.3 118.5,39.3" />
@@ -192,136 +190,159 @@
             <path class="arrow" d="M129.5 53.15 A31 31 0 0 1 168.7 60.1" />
             <path class="arrow-head" d="M168 51.5 L168.7 60.1 L160.4 58" />
           </svg>
-          <p>Ici, les parcelles ont <b>six côtés</b> : chacune peut se relier à six voisines.</p>
-          <p class="small">Chaque toucher la fait tourner d'un sixième de tour. La règle ne change pas : tout relier à la source, sans boucle.</p>
-          <button class="big-btn" data-close>Compris !</button>
+          <p data-i18n-html="hex.text">Ici, les parcelles ont <b>six côtés</b> : chacune peut se relier à six voisines.</p>
+          <p class="small" data-i18n="hex.small">Chaque toucher la fait tourner d'un sixième de tour. La règle ne change pas : tout relier à la source, sans boucle.</p>
+          <button class="big-btn" data-close data-i18n="common.gotIt">Compris !</button>
+        </div>
+      </section>
+
+      <section id="settings" class="overlay hidden">
+        <div class="card settings-card">
+          <h2 data-i18n="settings.title">Paramètres</h2>
+          <div class="setting-row">
+            <span data-i18n="settings.sound">Sons</span>
+            <button class="switch" id="set-sound" role="switch" aria-checked="true" aria-label="Sons" data-i18n-attr="aria-label:settings.sound"></button>
+          </div>
+          <div class="setting-row">
+            <span data-i18n="settings.haptics">Vibrations</span>
+            <button class="switch" id="set-haptics" role="switch" aria-checked="true" aria-label="Vibrations" data-i18n-attr="aria-label:settings.haptics"></button>
+          </div>
+          <div class="setting-row">
+            <span data-i18n="settings.language">Langue</span>
+            <div class="lang-pick" id="set-lang" role="radiogroup" aria-label="Langue" data-i18n-attr="aria-label:settings.language">
+              <button class="lang-opt" role="radio" aria-checked="false" data-lang="fr" lang="fr">Français</button>
+              <button class="lang-opt" role="radio" aria-checked="false" data-lang="en" lang="en">English</button>
+            </div>
+          </div>
+          <button class="big-btn" data-close data-i18n="common.ok">OK</button>
         </div>
       </section>
 
       <section id="league" class="overlay hidden">
         <div class="card league-card">
           <div class="league-tabs" role="tablist">
-            <button class="league-tab active" role="tab" aria-selected="true" data-tab="league">Ligue</button>
-            <button class="league-tab" role="tab" aria-selected="false" data-tab="friends">Amis</button>
+            <button class="league-tab active" role="tab" aria-selected="true" data-tab="league" data-i18n="league.tabLeague">Ligue</button>
+            <button class="league-tab" role="tab" aria-selected="false" data-tab="friends" data-i18n="league.tabFriends">Amis</button>
           </div>
           <p class="small league-sub" id="league-sub"></p>
           <div class="league-list" id="league-list"></div>
           <div class="friend-tools hidden" id="friend-tools">
-            <p class="small">Ton code ami : <b class="friend-code" id="friend-code">······</b></p>
-            <button class="big-btn soft" id="btn-invite">Inviter un ami</button>
+            <p class="small"><span data-i18n="league.yourCode">Ton code ami :</span> <b class="friend-code" id="friend-code">······</b></p>
+            <button class="big-btn soft" id="btn-invite" data-i18n="league.invite">Inviter un ami</button>
             <form class="friend-add" id="friend-add" autocomplete="off">
-              <input id="friend-code-input" maxlength="6" placeholder="Code d'un ami" autocapitalize="characters" spellcheck="false" aria-label="Code d'un ami" />
-              <button class="soft-btn" type="submit">Ajouter</button>
+              <input id="friend-code-input" maxlength="6" placeholder="Code d'un ami" autocapitalize="characters" spellcheck="false" aria-label="Code d'un ami" data-i18n-attr="placeholder:league.friendCodePlaceholder;aria-label:league.friendCodePlaceholder" />
+              <button class="soft-btn" type="submit" data-i18n="league.add">Ajouter</button>
             </form>
           </div>
           <div class="league-actions">
-            <button class="link-btn" id="btn-profile">Mon profil</button>
-            <button class="link-btn" data-close>Fermer</button>
+            <button class="link-btn" id="btn-profile" data-i18n="league.myProfile">Mon profil</button>
+            <button class="link-btn" data-close data-i18n="common.close">Fermer</button>
           </div>
         </div>
       </section>
 
       <section id="profile" class="overlay hidden">
         <div class="card profile-card">
-          <h2>Ton jardinier</h2>
-          <p class="small" id="profile-intro">Choisis un avatar et un pseudo : c'est ainsi que les autres te verront dans les classements.</p>
-          <div class="avatar-grid" id="avatar-grid" role="radiogroup" aria-label="Avatar"></div>
-          <input class="profile-name" id="profile-name" maxlength="16" placeholder="Ton pseudo" spellcheck="false" aria-label="Pseudo" />
+          <h2 data-i18n="profile.title">Ton jardinier</h2>
+          <p class="small" id="profile-intro" data-i18n="profile.intro">Choisis un avatar et un pseudo : c'est ainsi que les autres te verront dans les classements.</p>
+          <div class="avatar-grid" id="avatar-grid" role="radiogroup" aria-label="Avatar" data-i18n-attr="aria-label:profile.avatar"></div>
+          <input class="profile-name" id="profile-name" maxlength="16" placeholder="Ton pseudo" spellcheck="false" aria-label="Pseudo" data-i18n-attr="placeholder:profile.namePlaceholder;aria-label:profile.name" />
           <p class="small form-error" id="profile-error" aria-live="polite"></p>
-          <button class="big-btn" id="btn-profile-save">C'est moi !</button>
-          <button class="link-btn" data-close>Plus tard</button>
+          <button class="big-btn" id="btn-profile-save" data-i18n="profile.save">C'est moi !</button>
+          <button class="link-btn" data-close data-i18n="common.later">Plus tard</button>
         </div>
       </section>
 
       <section id="league-result" class="overlay hidden">
         <div class="card">
-          <h2>Semaine terminée</h2>
+          <h2 data-i18n="leagueResult.title">Semaine terminée</h2>
           <div class="result-medal" id="league-result-medal">2</div>
           <p id="league-result-text"></p>
           <p class="small" id="league-result-prize"></p>
-          <button class="big-btn" data-close>Merci !</button>
+          <button class="big-btn" data-close data-i18n="common.thanks">Merci !</button>
         </div>
       </section>
 
       <section id="daily-result" class="overlay hidden">
         <div class="card">
-          <h2>Défi du jour</h2>
+          <h2 data-i18n="daily.title">Défi du jour</h2>
           <p id="daily-result-text"></p>
           <p class="win-rank" id="daily-result-rank"></p>
           <p class="win-streak" id="daily-result-streak"></p>
           <p class="small" id="daily-countdown"></p>
-          <button class="big-btn" id="btn-daily-share">Partager</button>
-          <button class="link-btn" data-close>Fermer</button>
+          <button class="big-btn" id="btn-daily-share" data-i18n="common.share">Partager</button>
+          <button class="link-btn" data-close data-i18n="common.close">Fermer</button>
         </div>
       </section>
 
       <section id="streak" class="overlay hidden">
         <div class="card">
           <svg class="can-icon big" viewBox="0 0 32 32" aria-hidden="true"><path class="can-spout" d="M18.4 21 26 13" /><ellipse class="can-rose" cx="27.2" cy="11.8" rx="2.7" ry="1.6" transform="rotate(-45 27.2 11.8)" /><path class="can-handle" d="M8.6 12.8C8.6 6.4 17.6 6.4 17.6 12.8" /><path class="can-body" d="M6.4 12.8h13.6l-1.1 12.1a2.6 2.6 0 0 1-2.6 2.4h-6.2a2.6 2.6 0 0 1-2.6-2.4Z" /><path class="can-shine" d="M9.6 15.8v6.6" /><path class="can-drop" d="M29 16.4c.9 1.1 1.4 1.9 1.4 2.6a1.4 1.4 0 0 1-2.8 0c0-.7.5-1.5 1.4-2.6Z" /><path class="can-drop" d="M25.6 18.8c.7.9 1.1 1.5 1.1 2a1.1 1.1 0 0 1-2.2 0c0-.5.4-1.1 1.1-2Z" /></svg>
-          <h2>Série d'arrosage</h2>
+          <h2 data-i18n="streak.title">Série d'arrosage</h2>
           <p class="streak-count-text" id="streak-title">0 jour</p>
           <div class="streak-track" id="streak-track"></div>
           <p id="streak-status"></p>
           <p class="small" id="streak-next"></p>
           <p class="small" id="streak-best"></p>
-          <button class="big-btn" data-close>Fermer</button>
+          <button class="big-btn" data-close data-i18n="common.close">Fermer</button>
         </div>
       </section>
 
       <section id="zone-info" class="overlay hidden">
         <div class="card">
           <svg class="zone-illustration" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="6" width="36" height="36" rx="8" /><path d="M18 6v36M30 6v36M6 18h36M6 30h36" /></svg>
-          <h2>Indice de zone</h2>
-          <p>Touche une parcelle : elle et ses voisines, sur un carré de <b>3×3</b>, se remettent dans le bon sens et se verrouillent.</p>
+          <h2 data-i18n="zone.title">Indice de zone</h2>
+          <p data-i18n-html="zone.text">Touche une parcelle : elle et ses voisines, sur un carré de <b>3×3</b>, se remettent dans le bon sens et se verrouillent.</p>
           <p class="small" id="zone-info-text">Tu n'en as plus. Ta série d'arrosage en offre un tous les 7 jours.</p>
-          <button class="big-btn" id="btn-zone-streak" data-close>Voir ma série</button>
-          <button class="link-btn" data-close>Fermer</button>
+          <button class="big-btn" id="btn-zone-streak" data-close data-i18n="zone.seeStreak">Voir ma série</button>
+          <button class="link-btn" data-close data-i18n="common.close">Fermer</button>
         </div>
       </section>
 
       <section id="skip" class="overlay hidden">
         <div class="card">
           <svg class="skip-illustration" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 6.5 11 12l-5.5 5.5" /><path d="M11.5 6.5 17 12l-5.5 5.5" /><path d="M19.5 6.5v11" /></svg>
-          <h2>Passer ce niveau ?</h2>
-          <p>Regarde une courte vidéo pour passer au niveau suivant.</p>
-          <p class="small">Tu pourras revenir le finir quand tu veux depuis la liste des niveaux.</p>
-          <button class="big-btn" id="btn-skip-watch">Regarder une vidéo</button>
-          <button class="link-btn" data-close>Continuer à chercher</button>
+          <h2 data-i18n="skip.title">Passer ce niveau ?</h2>
+          <p data-i18n="skip.text">Regarde une courte vidéo pour passer au niveau suivant.</p>
+          <p class="small" data-i18n="skip.small">Tu pourras revenir le finir quand tu veux depuis la liste des niveaux.</p>
+          <button class="big-btn" id="btn-skip-watch" data-i18n="common.watchVideo">Regarder une vidéo</button>
+          <button class="link-btn" data-close data-i18n="skip.keepLooking">Continuer à chercher</button>
         </div>
       </section>
 
       <section id="hint-shop" class="overlay hidden">
         <div class="card">
           <svg class="shop-drop" viewBox="0 0 48 48"><path d="M24 5c6 7.3 13 14.7 13 22.4a13 13 0 0 1-26 0C11 19.7 18 12.3 24 5Z" /><path class="shine" d="M18.5 29a6 6 0 0 0 5.5 5.5" /></svg>
-          <h2>Plus d'indices</h2>
-          <p>Tu n'as plus d'indice. Regarde une courte vidéo pour en recevoir <b>3</b>.</p>
-          <button class="big-btn" id="btn-watch-ad">Regarder une vidéo</button>
-          <button class="link-btn" data-close>Plus tard</button>
+          <h2 data-i18n="hintShop.title">Plus d'indices</h2>
+          <p data-i18n-html="hintShop.text">Tu n'as plus d'indice. Regarde une courte vidéo pour en recevoir <b>3</b>.</p>
+          <button class="big-btn" id="btn-watch-ad" data-i18n="common.watchVideo">Regarder une vidéo</button>
+          <button class="link-btn" data-close data-i18n="common.later">Plus tard</button>
         </div>
       </section>
 
       <section id="ad" class="overlay ad-overlay hidden">
         <div class="card ad-card">
-          <span class="ad-label">Publicité · exemple</span>
-          <p>Ici s'affichera une vraie vidéo publicitaire.</p>
+          <span class="ad-label" data-i18n="ad.label">Publicité · exemple</span>
+          <p data-i18n="ad.text">Ici s'affichera une vraie vidéo publicitaire.</p>
           <div class="ad-bar"><div id="ad-progress"></div></div>
-          <button class="soft-btn" id="ad-close" disabled>Patiente…</button>
+          <button class="soft-btn" id="ad-close" disabled data-i18n="ad.wait">Patiente…</button>
         </div>
       </section>
 
       <section id="styles" class="overlay hidden">
         <div class="card styles-card">
-          <h2>Style du jardin</h2>
+          <h2 data-i18n="styles.title">Style du jardin</h2>
+          <p class="small styles-count" id="styles-count"></p>
           <div class="styles-grid" id="styles-grid"></div>
-          <button class="soft-btn" data-close>Fermer</button>
+          <button class="soft-btn" data-close data-i18n="common.close">Fermer</button>
         </div>
       </section>
 
       <section id="levels" class="overlay hidden">
         <div class="card levels-card">
-          <h2>Niveaux</h2>
+          <h2 data-i18n="levels.title">Niveaux</h2>
           <div class="levels-grid" id="levels-grid"></div>
-          <button class="soft-btn" data-close>Fermer</button>
+          <button class="soft-btn" data-close data-i18n="common.close">Fermer</button>
         </div>
       </section>
     </div>

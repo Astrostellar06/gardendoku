@@ -4,6 +4,7 @@
  * demo with `?ligue=demo`, none otherwise (the league stays hidden). Gardens
  * solved offline wait in a queue (localStorage) until the server has them.
  */
+import { type Key, t } from '../i18n';
 import type { League, PlayerRow, Profile, Scored, SocialBackend, SolveKind, WeekResult } from './backend';
 
 const QUEUE_KEY = 'gardendoku:social-queue';
@@ -17,22 +18,23 @@ interface Pending {
 /** Server refusals that will never change: such a solve is dropped from the queue. */
 const PERMANENT = ['level_locked', 'daily_closed', 'bad_kind'];
 
-const MESSAGES: Record<string, string> = {
-  name_length: 'Ton pseudo doit faire de 3 à 16 caractères.',
-  name_chars: "Lettres, chiffres, espaces et - _ ' . seulement.",
-  name_banned: "Ce pseudo n'est pas autorisé : choisis-en un autre.",
-  bad_avatar: 'Choisis un des avatars.',
-  friend_unknown: "Aucun jardinier n'a ce code.",
-  friend_self: "C'est ton propre code !",
-  friend_limit: 'Tu as déjà 100 amis.',
+/** Server error codes and the text shown for each. */
+const MESSAGES: Record<string, Key> = {
+  name_length: 'error.nameLength',
+  name_chars: 'error.nameChars',
+  name_banned: 'error.nameBanned',
+  bad_avatar: 'error.badAvatar',
+  friend_unknown: 'error.friendUnknown',
+  friend_self: 'error.friendSelf',
+  friend_limit: 'error.friendLimit',
 };
 
-/** French text for a failure (server code, or no network). */
+/** Text for a failure (server code, or no network), in the current language. */
 export function socialErrorText(e: unknown): string {
   const code = e instanceof Error ? e.message : '';
-  if (MESSAGES[code]) return MESSAGES[code];
-  if (/anonymous/i.test(code)) return "Le serveur n'accepte pas encore les comptes anonymes.";
-  return 'Pas de connexion pour le moment : réessaie un peu plus tard.';
+  if (MESSAGES[code]) return t(MESSAGES[code]);
+  if (/anonymous/i.test(code)) return t('error.anonymous');
+  return t('error.offline');
 }
 
 function readStorage(key: string): string | null {
@@ -149,7 +151,7 @@ export class Social {
     return run;
   }
 
-  /** Signed-in backend, or a failure with a French message. */
+  /** Signed-in backend, or a failure (shown with socialErrorText). */
   private async need(): Promise<SocialBackend> {
     const b = await this.ready();
     if (!b) throw new Error('offline');

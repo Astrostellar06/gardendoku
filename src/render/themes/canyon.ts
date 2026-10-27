@@ -212,8 +212,6 @@ const canoe: PropDef = {
 
 export const canyon: Theme = {
   id: 'canyon',
-  name: 'Canyon',
-  blurb: 'Roche rouge, arches et mouflons',
   palette: {
     ...SPRING,
     bgTop: '#FFC4A0',

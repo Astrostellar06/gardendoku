@@ -198,8 +198,6 @@ const stoneSlab = bridgeProp('desert-bridge', { deck: '#B9774A', deckShade: '#94
 
 export const desert: Theme = {
   id: 'desert',
-  name: 'Désert',
-  blurb: 'Oasis, cactus, palmiers et chameaux',
   palette: {
     ...SPRING,
     bgTop: '#FFDDB3',

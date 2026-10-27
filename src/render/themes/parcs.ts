@@ -192,8 +192,6 @@ const trout: PropDef = {
 
 export const parcs: Theme = {
   id: 'parcs',
-  name: 'Grands parcs',
-  blurb: 'Geysers, bisons et grands pins',
   palette: {
     ...SPRING,
     bgTop: '#BDE2FF',

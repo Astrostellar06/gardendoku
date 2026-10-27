@@ -176,8 +176,6 @@ const floatingPetals: PropDef = {
 
 export const roseraie: Theme = {
   id: 'roseraie',
-  name: 'Roseraie',
-  blurb: 'Rosiers, arches fleuries et bains d’oiseaux',
   palette: {
     ...SPRING,
     bgTop: '#FFD6E0',

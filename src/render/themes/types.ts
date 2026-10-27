@@ -73,11 +73,9 @@ export interface GroundInfo {
   tint: number;
 }
 
+/** A garden style. Its name and blurb are translated: `theme.<id>.name` / `.blurb` in src/i18n. */
 export interface Theme {
   id: ThemeId;
-  name: string;
-  /** One-line description for the style menu. */
-  blurb: string;
   palette: Palette;
   ambient: AmbientKind;
   ambientColors: string[];

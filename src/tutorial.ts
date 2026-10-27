@@ -12,11 +12,13 @@
 import { Board } from './core/board';
 import { Puzzle } from './core/generator';
 import { E, Grid, N, S, W } from './core/grid';
+import type { Key } from './i18n';
 
 export type TutorialId = 'basics' | 'wrap';
 
 export interface TutorialStep {
-  text: string;
+  /** Text of the coach bubble (translated when shown). */
+  text: Key;
   /**
    * What moves the tutorial on: 'read' the button; 'turn' turning `cell` into
    * place; 'hold' locking `cell`; 'free' finishing the garden alone (`cell`
@@ -24,7 +26,7 @@ export interface TutorialStep {
    */
   kind: 'read' | 'turn' | 'hold' | 'free';
   /** Label of the button ('read' steps). */
-  button?: string;
+  button?: Key;
   cell?: number;
   /** Spotlight the faded copy of `cell` in the strip below the garden. */
   ghost?: boolean;
@@ -89,39 +91,39 @@ export const TUTORIALS: Record<TutorialId, Tutorial> = {
     build: buildBasicsBoard,
     steps: [
       {
-        text: "Bienvenue dans Gardendoku ! L'eau jaillit de la source, au centre. Relie toutes les parcelles à la source pour faire fleurir le jardin.",
+        text: 'tutorial.basics1',
         kind: 'read',
-        button: 'Commencer',
+        button: 'tutorial.start',
         number: 1,
       },
       {
-        text: 'Ce canal ne mène nulle part. Touche cette parcelle pour la faire tourner.',
+        text: 'tutorial.basics2',
         kind: 'turn',
         cell: TURN_CELL,
         number: 2,
       },
       {
-        text: "Regarde l'eau couler jusqu'aux parcelles qui étaient sèches : elles se mettent à fleurir !",
+        text: 'tutorial.basics3',
         kind: 'read',
-        button: 'Suivant',
+        button: 'common.next',
         number: 2,
       },
       {
-        text: 'Quand tu es sûr d’une parcelle, garde le doigt appuyé dessus pour la verrouiller.',
+        text: 'tutorial.basics4',
         kind: 'hold',
         cell: LOCK_CELL,
         number: 3,
       },
       {
-        text: 'Parfait, elle est verrouillée : elle ne tournera plus par erreur. À toi de terminer le jardin : une dernière parcelle est mal tournée.',
+        text: 'tutorial.basics5',
         kind: 'free',
         cell: LAST_CELL,
         number: 4,
       },
       {
-        text: "Bravo ! L'eau atteint toutes les parcelles : le jardin est fleuri. Une seule règle : pas de boucle, l'eau doit former un seul réseau. Astuce : glisse le doigt pour verrouiller plusieurs parcelles d'un coup.",
+        text: 'tutorial.basics6',
         kind: 'read',
-        button: "C'est parti !",
+        button: 'tutorial.go',
         number: 5,
       },
     ],
@@ -131,34 +133,34 @@ export const TUTORIALS: Record<TutorialId, Tutorial> = {
     build: buildWrapBoard,
     steps: [
       {
-        text: "Niveau difficile ! Ici, les bords du jardin sont reliés : l'eau qui sort d'un côté réapparaît du côté opposé.",
+        text: 'tutorial.wrap1',
         kind: 'read',
-        button: 'Voir comment',
+        button: 'tutorial.showMe',
         number: 1,
       },
       {
-        text: "Cette parcelle est à sec. L'eau sort à gauche du jardin et revient par la droite : touche la parcelle pour tourner son canal vers le bord droit.",
+        text: 'tutorial.wrap2',
         kind: 'turn',
         cell: EDGE_CELL,
         number: 2,
       },
       {
-        text: "L'eau a traversé le bord ! Les bandes pâles autour du jardin montrent les parcelles du côté opposé.",
+        text: 'tutorial.wrap3',
         kind: 'read',
-        button: 'Suivant',
+        button: 'common.next',
         number: 2,
       },
       {
-        text: "Ces bandes se touchent aussi. Touche la parcelle pâle sous le jardin : c'est sa jumelle, tout en haut, qui tourne.",
+        text: 'tutorial.wrap4',
         kind: 'turn',
         cell: GHOST_CELL,
         ghost: true,
         number: 3,
       },
       {
-        text: "Le jardin a fleuri ! Dans ces niveaux, pense à l'autre côté : chaque bord cache une voisine. À toi de jouer sur un petit jardin.",
+        text: 'tutorial.wrap5',
         kind: 'read',
-        button: "C'est parti !",
+        button: 'tutorial.go',
         number: 4,
       },
     ],

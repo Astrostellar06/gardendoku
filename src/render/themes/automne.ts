@@ -239,8 +239,6 @@ const squirrelTail: PropDef = {
 
 export const automne: Theme = {
   id: 'automne',
-  name: 'Automne',
-  blurb: 'Feuilles mortes, noisettes et hérissons',
   palette: {
     ...SPRING,
     bgTop: '#FFD9B8',

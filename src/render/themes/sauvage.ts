@@ -154,8 +154,6 @@ const dragonfly: PropDef = {
 
 export const sauvage: Theme = {
   id: 'sauvage',
-  name: 'Sauvage',
-  blurb: 'Roseaux, fleurs des champs et grenouilles',
   palette: {
     ...SPRING,
     bgTop: '#D9F0E4',

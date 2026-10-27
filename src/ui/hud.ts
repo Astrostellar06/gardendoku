@@ -1,8 +1,15 @@
 /** DOM overlay: bars, toasts, home screen and cards. */
 import { isHardLevel, isHexLevel, LevelInfo } from '../core/levels';
 import { formatTime } from '../core/timing';
+import { type Lang, t, tn } from '../i18n';
+import { RANDOM_STYLE } from '../progress';
 
 export { formatTime };
+
+/** Display name of a garden's shape ("Cœur", "Bords reliés"...); not shown in the HUD at the moment. */
+export function shapeName(info: Pick<LevelInfo, 'shape' | 'wrap'>): string {
+  return info.wrap ? t('shape.wrap') : t(`shape.${info.shape}`);
+}
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -53,6 +60,7 @@ export class Hud {
   readonly streak = $('streak');
   readonly zoneInfo = $('zone-info');
   readonly skip = $('skip');
+  readonly settings = $('settings');
   readonly league = $('league');
   readonly profile = $('profile');
   readonly leagueResult = $('league-result');
@@ -61,7 +69,6 @@ export class Hud {
   readonly lockBtn = $('btn-lock');
   readonly zoneBtn = $('btn-zone');
   readonly skipBtn = $('btn-skip');
-  readonly soundBtn = $('btn-sound');
   readonly nextFloat = $('btn-next-float');
   private toastEl = $('toast');
   private toastTimer = 0;
@@ -69,7 +76,7 @@ export class Hud {
   /** Cards the player can dismiss (tap outside, close button, back button). */
   private closable = [
     this.howto, this.levels, this.hardIntro, this.hexIntro, this.styles, this.hintShop, this.dailyResult, this.streak, this.zoneInfo, this.skip,
-    this.league, this.profile, this.leagueResult,
+    this.settings, this.league, this.profile, this.leagueResult,
   ];
 
   constructor() {
@@ -112,8 +119,9 @@ export class Hud {
 
   setLevel(info: LevelInfo) {
     // Hard levels: a star in the title, on a lilac pill.
-    $('level-title').textContent = info.wrap ? `Niveau ${info.index} ★` : `Niveau ${info.index}`;
-    $('level-sub').textContent = `${info.cells} parcelles`;
+    const title = t('level.title', { n: info.index });
+    $('level-title').textContent = info.wrap ? `${title} ★` : title;
+    $('level-sub').textContent = tn('level.tiles', info.cells);
     const pill = document.querySelector('.level-pill')!;
     pill.classList.toggle('hard', info.wrap);
     // Hexagonal levels: honey pill with a little hexagon after the title.
@@ -123,7 +131,7 @@ export class Hud {
 
   /** Level pill during the daily challenge. */
   setDaily(info: LevelInfo, styleName: string) {
-    $('level-title').textContent = 'Défi du jour';
+    $('level-title').textContent = t('daily.title');
     $('level-sub').textContent = styleName;
     const pill = document.querySelector('.level-pill')!;
     pill.classList.toggle('hard', info.wrap);
@@ -165,12 +173,26 @@ export class Hud {
     this.skipBtn.classList.toggle('hidden', !on);
   }
 
-  setSound(on: boolean) {
-    this.soundBtn.classList.toggle('muted', !on);
+  /** Settings card: sound and vibrations switches, language. */
+  openSettings(sound: boolean, haptics: boolean, lang: Lang) {
+    this.setSwitch('set-sound', sound);
+    this.setSwitch('set-haptics', haptics);
+    for (const b of $('set-lang').querySelectorAll<HTMLElement>('[data-lang]')) {
+      const on = b.dataset.lang === lang;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-checked', String(on));
+    }
+    this.open(this.settings);
+  }
+
+  setSwitch(id: string, on: boolean) {
+    const s = $(id);
+    s.classList.toggle('on', on);
+    s.setAttribute('aria-checked', String(on));
   }
 
   /** Swap the tool buttons for a single "next" button (after a win). */
-  setWonBar(won: boolean, label = 'Niveau suivant') {
+  setWonBar(won: boolean, label = t('win.nextLevel')) {
     for (const el of Array.from(this.bottombar.querySelectorAll<HTMLElement>('.tool-btn'))) {
       el.classList.toggle('hidden', won);
     }
@@ -193,7 +215,7 @@ export class Hud {
   }
 
   showHome(level: number) {
-    $('play-level').textContent = `Niveau ${level}`;
+    $('play-level').textContent = t('level.title', { n: level });
     this.home.classList.remove('hidden', 'leaving');
     // Water the G of the title again.
     const logo = this.home.querySelector('.logo-g')!;
@@ -241,7 +263,7 @@ export class Hud {
   }
 
   openStreak(view: StreakView, status: string, next: string, best: string) {
-    $('streak-title').textContent = view.count > 1 ? `${view.count} jours de suite` : `${view.count} jour`;
+    $('streak-title').textContent = view.count > 1 ? t('streak.daysInRow', { n: view.count }) : tn('count.day', view.count);
     this.fillTrack($('streak-track'), view, false);
     $('streak-status').textContent = status;
     $('streak-next').textContent = next;
@@ -271,29 +293,29 @@ export class Hud {
   }
 
   showWin(w: WinView) {
-    $('win-text').textContent = w.daily ? 'Défi du jour réussi' : `Niveau ${w.level} terminé`;
+    $('win-text').textContent = w.daily ? t('win.dailyDone') : t('win.levelDone', { n: w.level });
     const box = $('win-streak');
     box.classList.toggle('hidden', !w.streak);
     if (w.streak) {
-      $('win-streak-title').textContent = w.streak.count > 1 ? `Arrosé ${w.streak.count} jours de suite !` : 'Premier jour de ta série !';
+      $('win-streak-title').textContent = w.streak.count > 1 ? t('win.streakDays', { n: w.streak.count }) : t('win.streakFirst');
       this.fillTrack($('win-streak-track'), w.streak, true);
       $('win-streak-note').textContent = w.streak.note;
     }
     $('btn-share').classList.toggle('hidden', !w.daily);
-    $('btn-next').textContent = w.daily ? "Retour à l'accueil" : 'Niveau suivant';
+    $('btn-next').textContent = w.daily ? t('win.backHome') : t('win.nextLevel');
     $('btn-next').classList.toggle('soft', w.daily);
-    $('win-rank').textContent = w.rank === null ? '' : `Plus rapide que ${w.rank} % des joueurs !`;
+    $('win-rank').textContent = w.rank === null ? '' : t('win.fasterThan', { rank: w.rank });
     const list = $('win-unlocks');
     list.textContent = '';
     for (const name of w.unlocked) {
       const line = document.createElement('div');
       line.className = 'unlock-line';
-      line.textContent = `Nouveau style débloqué : ${name} !`;
+      line.textContent = tn('unlock.newStyle', 1, { names: name });
       list.appendChild(line);
     }
     $('win-time').textContent = formatTime(w.seconds);
     $('win-moves').textContent = String(w.moves);
-    $('win-moves-label').textContent = w.moves > 1 ? 'rotations' : 'rotation';
+    $('win-moves-label').textContent = tn('win.rotations', w.moves);
     this.open(this.win);
   }
 
@@ -306,8 +328,8 @@ export class Hud {
     return [...this.closable, this.ad].some((o) => !o.classList.contains('hidden') && !o.classList.contains('closing'));
   }
 
-  /** Home badge of the weekly league: hidden without a server, else "Ligue" or the player's rank. */
-  setLeagueBadge(visible: boolean, text = 'Ligue') {
+  /** Home badge of the weekly league: hidden without a server, else "League" or the player's rank. */
+  setLeagueBadge(visible: boolean, text = t('league.badge')) {
     $('btn-league').classList.toggle('hidden', !visible);
     $('league-badge-text').textContent = text;
   }
@@ -332,6 +354,10 @@ export class Hud {
   ) {
     const grid = $('styles-grid');
     grid.textContent = '';
+    // "Random" is not a style of its own.
+    const real = styles.filter((s) => s.id !== RANDOM_STYLE);
+    const unlocked = real.filter((s) => !s.locked).length;
+    $('styles-count').textContent = t(unlocked === real.length ? 'styles.countAll' : 'styles.count', { unlocked, total: real.length });
     for (const style of styles) {
       const b = document.createElement('button');
       b.className = 'style-btn';
@@ -429,7 +455,7 @@ export class Hud {
       if (isHexLevel(n)) b.classList.add('hex');
       if (skipped.includes(n)) {
         b.classList.add('skipped');
-        b.title = 'Niveau passé';
+        b.title = t('levels.skipped');
       }
       if (n > maxLevel) {
         b.classList.add('locked');

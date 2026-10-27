@@ -9,14 +9,14 @@
  */
 import { generate, Puzzle } from './generator';
 import { Rng } from './rng';
-import { buildShape, heartHeight, ShapeId, SHAPE_NAMES } from './shapes';
+import { buildShape, heartHeight, ShapeId } from './shapes';
 
 export interface LevelInfo {
   index: number;
   width: number;
   height: number;
+  /** Shape of the garden (its display name is translated by the HUD). */
   shape: ShapeId;
-  shapeName: string;
   windiness: number;
   seed: string;
   /** Number of tiles in the garden. */
@@ -245,7 +245,6 @@ export function levelInfo(index: number): LevelInfo {
       width,
       height,
       shape: 'rect',
-      shapeName: 'Bords reliés',
       windiness: rng.float(0.3, 0.8),
       seed,
       cells: width * height,
@@ -262,7 +261,6 @@ export function levelInfo(index: number): LevelInfo {
       width,
       height,
       shape,
-      shapeName: SHAPE_NAMES[shape],
       windiness: rng.float(0.25, 0.85),
       seed,
       cells,
@@ -293,7 +291,7 @@ export function levelInfo(index: number): LevelInfo {
     }
   }
   const cells = buildShape(shape, width, height, new Rng(seed).fork('shape')).reduce((a, b) => a + b, 0);
-  return { index, width, height, shape, shapeName: SHAPE_NAMES[shape], windiness, seed, cells, wrap: false, advanced: advancedShare(index, false), hex: false };
+  return { index, width, height, shape, windiness, seed, cells, wrap: false, advanced: advancedShare(index, false), hex: false };
 }
 
 const cache = new Map<number, Puzzle>();

@@ -23,14 +23,15 @@ import type { Theme, ThemeId } from './types';
 export type { Theme, ThemeId } from './types';
 
 /** In unlock order, roughly from the easiest challenge to the hardest. */
+/** The four seasons come first, then the others. */
 export const THEMES: Theme[] = [
   printemps,
-  japon,
-  roseraie,
-  amitie,
   ete,
   automne,
   hiver,
+  japon,
+  roseraie,
+  amitie,
   champs,
   savane,
   desert,

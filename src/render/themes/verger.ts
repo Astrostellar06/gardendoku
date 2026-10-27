@@ -176,8 +176,6 @@ const hen: PropDef = {
 
 export const verger: Theme = {
   id: 'verger',
-  name: 'Verger',
-  blurb: 'Pommiers, potager et poules',
   palette: {
     ...SPRING,
     bgTop: '#FFE2B6',

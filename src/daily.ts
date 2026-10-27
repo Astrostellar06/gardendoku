@@ -1,6 +1,7 @@
 /** Daily challenge bookkeeping: result, style of the day, share text. */
 import { parseDayKey } from './core/daily';
 import { hashString } from './core/rng';
+import { formatDate, t, tn } from './i18n';
 import { formatTime } from './core/timing';
 import type { Theme } from './render/themes/types';
 
@@ -21,23 +22,23 @@ export function dailyThemeId(key: string, themes: Theme[]): string {
 /** A few lines to paste in a chat, Wordle-style. */
 export function shareText(key: string, result: DailyResult, streak: number, url = ''): string {
   const d = parseDayKey(key);
-  const date = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const date = formatDate(d, { day: '2-digit', month: '2-digit' });
   const flowers = Math.max(1, Math.min(5, Math.round(result.rank / 20)));
   const lines = [
-    `🌸 Gardendoku · défi du ${date}`,
-    `⏱️ ${formatTime(result.time)} · plus rapide que ${result.rank} % des joueurs`,
+    `🌸 ${t('share.title', { date })}`,
+    `⏱️ ${formatTime(result.time)} · ${t('share.fasterThan', { rank: result.rank })}`,
     '🌸'.repeat(flowers) + '🌱'.repeat(5 - flowers),
     helpLine(result.hints, result.zones ?? 0),
   ];
-  if (streak >= 2) lines.push(`🪴 Arrosé ${streak} jours de suite`);
+  if (streak >= 2) lines.push(`🪴 ${t('share.streak', { n: streak })}`);
   if (url) lines.push(url);
   return lines.join('\n');
 }
 
 function helpLine(hints: number, zones: number): string {
-  if (hints === 0 && zones === 0) return '💧 Sans indice';
+  if (hints === 0 && zones === 0) return `💧 ${t('share.noHint')}`;
   const parts: string[] = [];
-  if (hints) parts.push(`${hints} indice${hints > 1 ? 's' : ''}`);
-  if (zones) parts.push(`${zones} zone${zones > 1 ? 's' : ''}`);
+  if (hints) parts.push(tn('count.hint', hints));
+  if (zones) parts.push(tn('count.zone', zones));
   return `💡 ${parts.join(' · ')}`;
 }

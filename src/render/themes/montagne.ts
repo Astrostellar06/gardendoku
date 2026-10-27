@@ -166,8 +166,6 @@ const edelweiss: PropDef = {
 
 export const montagne: Theme = {
   id: 'montagne',
-  name: 'Montagne',
-  blurb: 'Chalets, marmottes et bouquetins',
   palette: {
     ...SPRING,
     bgTop: '#C4E2FF',

@@ -199,8 +199,6 @@ const rowboat: PropDef = {
 
 export const urbain: Theme = {
   id: 'urbain',
-  name: 'Parc urbain',
-  blurb: 'Lampadaires, pigeons et barques au pied des tours',
   palette: {
     ...SPRING,
     bgTop: '#C9DDF5',

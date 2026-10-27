@@ -225,8 +225,6 @@ const iceFloe: PropDef = {
 
 export const hiver: Theme = {
   id: 'hiver',
-  name: 'Hiver',
-  blurb: 'Neige, bonshommes de neige et cadeaux',
   palette: {
     ...SPRING,
     bgTop: '#D8E8FA',

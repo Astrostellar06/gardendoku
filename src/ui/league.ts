@@ -4,8 +4,9 @@
  */
 import type { PlayerRow, WeekResult } from '../online/backend';
 import { LEAGUE_PRIZES } from '../online/points';
+import { listJoin, ordinal, t, tn } from '../i18n';
 import { Social, socialErrorText } from '../online/social';
-import { AVATARS, avatarSvg } from './avatars';
+import { AVATARS, avatarName, avatarSvg } from './avatars';
 import type { Hud } from './hud';
 import { shareOrCopy } from './share';
 
@@ -13,22 +14,19 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getEleme
 
 type Tab = 'league' | 'friends';
 
-/** "1er", "2e"... */
-export function ordinal(rank: number): string {
-  return rank === 1 ? '1er' : `${rank}e`;
-}
+export { ordinal };
 
 const ZONE_ICON =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="4.5" width="15" height="15" rx="3.2" /><path d="M9.5 4.5v15M14.5 4.5v15M4.5 9.5h15M4.5 14.5h15" /></svg>';
 const HINT_ICON =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5c2.6 3.1 5.5 6.3 5.5 9.6a5.5 5.5 0 0 1-11 0c0-3.3 2.9-6.5 5.5-9.6Z" /></svg>';
 
-/** "1 zone et 3 indices". */
+/** "1 zone et 3 indices" / "1 zone and 3 hints". */
 export function prizeText(prize: { zones: number; hints: number }): string {
   const parts: string[] = [];
-  if (prize.zones) parts.push(`${prize.zones} zone${prize.zones > 1 ? 's' : ''}`);
-  if (prize.hints) parts.push(`${prize.hints} indice${prize.hints > 1 ? 's' : ''}`);
-  return parts.join(' et ');
+  if (prize.zones) parts.push(tn('count.zone', prize.zones));
+  if (prize.hints) parts.push(tn('count.hint', prize.hints));
+  return listJoin(parts);
 }
 
 function prizeChips(prize: { zones: number; hints: number }): string {
@@ -38,14 +36,14 @@ function prizeChips(prize: { zones: number; hints: number }): string {
   return html;
 }
 
-/** "3 j 5 h", "5 h 12 min", "12 min". */
+/** "3 j 5 h", "5 h 12 min", "12 min" ("3d 5h" in English). */
 function timeLeft(end: Date): string {
   const min = Math.max(0, Math.round((end.getTime() - Date.now()) / 60000));
   const days = Math.floor(min / 1440);
   const hours = Math.floor((min % 1440) / 60);
-  if (days > 0) return `${days} j ${hours} h`;
-  if (hours > 0) return `${hours} h ${String(min % 60).padStart(2, '0')} min`;
-  return `${min} min`;
+  if (days > 0) return t('time.daysHours', { d: days, h: hours });
+  if (hours > 0) return t('time.hoursMinutes', { h: hours, m: String(min % 60).padStart(2, '0') });
+  return t('time.minutes', { m: min });
 }
 
 function escape(text: string): string {
@@ -107,8 +105,8 @@ export class LeagueScreen {
       const b = document.createElement('button');
       b.className = 'avatar-pick';
       b.setAttribute('role', 'radio');
-      b.setAttribute('aria-label', a.name);
-      b.title = a.name;
+      b.setAttribute('aria-label', avatarName(a));
+      b.title = avatarName(a);
       b.innerHTML = a.svg;
       b.addEventListener('click', () => this.pickAvatar(a.id));
       grid.appendChild(b);
@@ -135,18 +133,18 @@ export class LeagueScreen {
     $('friend-tools').classList.toggle('hidden', tab !== 'friends');
     const list = $('league-list');
     const sub = $('league-sub');
-    list.innerHTML = '<p class="league-empty">Chargement…</p>';
-    sub.textContent = tab === 'league' ? '20 jardiniers, des cadeaux pour les 5 premiers' : 'Défie tes amis !';
+    list.innerHTML = `<p class="league-empty">${t('league.loading')}</p>`;
+    sub.textContent = tab === 'league' ? t('league.subLeague') : t('league.subFriends');
     try {
       if (tab === 'league') {
         const league = await this.social.league();
         if (this.tab !== tab) return;
-        sub.textContent = `Fin de la semaine dans ${timeLeft(league.weekEnd)}`;
+        sub.textContent = t('league.weekEnds', { time: timeLeft(league.weekEnd) });
         const mine = league.members.find((m) => m.me);
         this.hooks.badge(mine ? league.members.indexOf(mine) + 1 : null);
         if (!league.members.length) {
           list.innerHTML =
-            '<p class="league-empty">Fais fleurir un jardin cette semaine pour rejoindre une ligue de 20 jardiniers.</p>' +
+            `<p class="league-empty">${t('league.emptyLeague')}</p>` +
             '<div class="prize-table">' +
             LEAGUE_PRIZES.map((p, k) => `<div><b>${ordinal(k + 1)}</b>${prizeChips(p)}</div>`).join('') +
             '</div>';
@@ -159,29 +157,29 @@ export class LeagueScreen {
         $('friend-code').textContent = this.social.profile?.friendCode ?? '······';
         list.innerHTML =
           friends.map((f, k) => this.row(f, k + 1)).join('') +
-          (friends.length > 1 ? '' : '<p class="league-empty">Invite tes amis avec ton code pour suivre leurs jardins.</p>');
+          (friends.length > 1 ? '' : `<p class="league-empty">${t('league.emptyFriends')}</p>`);
       }
       list.querySelector('.me')?.scrollIntoView({ block: 'nearest' });
     } catch (e) {
       if (this.tab !== tab) return;
-      list.innerHTML = `<p class="league-empty">${escape(socialErrorText(e))}</p><button class="soft-btn" data-retry>Réessayer</button>`;
+      list.innerHTML = `<p class="league-empty">${escape(socialErrorText(e))}</p><button class="soft-btn" data-retry>${t('common.retry')}</button>`;
     }
   }
 
   private row(p: PlayerRow, rank: number, prize?: { zones: number; hints: number }, lastPrize = false): string {
-    const name = p.name || (p.me ? 'Toi' : 'Jardinier');
+    const name = p.name || (p.me ? t('league.you') : t('league.gardener'));
     const classes = ['league-row', p.me ? 'me' : '', rank <= 3 && prize ? `podium${rank}` : '', lastPrize ? 'last-prize' : ''].join(' ');
     const remove =
       this.tab === 'friends' && !p.me && p.id
-        ? `<button class="friend-remove" data-remove="${escape(p.id)}" aria-label="Retirer ${escape(name)} de tes amis">×</button>`
+        ? `<button class="friend-remove" data-remove="${escape(p.id)}" aria-label="${escape(t('league.removeFriend', { name }))}">×</button>`
         : '';
     return (
       `<div class="${classes}">` +
       `<span class="league-rank">${rank}</span>` +
       `<span class="league-avatar">${avatarSvg(p.avatar)}</span>` +
-      `<span class="league-who"><b>${escape(name)}${p.me ? ' <i>(toi)</i>' : ''}</b><small>Niveau ${p.level}</small></span>` +
+      `<span class="league-who"><b>${escape(name)}${p.me ? ` <i>(${t('league.youTag')})</i>` : ''}</b><small>${t('level.title', { n: p.level })}</small></span>` +
       (prize && p.points > 0 ? `<span class="league-prize">${prizeChips(prize)}</span>` : '') +
-      `<span class="league-points"><b>${p.points}</b><small>pt${p.points > 1 ? 's' : ''}</small></span>` +
+      `<span class="league-points"><b>${p.points}</b><small>${tn('league.pts', p.points)}</small></span>` +
       remove +
       '</div>'
     );
@@ -191,7 +189,7 @@ export class LeagueScreen {
   private async removeFriend(btn: HTMLElement) {
     if (!btn.classList.contains('armed')) {
       btn.classList.add('armed');
-      btn.textContent = 'Retirer ?';
+      btn.textContent = t('league.removeConfirm');
       setTimeout(() => {
         btn.classList.remove('armed');
         btn.textContent = '×';
@@ -212,7 +210,7 @@ export class LeagueScreen {
     try {
       const friend = await this.social.addFriend(clean);
       $<HTMLInputElement>('friend-code-input').value = '';
-      this.hooks.toast(`Tu es maintenant ami avec ${friend.name || 'ce jardinier'} !`);
+      this.hooks.toast(t('league.friendAdded', { name: friend.name || t('league.thisGardener') }));
       if (!this.hud.league.classList.contains('hidden')) void this.show('friends');
       return true;
     } catch (e) {
@@ -226,9 +224,9 @@ export class LeagueScreen {
     if (!code) return;
     const site = import.meta.env.VITE_PUBLIC_URL as string | undefined;
     const link = site ? `\n${site.replace(/\/$/, '')}/?ami=${code}` : '';
-    const text = `Viens jouer avec moi à Gardendoku ! Mon code ami : ${code} (Ligue, puis Amis).${link}`;
+    const text = t('league.inviteText', { code }) + link;
     const outcome = await shareOrCopy(text);
-    if (outcome === 'copied') this.hooks.toast('Invitation copiée : colle-la à tes amis !');
+    if (outcome === 'copied') this.hooks.toast(t('toast.inviteCopied'));
   }
 
   // ---------- Profile ----------
@@ -285,11 +283,11 @@ export class LeagueScreen {
     const medal = $('league-result-medal');
     medal.textContent = String(r.rank);
     medal.className = `result-medal${r.rank <= 3 && (r.hints || r.zones) ? ` podium${r.rank}` : ''}`;
-    $('league-result-text').textContent = `Tu as fini ${ordinal(r.rank)} sur ${r.size} de ta ligue, avec ${r.points} point${r.points > 1 ? 's' : ''}.`;
+    $('league-result-text').textContent = tn('leagueResult.text', r.points, { rank: ordinal(r.rank), size: r.size });
     $('league-result-prize').textContent =
       r.hints || r.zones
-        ? `Cadeau : ${prizeText(r)}, déjà dans ton sac !`
-        : 'Les 5 premiers gagnent des cadeaux. Nouvelle semaine, nouvelle ligue !';
+        ? t('leagueResult.prize', { prize: prizeText(r) })
+        : t('leagueResult.noPrize');
     this.hud.open(this.hud.leagueResult);
   }
 }
