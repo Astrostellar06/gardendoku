@@ -6,6 +6,19 @@ Dépôt : [github.com/Astrostellar06/gardendoku](https://github.com/Astrostellar
 
 Sur l'accueil, le « G » du titre est un petit jardin de 9 parcelles : à chaque retour sur l'accueil, une parcelle pivote, puis l'eau part de la source au centre, parcourt toute la lettre et fait éclore un lotus au bout. Ses couleurs suivent le style choisi.
 
+## Rendu 3D (branche `style-3d`)
+
+Sur cette branche, le jardin est dessiné en vraie 3D avec three.js (WebGL), sous un soleil qui projette des ombres :
+
+- **Parcelles** : chaque parcelle est un bloc de terre surmonté d'une couche de gazon. Le canal est creusé dans le gazon jusqu'au fond de la rigole, et l'eau coule dedans.
+- **Pendant le jeu** : les parcelles se soulèvent en tournant et sautillent à la victoire.
+- **Entre les parcelles** : de petites rigoles de pierre portent l'eau d'une parcelle à l'autre.
+- **Végétation** : l'herbe gagne la parcelle par taches à mesure qu'elle boit. Touffes, fleurs, galets, lotus et pierres de la source sont modélisés.
+- **Détails des styles** : arbres, animaux, lanternes… sont dessinés en 2D, comme dans la version d'origine, et posés dans le jardin comme des découpes de papier. Ceux qui sont plats (coccinelles, nénuphars, passerelles) sont posés à plat.
+- **Toujours en 2D** : le ciel, les particules, le projecteur du tutoriel et l'anneau d'appui long sont dessinés par-dessus.
+
+La version 2D d'origine est conservée sur la branche `v1`. Sur cette branche, `?rendu=2d` dans l'adresse la réaffiche pour comparer. Elle sert aussi de repli quand WebGL est absent.
+
 ## Lancer le jeu
 
 ```bash
@@ -336,6 +349,11 @@ src/
     renderer.ts    Animations (ressort de rotation, eau qui avance, floraison), cache des parcelles
     particles.ts   Pétales, cœurs, étincelles, papillons
     background.ts  Ciel pastel, nuages, collines
+  render3d/        Rendu 3D (three.js), qui reprend les animations de render/
+    models.ts      Géométrie : parcelles, canaux creusés (découpe de polygones), socle, petites pièces (herbe, fleurs, galets)
+    materials.ts   Gazon qui verdit par taches, eau qui avance et scintille, pousse des plantes (shaders)
+    sprites.ts     Détails des styles en découpes de papier, badge du cadenas
+    garden3d.ts    Scène, caméra, ombres, copies des bords reliés, passerelles, saisie au doigt
   audio/sound.ts   Sons synthétisés en WebAudio (aucun fichier audio)
   ui/              HUD (DOM), saisie tactile, sauvegarde localStorage, partage
     league.ts      Cartes de la ligue, des amis, du profil et de fin de semaine

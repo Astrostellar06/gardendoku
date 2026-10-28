@@ -11,6 +11,7 @@ import { isLang, type Lang, lang, listJoin, t, themeBlurb, themeName, tn } from 
 import { isUnlocked, RANDOM_STYLE, refreshUnlocks, STYLE_CHALLENGES } from './progress';
 import { renderRandomPreview, renderThemePreview } from './render/preview';
 import { GardenRenderer } from './render/renderer';
+import { Garden3D } from './render3d/garden3d';
 import { currentTheme, setTheme, THEMES } from './render/themes';
 import type { ThemeId } from './render/themes';
 import { showRewardedAd } from './ui/ads';
@@ -80,7 +81,9 @@ export class Game {
     const first = this.pickStyle();
     setTheme(first);
     this.applyStyleColors(first);
-    this.renderer = new GardenRenderer(canvas);
+    // The garden is drawn in 3D; `?rendu=2d` brings back the flat drawing to compare.
+    const flat = params.get('rendu') === '2d';
+    this.renderer = !flat && Garden3D.supported() ? new Garden3D(canvas) : new GardenRenderer(canvas);
     this.renderer.events.onWaterArrive = (_cell, dist) => this.sound.water(dist);
     this.sound.enabled = this.save.settings.sound;
     this.hud.setHints(this.save.hints);

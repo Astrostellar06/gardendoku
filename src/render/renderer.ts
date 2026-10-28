@@ -72,34 +72,34 @@ const SPRITE_SPAN = 1.1;
 
 export class GardenRenderer {
   readonly canvas: HTMLCanvasElement;
-  private ctx: CanvasRenderingContext2D;
-  private dpr = 1;
+  protected ctx: CanvasRenderingContext2D;
+  protected dpr = 1;
   width = 0;
   height = 0;
   insets = { top: 84, bottom: 104, side: 14 };
   maxTile = 96;
 
-  private board: Board | null = null;
-  private analysis: Analysis | null = null;
-  private vis: CellVis[] = [];
-  private tile = 40;
-  private ox = 0;
-  private oy = 0;
+  protected board: Board | null = null;
+  protected analysis: Analysis | null = null;
+  protected vis: CellVis[] = [];
+  protected tile = 40;
+  protected ox = 0;
+  protected oy = 0;
   /** Margin (in tiles) reserved around the garden for the ghost strips. */
-  private ghost = 0;
-  private bg: HTMLCanvasElement | null = null;
-  private bed: HTMLCanvasElement | null = null;
+  protected ghost = 0;
+  protected bg: HTMLCanvasElement | null = null;
+  protected bed: HTMLCanvasElement | null = null;
   /** Soft shadow under a tile and glossy light on its face, shared by all tiles. */
-  private shadowSprite: HTMLCanvasElement | null = null;
-  private glossSprite: HTMLCanvasElement | null = null;
-  private timers: Array<{ at: number; fn: () => void }> = [];
-  private pressed = -1;
+  protected shadowSprite: HTMLCanvasElement | null = null;
+  protected glossSprite: HTMLCanvasElement | null = null;
+  protected timers: Array<{ at: number; fn: () => void }> = [];
+  protected pressed = -1;
 
   readonly particles = new Particles();
   events: RendererEvents = {};
   time = 0;
   lockMode = false;
-  private bridgeSprites = new Map<string, HTMLCanvasElement>();
+  protected bridgeSprites = new Map<string, HTMLCanvasElement>();
   /** Off once the garden is won: the padlocks fade away so it can be admired. */
   showLocks = true;
   hold: { cell: number; start: number; duration: number } | null = null;
@@ -110,16 +110,16 @@ export class GardenRenderer {
   spotlight: { cell: number; kind: 'tap' | 'hold'; ghost?: boolean } | null = null;
 
   /** Sides of the tiles (4, or 6 on hexagonal gardens) and one rotation step in radians. */
-  private sides = 4;
-  private step = Math.PI / 2;
-  private vecs = dirVecs(4);
+  protected sides = 4;
+  protected step = Math.PI / 2;
+  protected vecs = dirVecs(4);
   /** Hexagonal gardens: top-left cell centre (tile units) and size of the garden (tiles). */
-  private hexMin: [number, number] = [0, 0];
-  private span: [number, number] = [0, 0];
+  protected hexMin: [number, number] = [0, 0];
+  protected span: [number, number] = [0, 0];
   /** Tiles from the back of the garden to the front, as drawn. */
-  private order: number[] = [];
+  protected order: number[] = [];
 
-  private decorSeed = '';
+  protected decorSeed = '';
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -315,7 +315,7 @@ export class GardenRenderer {
     this.after(last + 0.7, onDone);
   }
 
-  private layout() {
+  protected layout() {
     if (!this.board || !this.width) return;
     const g = this.board.grid;
     const availW = this.width - this.insets.side * 2;
@@ -354,7 +354,7 @@ export class GardenRenderer {
     this.renderSprites();
   }
 
-  private renderSprites() {
+  protected renderSprites() {
     const t = this.tile;
     const H = G.half;
 
@@ -401,7 +401,7 @@ export class GardenRenderer {
   }
 
   /** Soft white garden bed following the shape of the grid. */
-  private renderBed() {
+  protected renderBed() {
     const board = this.board!;
     const g = board.grid;
     const c = document.createElement('canvas');
@@ -450,7 +450,7 @@ export class GardenRenderer {
    * Joined-edge levels sit on a lilac tray that also holds the ghost strips,
    * with a dotted line marking the edges that lead to the other side.
    */
-  private renderWrapBed(ctx: CanvasRenderingContext2D) {
+  protected renderWrapBed(ctx: CanvasRenderingContext2D) {
     const g = this.board!.grid;
     const t = this.tile;
     const m = this.ghost * t;
@@ -481,7 +481,7 @@ export class GardenRenderer {
    * around the garden: a canal leaving through one edge visibly continues
    * into the tile it reaches on the other side.
    */
-  private drawGhosts() {
+  protected drawGhosts() {
     const g = this.board!.grid;
     const ctx = this.ctx;
     const t = this.tile;
@@ -517,7 +517,7 @@ export class GardenRenderer {
     }
   }
 
-  private settled(v: CellVis): boolean {
+  protected settled(v: CellVis): boolean {
     return Math.abs(v.target - v.angle) < 0.06;
   }
 
@@ -588,7 +588,7 @@ export class GardenRenderer {
   }
 
   /** Water entering tile i through a joined edge: a little sparkle on both sides. */
-  private sparkleIfTeleported(i: number, inflow: number) {
+  protected sparkleIfTeleported(i: number, inflow: number) {
     const g = this.board!.grid;
     if (!g.wrap) return;
     const p = g.neighbor(i, inflow);
@@ -601,7 +601,7 @@ export class GardenRenderer {
     this.particles.sparkle(px + DX[out] * t * 0.5, py + DY[out] * t * 0.5, 3, t * 0.15);
   }
 
-  private tileState(i: number): TileState {
+  protected tileState(i: number): TileState {
     const board = this.board!;
     const an = this.analysis;
     const v = this.vis[i];
@@ -621,7 +621,7 @@ export class GardenRenderer {
     };
   }
 
-  private cached(i: number, wet: boolean, fg = false): HTMLCanvasElement {
+  protected cached(i: number, wet: boolean, fg = false): HTMLCanvasElement {
     const v = this.vis[i];
     const rot = this.board!.rot[i];
     const key: CacheKey = fg ? (wet ? 'wetFg' : 'dryFg') : wet ? 'wet' : 'dry';
@@ -668,7 +668,7 @@ export class GardenRenderer {
     this.particles.draw(ctx, this.time);
   }
 
-  private cellScale(v: CellVis): number {
+  protected cellScale(v: CellVis): number {
     const off = Math.abs(v.target - v.angle);
     const pop = clamp01((this.time - v.popAt) / 0.45);
     const popBump = pop > 0 && pop < 1 ? Math.sin(Math.PI * pop) * 0.12 : 0;
@@ -676,7 +676,7 @@ export class GardenRenderer {
   }
 
   /** Where the top face of a tile is drawn: lifted by half its depth, pushed down when pressed. */
-  private facePos(i: number, dx = 0, dy = 0): [number, number] {
+  protected facePos(i: number, dx = 0, dy = 0): [number, number] {
     const v = this.vis[i];
     const [cx, cy] = this.cellCenter(i);
     const depth = G.depth * this.tile * this.cellScale(v);
@@ -684,7 +684,7 @@ export class GardenRenderer {
     return [cx + shakeX + dx, cy - depth / 2 + depth * 0.65 * v.press + dy];
   }
 
-  private drawShadow(i: number) {
+  protected drawShadow(i: number) {
     const sprite = this.shadowSprite;
     if (!sprite) return;
     const ctx = this.ctx;
@@ -700,7 +700,7 @@ export class GardenRenderer {
   }
 
   /** Draw tile i (side, face, gloss), optionally shifted (ghost copies on joined-edge levels). */
-  private drawCell(i: number, dx = 0, dy = 0) {
+  protected drawCell(i: number, dx = 0, dy = 0) {
     const ctx = this.ctx;
     const v = this.vis[i];
     const cy = this.cellCenter(i)[1] + dy;
@@ -763,7 +763,7 @@ export class GardenRenderer {
    * canals running out of it: they flow over its edge, banks and water alike,
    * in the colours of the canal between the tiles.
    */
-  private clipCanalsOut(i: number, fx: number, fy: number, t: number) {
+  protected clipCanalsOut(i: number, fx: number, fy: number, t: number) {
     const mask = this.board?.mask(i) ?? 0;
     const ctx = this.ctx;
     const w = ((G.rimW + 0.04) * t) / 2;
@@ -790,7 +790,7 @@ export class GardenRenderer {
   }
 
   /** Tutorial focus: the rest of the garden is dimmed, the tile pulses and an arrow points at it. */
-  private drawSpotlight() {
+  protected drawSpotlight() {
     const s = this.spotlight;
     if (!s || !this.board) return;
     const ctx = this.ctx;
@@ -854,7 +854,7 @@ export class GardenRenderer {
   }
 
   /** Foreground layer of a tile: its props, above every tile and canal. */
-  private drawCellProps(i: number) {
+  protected drawCellProps(i: number) {
     const st = this.tileState(i);
     const statics = hasForeground(st);
     const critters = hasCritters(st);
@@ -882,7 +882,7 @@ export class GardenRenderer {
   }
 
   /** Short canal pieces bridging the gap between two joined, resting tiles. */
-  private drawBridges() {
+  protected drawBridges() {
     const board = this.board!;
     const an = this.analysis;
     if (!an) return;
@@ -943,7 +943,7 @@ export class GardenRenderer {
   }
 
   /** Bridge picture for these layers (outer bank first), cached while colours and size stay the same. */
-  private bridgeSprite(layers: Array<[number, string]>, len: number): HTMLCanvasElement {
+  protected bridgeSprite(layers: Array<[number, string]>, len: number): HTMLCanvasElement {
     const t = this.tile;
     const key = `${t}:${this.dpr}:${layers.map((l) => l[1]).join()}`;
     const hit = this.bridgeSprites.get(key);
@@ -963,7 +963,7 @@ export class GardenRenderer {
     return c;
   }
 
-  private drawCellOverlay(i: number) {
+  protected drawCellOverlay(i: number) {
     const ctx = this.ctx;
     const v = this.vis[i];
     const board = this.board!;
@@ -1070,7 +1070,7 @@ export class GardenRenderer {
   }
 
   /** 1 while tile i shows its padlock. */
-  private lockTarget(i: number): number {
+  protected lockTarget(i: number): number {
     return this.showLocks && this.board!.locked[i] ? 1 : 0;
   }
 
