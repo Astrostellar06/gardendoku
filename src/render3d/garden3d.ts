@@ -18,6 +18,17 @@ import type { PropInstance } from '../render/decor';
 import { color, PAL, partsDepthMaterial, partsMaterial, solid, TileUniforms, tileUniforms, turfMaterial, updatePalette, waterMaterial } from './materials';
 import { bedModel, bodyModel, canalModel, M, outlineBand, PartsBuilder, PRIM, trayModel } from './models';
 import { badgeTexture, flatArt, uprightArt } from './sprites';
+import { currentTheme } from '../render/themes';
+import { Kit, type Model } from './props/kit';
+import { STYLE_MODELS } from './props';
+
+/** Size of a modelled prop's unit, from its footprint radius (upright props stand a little larger). */
+const MODEL_SCALE = { ground: 1.1, upright: 1.45 } as const;
+
+/** The 3D model of a prop in the current style, if it has one. */
+function modelOf(p: PropInstance): Model | undefined {
+  return STYLE_MODELS[currentTheme().id]?.[p.def.id];
+}
 
 /** Camera: field of view, and its height above the horizon as seen from the garden. */
 const FOV = 30;
@@ -106,6 +117,8 @@ export class Garden3D extends GardenRenderer {
   private bounds = { x0: 0, x1: 0, z0: 0, z1: 0 };
   private screenBounds = { x: 0, y: 0, w: 0, h: 0 };
   private badgeMap: THREE.CanvasTexture | null = null;
+  /** Gallery: every tile shown watered and in bloom. */
+  private grown = false;
 
   constructor(canvas: HTMLCanvasElement) {
     super(canvas);
@@ -141,7 +154,39 @@ export class Garden3D extends GardenRenderer {
   }
 
   setBoard(board: Board, decorSeed: string) {
+    this.grown = false;
     super.setBoard(board, decorSeed);
+    this.build();
+  }
+
+  /**
+   * Development aid: one prop of the current style on each tile, in turn, to
+   * look at every model (`__game.renderer.gallery()` in the console).
+   */
+  gallery(from = 0) {
+    const board = this.board;
+    if (!board) return;
+    const defs = currentTheme().props;
+    const vecs = dirVecs(this.sides);
+    const footprint = { ground: 1.75, canal: 1.25, water: 1.2 } as const;
+    board.grid.cells.forEach((i, n) => {
+      const def = defs[(n + from) % defs.length];
+      const mask = board.base[i];
+      const arm = vecs.findIndex((_, d) => mask & (1 << d));
+      let [x, y, angle] = [0, 0, 0];
+      if (def.place === 'ground') {
+        // The corner farthest from the canals.
+        const spots: Array<[number, number]> = [[-0.24, -0.24], [0.24, -0.24], [-0.24, 0.24], [0.24, 0.24]];
+        const clear = ([sx, sy]: [number, number]) => Math.min(...vecs.map(([vx, vy], d) => (mask & (1 << d) ? Math.abs(sx * vy - sy * vx) + (sx * vx + sy * vy < 0 ? 1 : 0) : 9)));
+        [x, y] = spots.sort((a, b) => clear(b) - clear(a))[0];
+      } else {
+        [x, y] = [vecs[arm][0] * 0.3, vecs[arm][1] * 0.3];
+        angle = Math.atan2(vecs[arm][1], vecs[arm][0]) - Math.PI / 2;
+      }
+      const r = ((def.size[0] + def.size[1]) / 2) * (def.upright ? 1.2 : footprint[def.place]);
+      this.vis[i].decor.props = [{ def, x, y, r, angle, arm: def.place === 'ground' ? -1 : arm, delay: 0.3, v: (n * 0.37) % 1, v2: (n * 0.61) % 1 }];
+    });
+    this.grown = true;
     this.build();
   }
 
@@ -459,7 +504,7 @@ export class Garden3D extends GardenRenderer {
 
     const props: PropSprite[] = [];
     for (const p of decor.props) {
-      if (p.def.screen || p.def.animated) continue;
+      if (modelOf(p) || p.def.screen || p.def.animated) continue;
       if (p.def.place === 'ground' && p.def.upright) {
         const a = uprightArt(p);
         this.keep(a.texture);
@@ -605,6 +650,22 @@ export class Garden3D extends GardenRenderer {
       m.compose(at(0, M.waterY + 0.035, 0), q.identity(), scl.set(0.018, 0.014, 0.018));
       pb.add(PRIM.ball, m, color(P.centers[0]), anchor, 0.3, 2);
     }
+    // The style's props that have a 3D model.
+    for (const p of decor.props) {
+      const model = modelOf(p);
+      if (!model) continue;
+      const def = p.def;
+      const unit = p.r * (def.upright ? MODEL_SCALE.upright : MODEL_SCALE.ground);
+      const onWater = def.place === 'water';
+      const anchor = new THREE.Vector3(p.x, onWater ? M.waterY : top, p.y);
+      // Ground props face the camera, give or take; canal and water props follow their arm.
+      const yaw = def.place === 'ground' ? (p.v2 - 0.5) * 1.2 : -p.angle;
+      q.setFromAxisAngle(Y, yaw);
+      const base = new THREE.Matrix4().compose(anchor, q, scl.set(unit, unit, unit));
+      const kind = def.when === 'always' ? 1 : onWater ? 2 : 3;
+      const kit = new Kit(pb, base, anchor, p.delay, kind);
+      model(kit, { v: p.v, v2: p.v2, canalHalf: M.groove / 2 / unit, waterY: (M.waterY - M.turf) / unit });
+    }
     return pb.empty ? null : pb.build();
   }
 
@@ -735,9 +796,9 @@ export class Garden3D extends GardenRenderer {
       t.spin.rotation.y = -v.angle * this.step;
 
       const u = t.u;
-      u.uBloom.value = v.bloom;
-      u.uWater.value = v.water;
-      u.uFill.value = v.water;
+      u.uBloom.value = this.grown ? 1 : v.bloom;
+      u.uWater.value = this.grown ? 1 : v.water;
+      u.uFill.value = this.grown ? 1 : v.water;
       u.uLoop.value = v.loop;
       const inflow = an && an.inflow[i] >= 0 ? (an.inflow[i] - board.rot[i] + n) % n : -1;
       if (inflow >= 0 && i !== board.source) u.uIn.value.set(vecs[inflow][0], vecs[inflow][1], 1);

@@ -151,8 +151,8 @@ float g3Back(float t) {
 const GROW_VERTEX = /* glsl */ `
 vec3 transformed = vec3(position);
 float k = 1.0;
-if (aGrow.y < 0.5) k = g3Back(clamp((uBloom - aGrow.x) / 0.35, 0.0, 1.0));
-else if (aGrow.y > 1.5) k = g3Back(clamp((uWater - 0.5) / 0.5, 0.0, 1.0) * clamp((uBloom - aGrow.x * 0.5) / 0.3, 0.0, 1.0));
+if (aGrow.y < 0.5 || aGrow.y > 2.5) k = g3Back(clamp((uBloom - aGrow.x) / 0.35, 0.0, 1.0));
+else if (aGrow.y > 1.5 && aGrow.y < 2.5) k = g3Back(clamp((uWater - 0.5) / 0.5, 0.0, 1.0) * clamp((uBloom - aGrow.x * 0.5) / 0.3, 0.0, 1.0));
 transformed = aAnchor + (transformed - aAnchor) * k;
 // Plants sway a little in the breeze.
 if (aGrow.y < 0.5) transformed.x += sin(uTime * 1.6 + aAnchor.x * 7.0 + aAnchor.z * 5.0) * 0.08 * max(0.0, transformed.y - aAnchor.y);
