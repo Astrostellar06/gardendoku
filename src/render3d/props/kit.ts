@@ -13,7 +13,7 @@
 import * as THREE from 'three';
 import type { ThemeId } from '../../render/themes/types';
 import { color } from '../materials';
-import { PartsBuilder } from '../models';
+import { PartsBuilder, STILL, type Motion } from '../models';
 
 /** A colour, or a gradient from the bottom to the top of the shape. */
 export type Paint = string | [string, string];
@@ -97,6 +97,7 @@ export class Kit {
   private q = new THREE.Quaternion();
   private e = new THREE.Euler();
   private own = false;
+  private motion: Motion = STILL;
 
   constructor(
     private builder: PartsBuilder,
@@ -114,7 +115,7 @@ export class Kit {
     this.q.setFromEuler(this.e);
     this.m.compose(new THREE.Vector3(...pos), this.q, new THREE.Vector3(...scale));
     this.m.premultiply(this.stack[this.stack.length - 1]);
-    this.builder.add(geo, this.m, paintOf(paint), this.anchorOf(), this.delay, this.kind);
+    this.builder.add(geo, this.m, paintOf(paint), this.anchorOf(), this.delay, this.kind, this.motion);
   }
 
   /** Parts sprouting on their own grow from where they are. */
@@ -177,7 +178,7 @@ export class Kit {
     this.q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
     this.m.compose(new THREE.Vector3(...a), this.q, new THREE.Vector3(w / 2, len, w / 2));
     this.m.premultiply(this.stack[this.stack.length - 1]);
-    this.builder.add(cylGeo(sides), this.m, paintOf(paint), this.anchorOf(), this.delay, this.kind);
+    this.builder.add(cylGeo(sides), this.m, paintOf(paint), this.anchorOf(), this.delay, this.kind, this.motion);
   }
 
   /** Parts that only sprout once the tile is watered (fruits on a tree that is always there). */
@@ -189,6 +190,30 @@ export class Kit {
     fn();
     [this.delay, this.kind] = [d, k];
     this.own = false;
+  }
+
+  /** Parts that keep turning about `axis` through `pivot` (prop frame), `speed` radians a second: windmill sails. */
+  spin(pivot: Vec, axis: Vec, speed: number, fn: () => void) {
+    const top = this.stack[this.stack.length - 1];
+    const p = new THREE.Vector3(...pivot).applyMatrix4(top);
+    const a = new THREE.Vector3(...axis).transformDirection(top);
+    this.moving({ ...this.motion, pivot: [p.x, p.y, p.z], axis: [a.x, a.y, a.z], speed }, fn);
+  }
+
+  /** Parts that bob up and down by `amount` (prop units): a swimmer, a bee. */
+  hover(amount: number, fn: () => void) {
+    const top = this.stack[this.stack.length - 1];
+    const scale = new THREE.Vector3().setFromMatrixScale(top).y;
+    const p = new THREE.Vector3().setFromMatrixPosition(top);
+    const pivot: Vec = this.motion.speed ? this.motion.pivot : [p.x, p.y, p.z];
+    this.moving({ ...this.motion, pivot, bob: amount * scale }, fn);
+  }
+
+  private moving(motion: Motion, fn: () => void) {
+    const before = this.motion;
+    this.motion = motion;
+    fn();
+    this.motion = before;
   }
 
   /** Shapes drawn by `fn` in a frame moved to pos, turned by `turn` about y, scaled by `scale`. */

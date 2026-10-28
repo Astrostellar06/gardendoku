@@ -319,6 +319,13 @@ export class Hud {
     this.open(this.win);
   }
 
+  /** Height of the victory card from the bottom of the screen, once it has slid in. */
+  winCardHeight(): number {
+    const card = this.win.querySelector<HTMLElement>('.card');
+    const pad = parseFloat(getComputedStyle(this.win).paddingBottom) || 0;
+    return (card?.offsetHeight ?? 0) + pad;
+  }
+
   hideWin() {
     this.close(this.win);
   }

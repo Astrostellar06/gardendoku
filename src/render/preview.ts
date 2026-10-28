@@ -16,18 +16,32 @@ const SAMPLE: Array<{ x: number; y: number; mask: number; inflow: number; dry?: 
 ];
 
 /** The "random" style: four unlocked styles side by side, with a die on top. */
-export function renderRandomPreview(ids: ThemeId[], size: number, dpr: number): HTMLCanvasElement {
+export function renderRandomPreview(
+  ids: ThemeId[],
+  size: number,
+  dpr: number,
+  tile: (id: ThemeId, size: number, dpr: number, ready?: () => void) => HTMLCanvasElement = renderThemePreview,
+): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = Math.round(size * dpr);
   c.height = Math.round(size * dpr);
   const ctx = c.getContext('2d')!;
   const half = size / 2;
-  for (let k = 0; k < 4; k++) {
-    const id = ids[k % ids.length];
-    ctx.drawImage(renderThemePreview(id, half, dpr), (k % 2) * half * dpr, Math.floor(k / 2) * half * dpr, half * dpr, half * dpr);
-  }
-  ctx.scale(dpr, dpr);
-  // Die.
+  // Painted again as each quarter's own preview becomes ready.
+  const paint = () => {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    tiles.forEach((t, k) => ctx.drawImage(t, (k % 2) * half * dpr, Math.floor(k / 2) * half * dpr, half * dpr, half * dpr));
+    ctx.scale(dpr, dpr);
+    drawDie(ctx, size);
+  };
+  const tiles: HTMLCanvasElement[] = [];
+  for (let k = 0; k < 4; k++) tiles.push(tile(ids[k % ids.length], half, dpr, () => tiles.length === 4 && paint()));
+  paint();
+  return c;
+}
+
+/** The die on top of the "random" preview. */
+function drawDie(ctx: CanvasRenderingContext2D, size: number) {
   const d = size * 0.36;
   const x = (size - d) / 2;
   const y = (size - d) / 2;
@@ -49,7 +63,6 @@ export function renderRandomPreview(ids: ThemeId[], size: number, dpr: number): 
     ctx.arc(x + px * d, y + py * d, d * 0.09, 0, Math.PI * 2);
     ctx.fill();
   }
-  return c;
 }
 
 export function renderThemePreview(id: ThemeId, size: number, dpr: number): HTMLCanvasElement {

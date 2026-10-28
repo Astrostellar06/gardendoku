@@ -286,6 +286,19 @@ export function trayModel(w: number, h: number, r: number): THREE.BufferGeometry
 }
 
 /**
+ * How a part moves, in the tile's frame: turning about `axis` through `pivot`
+ * at `speed` radians a second (windmill sails), and bobbing up and down by `bob`.
+ */
+export interface Motion {
+  pivot: [number, number, number];
+  axis: [number, number, number];
+  speed: number;
+  bob: number;
+}
+
+export const STILL: Motion = { pivot: [0, 0, 0], axis: [0, 1, 0], speed: 0, bob: 0 };
+
+/**
  * Collects small parts (blades of grass, petals, pebbles) into a single mesh,
  * with vertex colours. Each part keeps its anchor and when it grows, so the
  * shader can make it sprout with the water.
@@ -296,6 +309,8 @@ export class PartsBuilder {
   private col: number[] = [];
   private anchor: number[] = [];
   private grow: number[] = [];
+  private move0: number[] = [];
+  private move1: number[] = [];
 
   /**
    * `color` may vary from the bottom (0) to the top (1) of the part.
@@ -308,6 +323,7 @@ export class PartsBuilder {
     anchor: THREE.Vector3,
     delay: number,
     kind: number,
+    move: Motion = STILL,
   ) {
     const g = src.index ? src.toNonIndexed() : src.clone();
     if (!g.attributes.normal) g.computeVertexNormals();
@@ -327,6 +343,8 @@ export class PartsBuilder {
       this.col.push(c.r, c.g, c.b);
       this.anchor.push(anchor.x, anchor.y, anchor.z);
       this.grow.push(delay, kind);
+      this.move0.push(...move.pivot, move.speed);
+      this.move1.push(...move.axis, move.bob);
     }
     g.dispose();
   }
@@ -342,6 +360,8 @@ export class PartsBuilder {
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3));
     g.setAttribute('aAnchor', new THREE.Float32BufferAttribute(this.anchor, 3));
     g.setAttribute('aGrow', new THREE.Float32BufferAttribute(this.grow, 2));
+    g.setAttribute('aMove0', new THREE.Float32BufferAttribute(this.move0, 4));
+    g.setAttribute('aMove1', new THREE.Float32BufferAttribute(this.move1, 4));
     g.computeBoundingSphere();
     return g;
   }

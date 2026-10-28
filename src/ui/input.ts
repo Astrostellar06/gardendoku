@@ -24,6 +24,8 @@ export interface InputHandlers {
   canDrag(): boolean;
   drag(dx: number, dy: number): void;
   dragEnd(): void;
+  /** Two fingers sliding together move the (zoomed) view. */
+  pan(dx: number, dy: number): void;
   /** Zoom by `factor` around (x, y). */
   zoom(x: number, y: number, factor: number): void;
 }
@@ -141,7 +143,7 @@ export function attachInput(el: HTMLElement, h: InputHandlers, longPressMs = 420
       const mid: [number, number] = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
       if (pinch.dist > 0) h.zoom(mid[0], mid[1], dist / pinch.dist);
       // Both fingers sliding together move the view too.
-      if (h.canDrag()) h.drag(mid[0] - pinch.mid[0], mid[1] - pinch.mid[1]);
+      h.pan(mid[0] - pinch.mid[0], mid[1] - pinch.mid[1]);
       pinch = { dist, mid };
       return;
     }

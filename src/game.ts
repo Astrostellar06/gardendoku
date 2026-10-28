@@ -122,8 +122,11 @@ export class Game {
       canDrag: () => this.mode === 'play' && this.renderer.canDrag(this.lockMode),
       drag: (dx, dy) => this.renderer.drag(dx, dy),
       dragEnd: () => this.renderer.dragEnd(),
+      pan: (dx, dy) => {
+        if (this.mode === 'play') this.renderer.panBy(dx, dy);
+      },
       zoom: (x, y, factor) => {
-        if (this.mode === 'play' && !this.won) this.renderer.zoomAt(x, y, factor);
+        if (this.mode === 'play') this.renderer.zoomAt(x, y, factor);
       },
     });
 
@@ -170,6 +173,8 @@ export class Game {
     on('btn-next-float', () => this.next());
     on('btn-admire', () => {
       this.hud.hideWin();
+      // The garden glides back to the middle of the screen.
+      this.renderer.setShowcaseSpace(null);
       this.hud.setWonBar(true, this.daily ? t('win.backHome') : t('win.nextLevel'));
     });
 
@@ -245,6 +250,8 @@ export class Game {
             daily: !!this.daily,
             streak: this.lastWin?.streak,
           });
+          // The turning garden rises above the victory card.
+          this.renderer.setShowcaseSpace({ top: this.renderer.insets.top, bottom: this.hud.winCardHeight() + 12 });
         }
       });
     }
@@ -867,10 +874,12 @@ export class Game {
         };
       }),
     ];
+    // Previews in the garden's own look: 3D tiles, or the flat drawing.
+    const tile = this.renderer instanceof Garden3D ? Garden3D.stylePreview : renderThemePreview;
     this.hud.openStyles(
       cards,
       this.save.settings.theme,
-      (id, size) => (id === RANDOM_STYLE ? renderRandomPreview(unlockedIds, size, dpr) : renderThemePreview(id as ThemeId, size, dpr)),
+      (id, size) => (id === RANDOM_STYLE ? renderRandomPreview(unlockedIds, size, dpr, tile) : tile(id as ThemeId, size, dpr)),
       (id) => this.chooseTheme(id),
       (card) => this.hud.toast(t('styles.lockedToast', { name: card.name, challenge: card.challenge ?? '', progress: card.progress ?? '' }), false, 3600),
     );

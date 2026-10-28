@@ -140,7 +140,15 @@ vec4 diffuseColor = vec4(mix(soil, grass, g), opacity);`,
 const GROW = /* glsl */ `
 attribute vec3 aAnchor;
 attribute vec2 aGrow;
+attribute vec4 aMove0;
+attribute vec4 aMove1;
 uniform float uBloom, uWater, uTime;
+/** Turn v about the unit axis k by angle a (Rodrigues). */
+vec3 g3Turn(vec3 v, vec3 k, float a) {
+  float c = cos(a);
+  float s = sin(a);
+  return v * c + cross(k, v) * s + k * dot(k, v) * (1.0 - c);
+}
 float g3Back(float t) {
   float c1 = 1.70158;
   float c3 = c1 + 1.0;
@@ -150,6 +158,9 @@ float g3Back(float t) {
 
 const GROW_VERTEX = /* glsl */ `
 vec3 transformed = vec3(position);
+// Moving parts: windmill sails turn, swimmers and flyers bob.
+if (aMove0.w != 0.0) transformed = aMove0.xyz + g3Turn(transformed - aMove0.xyz, aMove1.xyz, uTime * aMove0.w);
+if (aMove1.w != 0.0) transformed.y += aMove1.w * sin(uTime * 2.3 + aMove0.x * 17.0 + aMove0.z * 11.0);
 float k = 1.0;
 if (aGrow.y < 0.5 || aGrow.y > 2.5) k = g3Back(clamp((uBloom - aGrow.x) / 0.35, 0.0, 1.0));
 else if (aGrow.y > 1.5 && aGrow.y < 2.5) k = g3Back(clamp((uWater - 0.5) / 0.5, 0.0, 1.0) * clamp((uBloom - aGrow.x * 0.5) / 0.3, 0.0, 1.0));
@@ -162,6 +173,7 @@ function growPatch(shader: THREE.WebGLProgramParametersWithUniforms, u: TileUnif
   Object.assign(shader.uniforms, { uBloom: u.uBloom, uWater: u.uWater, uTime: PAL.uTime });
   shader.vertexShader = shader.vertexShader
     .replace('#include <common>', `#include <common>\n${GROW}`)
+    .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\nif (aMove0.w != 0.0) objectNormal = g3Turn(objectNormal, aMove1.xyz, uTime * aMove0.w);')
     .replace('#include <begin_vertex>', GROW_VERTEX);
 }
 

@@ -8,22 +8,25 @@
  */
 import * as THREE from 'three';
 import { Board } from '../core/board';
-import { dirVecs, popcount } from '../core/grid';
+import { E, Grid, N, S, W, dirVecs, popcount } from '../core/grid';
 import { Rng } from '../core/rng';
 import { clamp01, easeOutBack } from '../render/easing';
 import { mixColor, P } from '../render/palette';
 import { GardenRenderer } from '../render/renderer';
 import { roundRectPath } from '../render/tileArt';
-import type { PropInstance } from '../render/decor';
+import { makeDecor, type PropInstance } from '../render/decor';
 import { color, PAL, partsDepthMaterial, partsMaterial, solid, TileUniforms, tileUniforms, turfMaterial, updatePalette, waterMaterial } from './materials';
 import { bedModel, bodyModel, canalModel, M, outlineBand, PartsBuilder, PRIM, trayModel } from './models';
 import { badgeTexture, flatArt, uprightArt } from './sprites';
-import { currentTheme } from '../render/themes';
+import { currentTheme, withTheme } from '../render/themes';
+import type { ThemeId } from '../render/themes/types';
 import { Kit, type Model } from './props/kit';
 import { STYLE_MODELS } from './props';
 
 /** Size of a modelled prop's unit, from its footprint radius (upright props stand a little larger). */
 const MODEL_SCALE = { ground: 1.2, upright: 1.6 } as const;
+/** Animated in 2D, but standing on the ground: they move in their own way (or not at all). */
+const STANDING = new Set(['windmill', 'tiered-fountain', 'city-fountain', 'geyser']);
 
 /** The 3D model of a prop in the current style, if it has one. */
 function modelOf(p: PropInstance): Model | undefined {
@@ -40,6 +43,14 @@ const SHOW_TRANSITION = 1.8;
 const SHOW_SPEED = 0.32;
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
+
+/** A free area of the screen: centre and size, in pixels. */
+interface Area {
+  cx: number;
+  cy: number;
+  w: number;
+  h: number;
+}
 
 interface Framing {
   dist: number;
@@ -146,9 +157,97 @@ export class Garden3D extends GardenRenderer {
   private maxZoom = 1;
   private pan: [number, number] = [0, 0];
   /** Victory turn: time since it started, angle round the garden and its speed. */
-  private show: { t: number; az: number; vel: number; dragging: boolean; lastDt: number } | null = null;
+  private show: { t: number; az: number; vel: number; dragging: boolean; lastDt: number; area: Area; goal: Area } | null = null;
+  /** Free space asked for the victory turn before it starts (the card may open first). */
+  private showGoal: Area | null = null;
+  /** Where the camera's principal point sits on screen, before the pan. */
+  private centre: [number, number] = [0, 0];
 
-  constructor(canvas: HTMLCanvasElement) {
+  /** Renders the style previews of the style menu (one WebGL context, shared). */
+  private static previewer: Garden3D | null = null;
+  private static previews = new Map<string, HTMLCanvasElement>();
+  /** Previews still to render, one per frame, so the style menu opens at once. */
+  private static queue: Array<() => void> = [];
+
+  /**
+   * A style's preview for the style menu: a 2x2 garden with the spring, two
+   * watered tiles and one turned away, in that style. The canvas shows the
+   * style's sky at first; the garden appears a moment later (`ready` is called then).
+   */
+  static stylePreview(id: ThemeId, size: number, dpr: number, ready?: () => void): HTMLCanvasElement {
+    const key = `${id}:${size}:${dpr}`;
+    const done = Garden3D.previews.get(key);
+    if (done) {
+      if (done.dataset.ready) ready?.();
+      else done.addEventListener('ready', () => ready?.(), { once: true });
+      return done;
+    }
+    const out = document.createElement('canvas');
+    out.width = Math.round(size * dpr);
+    out.height = Math.round(size * dpr);
+    withTheme(id, () => {
+      const ctx = out.getContext('2d')!;
+      const sky = ctx.createLinearGradient(0, 0, 0, out.height);
+      sky.addColorStop(0, P.bgTop);
+      sky.addColorStop(1, P.bgBottom);
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, out.width, out.height);
+    });
+    Garden3D.previews.set(key, out);
+    if (ready) out.addEventListener('ready', () => ready(), { once: true });
+    Garden3D.queue.push(() => {
+      withTheme(id, () => {
+        const r = (Garden3D.previewer ??= new Garden3D(document.createElement('canvas'), true));
+        r.insets = { top: size * 0.04, bottom: size * 0.04, side: size * 0.04 };
+        r.maxTile = 10000;
+        r.resize(size, size, dpr);
+        r.refreshScenery();
+        r.stage();
+        r.draw();
+        out.getContext('2d')!.drawImage(r.canvas, 0, 0, out.width, out.height);
+      });
+      // The palette uniforms are shared: give the garden its own colours back.
+      updatePalette();
+      out.dataset.ready = '1';
+      out.dispatchEvent(new Event('ready'));
+    });
+    if (Garden3D.queue.length === 1) Garden3D.pump();
+    return out;
+  }
+
+  private static pump() {
+    setTimeout(() => {
+      const job = Garden3D.queue[0];
+      if (!job) return;
+      try {
+        job();
+      } finally {
+        Garden3D.queue.shift();
+        if (Garden3D.queue.length) Garden3D.pump();
+      }
+    }, 16);
+  }
+
+  /** The preview's garden: the spring, a watered corner and end, and a dry tile turned away. */
+  private stage() {
+    const tiles = new Uint8Array([E | S, W, N | E, N]);
+    const board = new Board({ grid: Grid.rect(2, 2), source: 0, solution: tiles, tiles, unique: false, repairs: 0 });
+    this.setBoard(board, 'preview');
+    const an = board.analyze();
+    this.setAnalysis(an);
+    board.grid.cells.forEach((i, k) => {
+      const v = this.vis[i];
+      v.decor = makeDecor(board.base[i], `preview:${k}`, i === board.source, k === 1 ? 0 : 1, 4);
+      v.water = v.bloom = an.watered[i] ? 1 : 0;
+    });
+    this.build();
+  }
+
+  constructor(
+    canvas: HTMLCanvasElement,
+    /** Still pictures (style previews): no particles. */
+    private still = false,
+  ) {
     super(canvas);
     this.gl = new THREE.WebGLRenderer({ canvas: document.createElement('canvas'), antialias: true, alpha: true, premultipliedAlpha: true });
     this.gl.setClearColor(0x000000, 0);
@@ -158,7 +257,7 @@ export class Garden3D extends GardenRenderer {
     // Light from behind and to the left: shadows fall toward the bottom right, as in the 2D garden.
     this.sun.position.set(-0.45, 1, -0.5).normalize().multiplyScalar(30);
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(2048, 2048);
+    this.sun.shadow.mapSize.set(still ? 1024 : 2048, still ? 1024 : 2048);
     this.sun.shadow.bias = -0.0005;
     this.sun.shadow.normalBias = 0.02;
     this.scene.add(this.sun, this.sun.target, this.hemi, this.world);
@@ -184,6 +283,7 @@ export class Garden3D extends GardenRenderer {
   setBoard(board: Board, decorSeed: string) {
     this.grown = false;
     this.show = null;
+    this.showGoal = null;
     this.zoom = 1;
     this.pan = [0, 0];
     super.setBoard(board, decorSeed);
@@ -363,24 +463,28 @@ export class Garden3D extends GardenRenderer {
     const W = this.width;
     const H = this.height;
     const show = this.show;
+    let offX = base.offX;
+    let offY = base.offY;
     if (show) {
       const k = smooth(clamp01(show.t / SHOW_TRANSITION));
       const el = ELEVATION + (SHOW_ELEVATION - ELEVATION) * k;
-      // From the game's framing to the whole garden turning in the middle of the free space.
+      // From the game's framing to the garden turning in the middle of the free space
+      // (above the victory card while it is open). Its corners may slip out when it is turned diagonally.
       const { x0, x1, z0, z1 } = this.bounds;
-      const radius = Math.hypot(x1 - x0, z1 - z0) / 2 + 0.2;
+      const radius = (Math.max(x1 - x0, z1 - z0) / 2) * 1.05;
       const f = H / 2 / Math.tan((FOV * Math.PI) / 360);
-      const far = Math.max((radius * f) / (base.availW * 0.55), (radius * f) / (base.availH * 0.55));
-      const centreX = W / 2 - base.cx;
-      const centreY = H / 2 - base.cy;
-      cam.zoom = 1;
-      cam.setViewOffset(W, H, base.offX + (centreX - base.offX) * k, base.offY + (centreY - base.offY) * k, W, H);
+      const area = show.area;
+      const far = Math.max((radius * f) / (area.w * 0.5), (radius * f) / (area.h * 0.62));
+      offX = base.offX + (W / 2 - area.cx - base.offX) * k;
+      offY = base.offY + (H / 2 - area.cy - base.offY) * k;
       this.placeCamera(base.dist + (far - base.dist) * k, el, show.az);
     } else {
-      cam.zoom = this.zoom;
-      cam.setViewOffset(W, H, base.offX - this.pan[0], base.offY - this.pan[1], W, H);
       this.placeCamera(base.dist, ELEVATION, 0);
     }
+    this.centre = [W / 2 - offX, H / 2 - offY];
+    cam.zoom = this.zoom;
+    cam.setViewOffset(W, H, offX - this.pan[0], offY - this.pan[1], W, H);
+    cam.updateProjectionMatrix();
     this.tile = base.tile * cam.zoom;
     const { x0, x1, z0, z1 } = this.bounds;
     const top: THREE.Vector3[] = [];
@@ -401,13 +505,12 @@ export class Garden3D extends GardenRenderer {
 
   /** Zoom by `factor` around the screen point (x, y), between the garden's framing and a 3x3 garden's tile size. */
   zoomAt(x: number, y: number, factor: number) {
-    if (!this.base || this.show) return;
+    if (!this.base) return;
     const z0 = this.zoom;
-    const z1 = Math.min(this.maxZoom, Math.max(1, z0 * factor));
+    const z1 = Math.min(this.maxZoom * (this.show ? 1.6 : 1), Math.max(1, z0 * factor));
     if (z1 === z0) return;
     // Zooming scales the picture around the camera's principal point (moved by the pan): keep (x, y) still.
-    const ox = this.width / 2 - this.base.offX;
-    const oy = this.height / 2 - this.base.offY;
+    const [ox, oy] = this.centre;
     const k = z1 / z0;
     this.pan = [x - (x - ox - this.pan[0]) * k - ox, y - (y - oy - this.pan[1]) * k - oy];
     this.zoom = z1;
@@ -426,6 +529,11 @@ export class Garden3D extends GardenRenderer {
       this.applyView();
       return;
     }
+    this.panBy(dx, dy);
+  }
+
+  /** Moves the zoomed view (two fingers sliding together, or one finger while zoomed in a game). */
+  panBy(dx: number, dy: number) {
     if (!this.zoomed()) return;
     this.pan = [this.pan[0] + dx, this.pan[1] + dy];
     this.clampPan();
@@ -444,17 +552,35 @@ export class Garden3D extends GardenRenderer {
       this.pan = [0, 0];
       return;
     }
-    const hx = (z - 1) * (b.box.w / 2) + 4;
-    const hy = (z - 1) * (b.box.h / 2) + 4;
+    const w = this.show ? Math.max(b.box.w, this.show.area.w) : b.box.w;
+    const h = this.show ? Math.max(b.box.h, this.show.area.h) : b.box.h;
+    const hx = (z - 1) * (w / 2) + 4;
+    const hy = (z - 1) * (h / 2) + 4;
     this.pan = [Math.max(-hx, Math.min(hx, this.pan[0])), Math.max(-hy, Math.min(hy, this.pan[1]))];
   }
 
   /** After a victory: the camera lowers and the garden turns in front of it; a finger can turn it too. */
   startShowcase() {
-    if (!this.board || this.show) return;
+    if (!this.board || this.show || !this.base) return;
     this.zoom = 1;
     this.pan = [0, 0];
-    this.show = { t: 0, az: 0, vel: 0, dragging: false, lastDt: 1 / 60 };
+    const b = this.base;
+    const area = { cx: b.cx, cy: b.cy, w: b.availW, h: b.availH };
+    this.show = { t: 0, az: 0, vel: 0, dragging: false, lastDt: 1 / 60, area, goal: this.showGoal ?? { ...area } };
+  }
+
+  /**
+   * Free space for the victory turn: between `top` and `bottom` pixels from the
+   * bottom of the screen (above the victory card), or the game's own space (null).
+   */
+  setShowcaseSpace(space: { top: number; bottom: number } | null) {
+    const b = this.base;
+    if (!b) return;
+    const goal = space
+      ? { cx: this.width / 2, cy: (space.top + this.height - space.bottom) / 2, w: b.availW, h: Math.max(80, this.height - space.bottom - space.top) }
+      : { cx: b.cx, cy: b.cy, w: b.availW, h: b.availH };
+    this.showGoal = space ? goal : null;
+    if (this.show) this.show.goal = goal;
   }
 
   isBusy(): boolean {
@@ -468,10 +594,17 @@ export class Garden3D extends GardenRenderer {
     dt = Math.min(dt, 0.05);
     show.t += dt;
     show.lastDt = dt;
+    // The garden glides to its free space (up above the card, back down when the card closes).
+    const ease = Math.min(1, dt * 3.5);
+    const a = show.area;
+    a.cx += (show.goal.cx - a.cx) * ease;
+    a.cy += (show.goal.cy - a.cy) * ease;
+    a.w += (show.goal.w - a.w) * ease;
+    a.h += (show.goal.h - a.h) * ease;
     if (!show.dragging) {
-      // A flick keeps turning, then settles back to the slow turn.
-      const auto = SHOW_SPEED * smooth(clamp01(show.t / SHOW_TRANSITION));
-      show.vel += (auto - show.vel) * Math.min(1, dt * 1.6);
+      // A flick keeps turning, then settles back to the slow turn; zoomed in, the garden holds still.
+      const auto = this.zoomed() ? 0 : SHOW_SPEED * smooth(clamp01(show.t / SHOW_TRANSITION));
+      show.vel += (auto - show.vel) * Math.min(1, dt * (this.zoomed() ? 4 : 1.6));
       show.az += show.vel * dt;
     }
     this.applyView();
@@ -834,7 +967,11 @@ export class Garden3D extends GardenRenderer {
       const base = new THREE.Matrix4().compose(anchor, q, scl.set(unit, unit, unit));
       const kind = def.when === 'always' ? 1 : onWater ? 2 : 3;
       const kit = new Kit(pb, base, anchor, p.delay, kind);
-      model(kit, { v: p.v, v2: p.v2, canalHalf: M.groove / 2 / unit, waterY: (M.waterY - M.turf) / unit });
+      const draw = () => model(kit, { v: p.v, v2: p.v2, canalHalf: M.groove / 2 / unit, waterY: (M.waterY - M.turf) / unit });
+      // What moves in the 2D garden bobs here: swimmers on the water, bees and balloons in the air.
+      const bob = !def.animated || STANDING.has(def.id) ? 0 : onWater ? 0.12 : 0.35;
+      if (bob) kit.hover(bob, draw);
+      else draw();
     }
     return pb.empty ? null : pb.build();
   }
@@ -1087,7 +1224,7 @@ export class Garden3D extends GardenRenderer {
       this.drawHold();
       this.drawSpotlight3D();
     }
-    this.particles.draw(ctx, this.time);
+    if (!this.still) this.particles.draw(ctx, this.time);
   }
 
   private drawHold() {

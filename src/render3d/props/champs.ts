@@ -21,15 +21,17 @@ export const champs: ModelMap = {
     k.dome('#C95A48', [0, 1.42, 0], [0.32, 0.32, 0.32]);
     k.box('#8A5A3A', [0, 0, 0.38], [0.22, 0.42, 0.08]);
     k.box('#9FD4F5', [0, 0.78, 0.31], [0.17, 0.2, 0.06]);
-    // Four sails on a hub, at rest.
+    // Four sails on a hub, turning in the wind.
     const hub: [number, number, number] = [0, 1.42, 0.38];
-    for (let n = 0; n < 4; n++) {
-      const a = v * 6 + (n * Math.PI) / 2;
-      const [c, s] = [Math.cos(a), Math.sin(a)];
-      k.stick('#8A5A3A', hub, [c * 0.95, hub[1] + s * 0.95, hub[2]], 0.05);
-      k.box('#FFFFFF', [c * 0.28 - s * 0.13, hub[1] + s * 0.28 + c * 0.13, hub[2] + 0.02], [0.22, 0.66, 0.03], { rot: [0, 0, a - Math.PI / 2] });
-    }
-    k.ball('#8A5A3A', hub, [0.08, 0.08, 0.08], { sides: 0 });
+    k.spin(hub, [0, 0, 1], -1.4 - v * 0.6, () => {
+      for (let n = 0; n < 4; n++) {
+        const a = v * 6 + (n * Math.PI) / 2;
+        const [c, s] = [Math.cos(a), Math.sin(a)];
+        k.stick('#8A5A3A', hub, [c * 0.95, hub[1] + s * 0.95, hub[2]], 0.05);
+        k.box('#FFFFFF', [c * 0.28 - s * 0.13, hub[1] + s * 0.28 + c * 0.13, hub[2] + 0.02], [0.22, 0.66, 0.03], { rot: [0, 0, a - Math.PI / 2] });
+      }
+      k.ball('#8A5A3A', hub, [0.08, 0.08, 0.08], { sides: 0 });
+    });
   },
   poppies(k) {
     for (const [x, z, h] of [

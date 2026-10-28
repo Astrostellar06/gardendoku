@@ -1059,7 +1059,9 @@ export class GardenRenderer {
   zoomAt(_x: number, _y: number, _factor: number) {}
   drag(_dx: number, _dy: number) {}
   dragEnd() {}
+  panBy(_dx: number, _dy: number) {}
   startShowcase() {}
+  setShowcaseSpace(_space: { top: number; bottom: number } | null) {}
 
   /**
    * True while something more than the ambient shimmer is animating; the
