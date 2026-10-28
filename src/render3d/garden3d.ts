@@ -8,7 +8,7 @@
  */
 import * as THREE from 'three';
 import { Board } from '../core/board';
-import { dirVecs, opposite, popcount } from '../core/grid';
+import { dirVecs, popcount } from '../core/grid';
 import { Rng } from '../core/rng';
 import { clamp01, easeOutBack } from '../render/easing';
 import { mixColor, P } from '../render/palette';
@@ -23,7 +23,7 @@ import { Kit, type Model } from './props/kit';
 import { STYLE_MODELS } from './props';
 
 /** Size of a modelled prop's unit, from its footprint radius (upright props stand a little larger). */
-const MODEL_SCALE = { ground: 1.1, upright: 1.45 } as const;
+const MODEL_SCALE = { ground: 1.2, upright: 1.6 } as const;
 
 /** The 3D model of a prop in the current style, if it has one. */
 function modelOf(p: PropInstance): Model | undefined {
@@ -34,6 +34,26 @@ function modelOf(p: PropInstance): Model | undefined {
 const FOV = 30;
 const ELEVATION = (58 * Math.PI) / 180;
 const HOLD_VISIBLE_AFTER = 0.12;
+/** Victory turn: lower camera, seconds to get there, turning speed (radians a second). */
+const SHOW_ELEVATION = (30 * Math.PI) / 180;
+const SHOW_TRANSITION = 1.8;
+const SHOW_SPEED = 0.32;
+
+const smooth = (t: number) => t * t * (3 - 2 * t);
+
+interface Framing {
+  dist: number;
+  offX: number;
+  offY: number;
+  /** Pixels a tile at zoom 1, and the garden's box on screen. */
+  tile: number;
+  box: { x: number; y: number; w: number; h: number };
+  /** Centre and size of the free space between the HUD's bars. */
+  cx: number;
+  cy: number;
+  availW: number;
+  availH: number;
+}
 /** Width (tiles) of the strips showing the opposite edge on joined-edge levels. */
 const GHOST = 0.42;
 
@@ -84,9 +104,11 @@ interface Strip {
   mist: THREE.Vector4;
 }
 
-interface Bridge {
-  group: THREE.Group;
-  water: THREE.Mesh;
+interface Bridges {
+  floors: THREE.InstancedMesh;
+  walls: THREE.InstancedMesh;
+  water: THREE.InstancedMesh;
+  loop: THREE.InstancedMesh;
 }
 
 export class Garden3D extends GardenRenderer {
@@ -110,8 +132,7 @@ export class Garden3D extends GardenRenderer {
   private tiles: Array<Tile3D | null> = [];
   private ghosts: Ghost[] = [];
   private strips: Strip[] = [];
-  private bridges: Bridge[] = [];
-  private bridgeKit: { floor: THREE.BufferGeometry; wall: THREE.BufferGeometry; water: THREE.BufferGeometry; stone: THREE.Material; groove: THREE.Material; wet: THREE.Material; loop: THREE.Material } | null = null;
+  private bridges: Bridges | null = null;
   /** Centre of the garden in grid units: world x = grid x - mid[0], world z = grid y - mid[1]. */
   private mid: [number, number] = [0, 0];
   private bounds = { x0: 0, x1: 0, z0: 0, z1: 0 };
@@ -119,6 +140,13 @@ export class Garden3D extends GardenRenderer {
   private badgeMap: THREE.CanvasTexture | null = null;
   /** Gallery: every tile shown watered and in bloom. */
   private grown = false;
+  /** Framing of the garden, zoom (1 = framed) and pan in pixels. */
+  private base: Framing | null = null;
+  private zoom = 1;
+  private maxZoom = 1;
+  private pan: [number, number] = [0, 0];
+  /** Victory turn: time since it started, angle round the garden and its speed. */
+  private show: { t: number; az: number; vel: number; dragging: boolean; lastDt: number } | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     super(canvas);
@@ -155,6 +183,9 @@ export class Garden3D extends GardenRenderer {
 
   setBoard(board: Board, decorSeed: string) {
     this.grown = false;
+    this.show = null;
+    this.zoom = 1;
+    this.pan = [0, 0];
     super.setBoard(board, decorSeed);
     this.build();
   }
@@ -242,11 +273,12 @@ export class Garden3D extends GardenRenderer {
     return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
   }
 
-  /** Frame the garden between the HUD's bars, as large as it fits (up to `maxTile` pixels a tile). */
-  protected layout() {
-    if (!this.board || !this.width) return;
-    this.measure();
-    const { x0, x1, z0, z1 } = this.bounds;
+  /**
+   * Distance of the camera that frames `bounds` in the free space as large as
+   * it fits (up to `maxTile` pixels a tile), and the view offset centring it.
+   */
+  private fit(bounds: { x0: number; x1: number; z0: number; z1: number }): Framing {
+    const { x0, x1, z0, z1 } = bounds;
     const W = this.width;
     const H = this.height;
     const availW = W - this.insets.side * 2;
@@ -255,46 +287,63 @@ export class Garden3D extends GardenRenderer {
     const cy = this.insets.top + availH / 2;
     const cam = this.camera;
     cam.aspect = W / H;
+    cam.zoom = 1;
     let offX = W / 2 - cx;
     let offY = H / 2 - cy;
     cam.setViewOffset(W, H, offX, offY, W, H);
     const corners: THREE.Vector3[] = [];
     for (const x of [x0, x1]) for (const z of [z0, z1]) for (const y of [-M.body - 0.16, 0.3]) corners.push(new THREE.Vector3(x, y, z));
-    const dir = new THREE.Vector3(0, Math.sin(ELEVATION), Math.cos(ELEVATION));
-    const place = (d: number) => {
-      cam.position.copy(dir).multiplyScalar(d);
-      cam.lookAt(0, 0, 0);
-      cam.updateProjectionMatrix();
-      cam.updateMatrixWorld();
-    };
-    const unit = () => {
-      const [ax] = this.project(new THREE.Vector3(-0.5, 0, 0));
-      const [bx] = this.project(new THREE.Vector3(0.5, 0, 0));
-      return Math.abs(bx - ax);
-    };
     let lo = 1;
     let hi = 600;
     for (let k = 0; k < 40; k++) {
       const d = (lo + hi) / 2;
-      place(d);
+      this.placeCamera(d, ELEVATION, 0);
       const b = this.boxOnScreen(corners);
-      const fits = b.w <= availW && b.h <= availH && unit() <= this.maxTile;
+      const fits = b.w <= availW && b.h <= availH && this.unitOnScreen() <= this.maxTile;
       if (fits) hi = d;
       else lo = d;
     }
-    place(hi);
+    this.placeCamera(hi, ELEVATION, 0);
     // Perspective makes the front of the garden larger: centre what is actually seen.
     const b = this.boxOnScreen(corners);
     offX += b.x + b.w / 2 - cx;
     offY += b.y + b.h / 2 - cy;
     cam.setViewOffset(W, H, offX, offY, W, H);
     cam.updateProjectionMatrix();
-    this.tile = unit();
-    const top: THREE.Vector3[] = [];
-    for (const x of [x0, x1]) for (const z of [z0, z1]) top.push(new THREE.Vector3(x, M.turf, z));
-    this.screenBounds = this.boxOnScreen(top);
+    return { dist: hi, offX, offY, tile: this.unitOnScreen(), box: this.boxOnScreen(corners), cx, cy, availW, availH };
+  }
+
+  private placeCamera(dist: number, elevation: number, azimuth: number) {
+    const cam = this.camera;
+    const c = Math.cos(elevation);
+    cam.position.set(Math.sin(azimuth) * c * dist, Math.sin(elevation) * dist, Math.cos(azimuth) * c * dist);
+    cam.lookAt(0, 0, 0);
+    cam.updateProjectionMatrix();
+    cam.updateMatrixWorld();
+  }
+
+  /** Width on screen of one tile at the centre of the garden. */
+  private unitOnScreen(): number {
+    const [ax] = this.project(new THREE.Vector3(-0.5, 0, 0));
+    const [bx] = this.project(new THREE.Vector3(0.5, 0, 0));
+    return Math.abs(bx - ax);
+  }
+
+  /** Frame the garden between the HUD's bars; zooming in stops at the tile size of a 3x3 garden. */
+  protected layout() {
+    if (!this.board || !this.width) return;
+    this.measure();
+    const small = this.fit({ x0: -1.62, x1: 1.62, z0: -1.62, z1: 1.62 });
+    const base = this.fit(this.bounds);
+    this.base = base;
+    this.maxZoom = Math.max(1, small.tile / base.tile);
+    // The zoom outlives a new framing (the HUD changing size, the screen turning); a new garden starts framed.
+    this.zoom = Math.min(this.zoom, this.maxZoom);
+    this.clampPan();
+    this.applyView();
 
     // The sun's shadow covers the whole garden.
+    const { x0, x1, z0, z1 } = this.bounds;
     const r = Math.max(x1 - x0, z1 - z0) * 0.75 + 1;
     const sh = this.sun.shadow.camera;
     sh.left = -r;
@@ -304,6 +353,128 @@ export class Garden3D extends GardenRenderer {
     sh.near = 1;
     sh.far = 60;
     sh.updateProjectionMatrix();
+  }
+
+  /** Camera for the current zoom and pan, or for the victory turn around the garden. */
+  private applyView() {
+    const base = this.base;
+    if (!base) return;
+    const cam = this.camera;
+    const W = this.width;
+    const H = this.height;
+    const show = this.show;
+    if (show) {
+      const k = smooth(clamp01(show.t / SHOW_TRANSITION));
+      const el = ELEVATION + (SHOW_ELEVATION - ELEVATION) * k;
+      // From the game's framing to the whole garden turning in the middle of the free space.
+      const { x0, x1, z0, z1 } = this.bounds;
+      const radius = Math.hypot(x1 - x0, z1 - z0) / 2 + 0.2;
+      const f = H / 2 / Math.tan((FOV * Math.PI) / 360);
+      const far = Math.max((radius * f) / (base.availW * 0.55), (radius * f) / (base.availH * 0.55));
+      const centreX = W / 2 - base.cx;
+      const centreY = H / 2 - base.cy;
+      cam.zoom = 1;
+      cam.setViewOffset(W, H, base.offX + (centreX - base.offX) * k, base.offY + (centreY - base.offY) * k, W, H);
+      this.placeCamera(base.dist + (far - base.dist) * k, el, show.az);
+    } else {
+      cam.zoom = this.zoom;
+      cam.setViewOffset(W, H, base.offX - this.pan[0], base.offY - this.pan[1], W, H);
+      this.placeCamera(base.dist, ELEVATION, 0);
+    }
+    this.tile = base.tile * cam.zoom;
+    const { x0, x1, z0, z1 } = this.bounds;
+    const top: THREE.Vector3[] = [];
+    for (const x of [x0, x1]) for (const z of [z0, z1]) top.push(new THREE.Vector3(x, M.turf, z));
+    this.screenBounds = this.boxOnScreen(top);
+  }
+
+  // ---------------------------------------------------------------- zoom, pan and the victory turn
+
+  /** True once zoomed in: one finger then moves the view. */
+  zoomed(): boolean {
+    return this.zoom > 1.001;
+  }
+
+  canDrag(lockMode: boolean): boolean {
+    return !!this.show || (this.zoomed() && !lockMode);
+  }
+
+  /** Zoom by `factor` around the screen point (x, y), between the garden's framing and a 3x3 garden's tile size. */
+  zoomAt(x: number, y: number, factor: number) {
+    if (!this.base || this.show) return;
+    const z0 = this.zoom;
+    const z1 = Math.min(this.maxZoom, Math.max(1, z0 * factor));
+    if (z1 === z0) return;
+    // Zooming scales the picture around the camera's principal point (moved by the pan): keep (x, y) still.
+    const ox = this.width / 2 - this.base.offX;
+    const oy = this.height / 2 - this.base.offY;
+    const k = z1 / z0;
+    this.pan = [x - (x - ox - this.pan[0]) * k - ox, y - (y - oy - this.pan[1]) * k - oy];
+    this.zoom = z1;
+    this.clampPan();
+    this.applyView();
+  }
+
+  /** One finger moving: pans the zoomed view, or turns the garden after a victory. */
+  drag(dx: number, dy: number) {
+    const show = this.show;
+    if (show) {
+      show.dragging = true;
+      const turn = -dx * 0.009;
+      show.az += turn;
+      show.vel = turn / Math.max(1 / 120, show.lastDt);
+      this.applyView();
+      return;
+    }
+    if (!this.zoomed()) return;
+    this.pan = [this.pan[0] + dx, this.pan[1] + dy];
+    this.clampPan();
+    this.applyView();
+  }
+
+  dragEnd() {
+    if (this.show) this.show.dragging = false;
+  }
+
+  /** The view may move until an edge of the garden reaches the edge of the free space. */
+  private clampPan() {
+    const b = this.base!;
+    const z = this.zoom;
+    if (z <= 1.001) {
+      this.pan = [0, 0];
+      return;
+    }
+    const hx = (z - 1) * (b.box.w / 2) + 4;
+    const hy = (z - 1) * (b.box.h / 2) + 4;
+    this.pan = [Math.max(-hx, Math.min(hx, this.pan[0])), Math.max(-hy, Math.min(hy, this.pan[1]))];
+  }
+
+  /** After a victory: the camera lowers and the garden turns in front of it; a finger can turn it too. */
+  startShowcase() {
+    if (!this.board || this.show) return;
+    this.zoom = 1;
+    this.pan = [0, 0];
+    this.show = { t: 0, az: 0, vel: 0, dragging: false, lastDt: 1 / 60 };
+  }
+
+  isBusy(): boolean {
+    return !!this.show || super.isBusy();
+  }
+
+  update(dt: number) {
+    super.update(dt);
+    const show = this.show;
+    if (!show) return;
+    dt = Math.min(dt, 0.05);
+    show.t += dt;
+    show.lastDt = dt;
+    if (!show.dragging) {
+      // A flick keeps turning, then settles back to the slow turn.
+      const auto = SHOW_SPEED * smooth(clamp01(show.t / SHOW_TRANSITION));
+      show.vel += (auto - show.vel) * Math.min(1, dt * 1.6);
+      show.az += show.vel * dt;
+    }
+    this.applyView();
   }
 
   boardBounds() {
@@ -372,8 +543,7 @@ export class Garden3D extends GardenRenderer {
     this.tiles = [];
     this.ghosts = [];
     this.strips = [];
-    this.bridges = [];
-    this.bridgeKit = null;
+    this.bridges = null;
   }
 
   private build() {
@@ -725,13 +895,18 @@ export class Garden3D extends GardenRenderer {
     }
   }
 
-  /** Little stone channels carrying the water from one tile to the next. */
+  /**
+   * Little stone channels carrying the water from one tile to the next, all
+   * drawn at once: one instanced mesh for their floors, one for their walls,
+   * and one for their water (plus one for water caught in a loop).
+   */
   private buildBridgeKit() {
-    // Their water runs straight along x, always full.
+    // Their water comes in at local x = 0 and runs on along +x.
     const channel = (loop: number) => {
       const u = tileUniforms();
       u.uFill.value = 1;
       u.uLoop.value = loop;
+      u.uIn.value.set(-1, 0, 1);
       u.uMask.value = 3;
       u.uDirs.value[0].set(1, 0);
       u.uDirs.value[1].set(-1, 0);
@@ -741,36 +916,24 @@ export class Garden3D extends GardenRenderer {
     const floor = this.keep(new THREE.BoxGeometry(len, 0.12, M.groove + 0.02).translate(len / 2, -0.06, 0));
     const wall = this.keep(new THREE.BoxGeometry(len, M.turf + 0.1, 0.05).translate(len / 2, (M.turf - 0.1) / 2, 0));
     const water = this.keep(new THREE.PlaneGeometry(len, M.groove).rotateX(-Math.PI / 2).translate(len / 2, M.waterY, 0));
-    this.bridgeKit = {
-      floor,
-      wall,
-      water,
-      stone: this.keep(solid(mixColor(P.rim, P.rimShade, 0.25), { roughness: 0.8 })),
-      groove: this.keep(solid(P.groove, { roughness: 0.95 })),
-      wet: this.keep(waterMaterial(channel(0))),
-      loop: this.keep(waterMaterial(channel(1))),
+    // Every side of every tile at most, twice on joined edges.
+    const cap = this.board!.grid.cells.length * this.sides;
+    const mesh = (geo: THREE.BufferGeometry, mat: THREE.Material, count: number, shadow: boolean) => {
+      const m = new THREE.InstancedMesh(geo, mat, count);
+      m.count = 0;
+      m.castShadow = shadow;
+      m.receiveShadow = shadow;
+      m.frustumCulled = false;
+      this.keep(m);
+      this.world.add(m);
+      return m;
     };
-  }
-
-  private bridge(k: number): Bridge {
-    while (this.bridges.length <= k) {
-      const kit = this.bridgeKit!;
-      const group = new THREE.Group();
-      const floor = new THREE.Mesh(kit.floor, kit.groove);
-      const a = new THREE.Mesh(kit.wall, kit.stone);
-      const b = new THREE.Mesh(kit.wall, kit.stone);
-      a.position.z = M.groove / 2 + 0.025;
-      b.position.z = -M.groove / 2 - 0.025;
-      for (const mesh of [floor, a, b]) {
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-      }
-      const water = new THREE.Mesh(kit.water, kit.wet);
-      group.add(floor, a, b, water);
-      this.world.add(group);
-      this.bridges.push({ group, water });
-    }
-    return this.bridges[k];
+    this.bridges = {
+      floors: mesh(floor, this.keep(solid(P.groove, { roughness: 0.95 })), cap, true),
+      walls: mesh(wall, this.keep(solid(mixColor(P.rim, P.rimShade, 0.25), { roughness: 0.8 })), cap * 2, true),
+      water: mesh(water, this.keep(waterMaterial(channel(0))), cap, false),
+      loop: mesh(water, this.keep(waterMaterial(channel(1))), cap, false),
+    };
   }
 
   // ---------------------------------------------------------------- frame
@@ -847,40 +1010,68 @@ export class Garden3D extends GardenRenderer {
 
   private syncBridges() {
     const an = this.analysis;
+    const kit = this.bridges;
+    if (!kit) return;
     const board = this.board!;
     const g = board.grid;
-    let used = 0;
-    const place = (i: number, d: number, wet: boolean, loop: boolean) => {
-      const b = this.bridge(used++);
-      const [ux, uy] = dirVecs(this.sides)[d];
-      const home = this.tiles[i]!.home;
-      b.group.visible = true;
-      b.group.position.set(home.x + ux * (M.half - 0.03), 0, home.z + uy * (M.half - 0.03));
-      b.group.rotation.y = -Math.atan2(uy, ux);
-      b.water.visible = wet;
-      b.water.material = loop ? this.bridgeKit!.loop : this.bridgeKit!.wet;
+    const vecs = dirVecs(this.sides);
+    const len = M.gap + 0.06;
+    const m = new THREE.Matrix4();
+    const side = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const Y = new THREE.Vector3(0, 1, 0);
+    const one = new THREE.Vector3(1, 1, 1);
+    const at = new THREE.Vector3();
+    let [floors, water, loops] = [0, 0, 0];
+    /** The channel leaving tile a through side d; `back` turns it round, so its water runs toward a. */
+    const place = (a: number, d: number, wet: boolean, loop: boolean, back: boolean) => {
+      const [ux, uy] = vecs[d];
+      const home = this.tiles[a]!.home;
+      const from = back ? M.half - 0.03 + len : M.half - 0.03;
+      at.set(home.x + ux * from, 0, home.z + uy * from);
+      q.setFromAxisAngle(Y, -Math.atan2(uy, ux) + (back ? Math.PI : 0));
+      m.compose(at, q, one);
+      kit.floors.setMatrixAt(floors, m);
+      for (const k of [0, 1]) {
+        side.makeTranslation(0, 0, (k ? 1 : -1) * (M.groove / 2 + 0.025));
+        kit.walls.setMatrixAt(floors * 2 + k, side.premultiply(m));
+      }
+      floors++;
+      if (wet && loop) kit.loop.setMatrixAt(loops++, m);
+      else if (wet) kit.water.setMatrixAt(water++, m);
     };
     if (an) {
       const half = this.sides / 2;
+      const resting = (v: (typeof this.vis)[number]) => Math.abs(this.cellScale(v) - 1) < 0.01 && v.shake <= 0 && v.press < 0.02;
       for (const i of g.cells) {
         const vi = this.vis[i];
         for (let d = 1; d <= half; d++) {
           if (!(an.linked[i] & (1 << d))) continue;
           const j = g.neighbor(i, d);
           const vj = this.vis[j];
-          const resting = (v: typeof vi) => Math.abs(this.cellScale(v) - 1) < 0.01 && v.shake <= 0 && v.press < 0.02;
           if (!resting(vi) || !resting(vj)) continue;
-          const wet =
-            (an.inflow[j] === g.opposite(d) && vj.water > 0.02) || (an.inflow[i] === d && vi.water > 0.02) || (vi.water >= 1 && vj.water >= 1);
+          const intoJ = an.inflow[j] === g.opposite(d);
+          const intoI = an.inflow[i] === d;
+          const wet = (intoJ && vj.water > 0.02) || (intoI && vi.water > 0.02) || (vi.water >= 1 && vj.water >= 1);
           const loop = (an.loopSides[i] & (1 << d)) !== 0 && Math.max(vi.loop, vj.loop) > 0.4;
-          place(i, d, wet, loop);
-          // Across a joined edge, the channel also leaves the tile on the other side.
+          // The current runs the way the water goes: from i to j, unless j feeds i.
+          const toJ = !intoI;
           const wrapped = g.wrap && Math.abs(g.x(i) - g.x(j)) + Math.abs(g.y(i) - g.y(j)) !== 1;
-          if (wrapped) place(j, opposite(d), wet, loop);
+          if (!wrapped) {
+            place(i, d, wet, loop, !toJ);
+          } else {
+            // Across a joined edge, a channel leaves each tile toward the strip.
+            place(i, d, wet, loop, !toJ);
+            place(j, g.opposite(d), wet, loop, toJ);
+          }
         }
       }
     }
-    for (let k = used; k < this.bridges.length; k++) this.bridges[k].group.visible = false;
+    kit.floors.count = floors;
+    kit.walls.count = floors * 2;
+    kit.water.count = water;
+    kit.loop.count = loops;
+    for (const mesh of [kit.floors, kit.walls, kit.water, kit.loop]) mesh.instanceMatrix.needsUpdate = true;
   }
 
   draw() {

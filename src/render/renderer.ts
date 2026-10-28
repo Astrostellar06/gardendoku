@@ -1052,6 +1052,15 @@ export class GardenRenderer {
     }
   }
 
+  // Zoom, pan and the victory turn around the garden: only the 3D garden has them.
+  canDrag(_lockMode: boolean): boolean {
+    return false;
+  }
+  zoomAt(_x: number, _y: number, _factor: number) {}
+  drag(_dx: number, _dy: number) {}
+  dragEnd() {}
+  startShowcase() {}
+
   /**
    * True while something more than the ambient shimmer is animating; the
    * main loop drops to a lower frame rate otherwise, to spare the battery.

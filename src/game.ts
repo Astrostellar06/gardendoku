@@ -101,7 +101,8 @@ export class Game {
     });
 
     attachInput(canvas, {
-      cellAt: (x, y) => (this.mode === 'home' ? -1 : this.renderer.cellAt(x, y)),
+      // Once the garden is won, a touch only turns it around.
+      cellAt: (x, y) => (this.mode === 'home' || (this.mode === 'play' && this.won) ? -1 : this.renderer.cellAt(x, y)),
       lockMode: () => this.lockMode,
       tap: (cell) => this.onTap(cell),
       paintStart: (cell) => this.paintStart(cell),
@@ -117,6 +118,12 @@ export class Game {
       holdEnd: () => {
         this.renderer.setPressed(-1);
         this.renderer.hold = null;
+      },
+      canDrag: () => this.mode === 'play' && this.renderer.canDrag(this.lockMode),
+      drag: (dx, dy) => this.renderer.drag(dx, dy),
+      dragEnd: () => this.renderer.dragEnd(),
+      zoom: (x, y, factor) => {
+        if (this.mode === 'play' && !this.won) this.renderer.zoomAt(x, y, factor);
       },
     });
 
@@ -223,6 +230,10 @@ export class Game {
       this.celebrated = true;
       this.sound.win();
       this.vibrate(WIN_BUZZ);
+      // The camera lowers and the garden turns, to be admired.
+      this.renderer.after(0.5, () => {
+        if (this.mode === 'play' && this.won) this.renderer.startShowcase();
+      });
       this.renderer.celebrate(() => {
         if (this.mode === 'play' && this.won) {
           this.hud.showWin({

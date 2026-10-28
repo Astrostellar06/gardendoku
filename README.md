@@ -12,9 +12,12 @@ Sur cette branche, le jardin est dessiné en vraie 3D avec three.js (WebGL), sou
 
 - **Parcelles** : chaque parcelle est un bloc de terre surmonté d'une couche de gazon. Le canal est creusé dans le gazon jusqu'au fond de la rigole, et l'eau coule dedans.
 - **Pendant le jeu** : les parcelles se soulèvent en tournant et sautillent à la victoire.
-- **Entre les parcelles** : de petites rigoles de pierre portent l'eau d'une parcelle à l'autre.
+- **Entre les parcelles** : de petites rigoles de pierre portent l'eau d'une parcelle à l'autre, et leur courant va dans le sens de l'eau. Elles sont toutes dessinées d'un coup (maillages instanciés).
 - **Végétation** : l'herbe gagne la parcelle par taches à mesure qu'elle boit. Touffes, fleurs, galets, lotus et pierres de la source sont modélisés.
-- **Détails des styles** : arbres, animaux, lanternes… sont dessinés en 2D, comme dans la version d'origine, et posés dans le jardin comme des découpes de papier. Ceux qui sont plats (coccinelles, nénuphars, passerelles) sont posés à plat.
+- **Détails des styles** : arbres, animaux, lanternes, ponts… sont modélisés en low poly, avec les couleurs de leur dessin 2D. Toutes les petites pièces d'une parcelle (herbe, fleurs, détails) sont fusionnées en un seul maillage : une parcelle entière se dessine en un appel. Un détail sans modèle s'affiche en découpe de papier, à partir de son dessin 2D.
+- **Victoire** : la caméra descend vers une vue plus rasante et le jardin tourne lentement devant elle. Glisser le doigt le fait tourner, avec de l'élan.
+- **Zoom** : pincer à deux doigts (ou la molette sur ordinateur) zoome, jusqu'à la taille des parcelles d'un jardin 3×3. On ne dézoome pas en dessous du cadrage de départ. Une fois zoomé, glisser un doigt déplace la vue.
+- **Zoom et verrou** : glisser après un appui long verrouille toujours les parcelles, puisque le doigt n'a pas bougé pendant l'appui. En mode Verrou, glisser peint les verrous et la vue ne bouge pas, mais le pincement zoome toujours. Un second doigt qui se pose annule le geste en cours, sans basculer de verrou.
 - **Toujours en 2D** : le ciel, les particules, le projecteur du tutoriel et l'anneau d'appui long sont dessinés par-dessus.
 
 La version 2D d'origine est conservée sur la branche `v1`. Sur cette branche, `?rendu=2d` dans l'adresse la réaffiche pour comparer. Elle sert aussi de repli quand WebGL est absent.
@@ -42,7 +45,7 @@ Ajouter `?reset` à l'adresse, par exemple `http://localhost:5173/?reset` : la s
 
 Ajouter `?debloquer` à l'adresse débloque tous les styles et met 99 indices et 99 indices de zone. Le paramètre se combine avec `?niveau=N`.
 
-En mode dev, la console du navigateur expose aussi `__game` : `__game.debugSolve(5)` résout tout sauf 5 parcelles (pratique pour voir la victoire).
+En mode dev, la console du navigateur expose aussi `__game` : `__game.debugSolve(5)` résout tout sauf 5 parcelles (pratique pour voir la victoire). En rendu 3D, `__game.renderer.gallery()` pose un détail du style courant sur chaque parcelle, et le jardin s'affiche arrosé et fleuri. C'est pratique pour passer les modèles en revue ; `gallery(12)` commence au 13e détail.
 
 ## Applications iOS et Android
 
@@ -96,6 +99,8 @@ Ajouter une langue : un fichier `xx.ts` typé comme `en.ts`, puis l'ajouter au t
 | Indice de zone | Bouton **Zone**, puis toucher une parcelle : le carré de 3×3 autour (sur les hexagones : la parcelle et ses 6 voisines) se remet en place et se verrouille |
 | Passer le niveau | Bouton **»** en haut, contre une courte vidéo (pas pendant le défi du jour) |
 | Recommencer | Bouton **Recommencer**, à toucher deux fois |
+| Zoomer / dézoomer (rendu 3D) | Pincer à deux doigts, ou molette ; une fois zoomé, glisser un doigt déplace la vue (pas en mode Verrou) |
+| Tourner le jardin réussi (rendu 3D) | Glisser le doigt de gauche à droite |
 | Aide | Bouton **?** en jeu |
 | Changer de style | Bouton **Styles** sur l'écran d'accueil (dont « Aléatoire ») |
 
@@ -352,8 +357,9 @@ src/
   render3d/        Rendu 3D (three.js), qui reprend les animations de render/
     models.ts      Géométrie : parcelles, canaux creusés (découpe de polygones), socle, petites pièces (herbe, fleurs, galets)
     materials.ts   Gazon qui verdit par taches, eau qui avance et scintille, pousse des plantes (shaders)
-    sprites.ts     Détails des styles en découpes de papier, badge du cadenas
-    garden3d.ts    Scène, caméra, ombres, copies des bords reliés, passerelles, saisie au doigt
+    sprites.ts     Détails sans modèle en découpes de papier, badge du cadenas
+    props/         Modèles low poly des détails de chaque style (kit.ts : boîtes, boules, cylindres, cônes…)
+    garden3d.ts    Scène, caméra, zoom, tour de victoire, ombres, copies des bords reliés, passerelles, saisie au doigt
   audio/sound.ts   Sons synthétisés en WebAudio (aucun fichier audio)
   ui/              HUD (DOM), saisie tactile, sauvegarde localStorage, partage
     league.ts      Cartes de la ligue, des amis, du profil et de fin de semaine
