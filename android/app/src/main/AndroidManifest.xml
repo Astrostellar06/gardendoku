@@ -48,4 +48,6 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- In-app purchases (Google Play Billing, through RevenueCat). -->
+    <uses-permission android:name="com.android.vending.BILLING" />
 </manifest>

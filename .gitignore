@@ -3,3 +3,9 @@ dist
 *.log
 .env
 .env.local
+# Android release signing: the upload key and its passwords stay out of git.
+android/keystore.properties
+*.jks
+*.keystore
+# Firebase config of the Android app: local only (public repository).
+android/app/google-services.json
