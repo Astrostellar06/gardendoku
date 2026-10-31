@@ -2,6 +2,7 @@
 import type { BoardSnapshot } from '../core/board';
 import type { DailyResult } from '../daily';
 import type { Lang } from '../i18n';
+import { newAdState, type AdState } from '../monetize/adPolicy';
 import type { Streak } from '../streak';
 
 const KEY = 'jardin-des-sources:v1';
@@ -13,6 +14,8 @@ export interface Settings {
   theme: string;
   /** Language picked in the settings; missing: follow the device. */
   lang?: Lang;
+  /** Anonymous game statistics (analytics) allowed. */
+  analytics: boolean;
 }
 
 /** Numbers behind the style challenges. */
@@ -75,6 +78,10 @@ export interface SaveData {
   daily: DailyState | null;
   /** Days in a row with at least one garden finished. */
   streak: Streak;
+  /** Ads seen, purchases ("no ads"), for the ad rules. */
+  ads: AdState;
+  /** Locked styles tried after a video: style id → end of the trial (ms since 1970). */
+  trials: Record<string, number>;
 }
 
 /** Hints a new player starts with. */
@@ -85,7 +92,7 @@ const DEFAULTS: SaveData = {
   level: 1,
   maxLevel: 1,
   snapshot: null,
-  settings: { sound: true, haptics: true, theme: 'aleatoire' },
+  settings: { sound: true, haptics: true, theme: 'aleatoire', analytics: true },
   solved: 0,
   seenTutorial: false,
   seenLockTip: false,
@@ -110,6 +117,8 @@ const DEFAULTS: SaveData = {
   },
   daily: null,
   streak: { last: '', count: 0, best: 0 },
+  ads: newAdState(''),
+  trials: {},
 };
 
 /** A brand new save (first launch). */
@@ -128,6 +137,8 @@ export function loadSave(): SaveData {
       settings: { ...DEFAULTS.settings, ...(data.settings ?? {}) },
       stats: { ...structuredClone(DEFAULTS.stats), ...(data.stats ?? {}) },
       streak: { ...DEFAULTS.streak, ...(data.streak ?? {}) },
+      ads: { ...DEFAULTS.ads, ...(data.ads ?? {}) },
+      trials: { ...(data.trials ?? {}) },
     };
   } catch {
     return structuredClone(DEFAULTS);
