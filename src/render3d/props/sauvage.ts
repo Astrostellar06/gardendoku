@@ -68,9 +68,12 @@ export const sauvage: ModelMap = {
     k.at([0, 1.0, 0], v * 6.28, 1, () => {
       k.stick(body, [-0.85, 0, 0], [0.3, 0, 0], 0.09);
       k.ball(v > 0.5 ? '#2E8FD8' : '#7353C8', [0.36, 0, 0], [0.13, 0.12, 0.13], { sides: 0 });
+      // Wings beating, each pair mirroring the other.
       for (const s of [-1, 1]) {
-        k.ball(wing, [0.12, 0.04, s * 0.42], [0.12, 0.02, 0.42], { rot: [0, s * 0.25, 0], sides: 0 });
-        k.ball(wing, [-0.12, 0.04, s * 0.38], [0.1, 0.02, 0.36], { rot: [0, -s * 0.2, 0], sides: 0 });
+        k.swing([0, 0.04, 0], [s, 0, 0], 0.45, 7, () => {
+          k.ball(wing, [0.12, 0.04, s * 0.42], [0.12, 0.02, 0.42], { rot: [0, s * 0.25, 0], sides: 0 });
+          k.ball(wing, [-0.12, 0.04, s * 0.38], [0.1, 0.02, 0.36], { rot: [0, -s * 0.2, 0], sides: 0 });
+        });
       }
     });
   },

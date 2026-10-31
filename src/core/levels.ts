@@ -33,7 +33,7 @@ export interface LevelInfo {
  * Bump whenever generation changes: saved games from another version are not
  * restored (they would land on a different garden).
  */
-export const GENERATOR_VERSION = 7;
+export const GENERATOR_VERSION = 8;
 
 /** From these levels on, gardens require hypothesis reasoning on part of the tiles. */
 export const ADVANCED_FROM = 21;
@@ -63,11 +63,11 @@ function hardOrdinal(index: number): number {
 }
 
 /**
- * Chance for a normal level to be drawn hexagonal. A bit above 1/5 so that,
- * once a level right after a hexagonal one is skipped, one normal level in
- * five ends up hexagonal.
+ * Chance for a normal level to be drawn hexagonal. Above 1/4 so that, once a
+ * level right after a hexagonal one is skipped, one normal level in four ends
+ * up hexagonal.
  */
-export const HEX_CHANCE = 0.24;
+export const HEX_CHANCE = 0.31;
 
 /** hexFlags[n]: level n is hexagonal; hexBefore[n]: hexagonal levels before it. Filled in order, on demand. */
 const hexFlags: boolean[] = [false];

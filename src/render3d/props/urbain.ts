@@ -100,13 +100,16 @@ export const urbain: ModelMap = {
     // Water and a frozen splash once it flows.
     k.bloom(0.4, () => {
       k.cyl('#7FD0F2', [0, 0.3, 0], 0.79, 0.04, { sides: 10 });
-      k.ball('#BDE9FF', [0, 1.25, 0], [0.06, 0.25, 0.06], { sides: 0 });
-      for (let n = 0; n < 4; n++) {
-        const a = n * (Math.PI / 2) + 0.4;
-        for (const d of [0.25, 0.48]) {
-          k.ball('#BDE9FF', [Math.cos(a) * d, d === 0.25 ? 1.2 : 0.8, Math.sin(a) * d], [0.05, 0.05, 0.05], { sides: 0 });
+      // The jet bubbles up and its splash circles round.
+      k.hover(0.08, () => k.ball('#BDE9FF', [0, 1.25, 0], [0.06, 0.25, 0.06], { sides: 0 }));
+      k.spin([0, 0, 0], [0, 1, 0], -1.5, () => {
+        for (let n = 0; n < 4; n++) {
+          const a = n * (Math.PI / 2) + 0.4;
+          for (const d of [0.25, 0.48]) {
+            k.ball('#BDE9FF', [Math.cos(a) * d, d === 0.25 ? 1.2 : 0.8, Math.sin(a) * d], [0.05, 0.05, 0.05], { sides: 0 });
+          }
         }
-      }
+      });
     });
   },
   'stone-bridge': bridge3d({ deck: '#EDE6DA', deckShade: '#CFC5B5', side: '#BFB4A2', rail: '#F7F2EA', cap: '#D9CFBF', hump: 0.07 }),

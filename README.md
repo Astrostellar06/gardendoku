@@ -4,7 +4,13 @@ Jeu de puzzle mobile zen inspiré de *Pipe Puzzle / Net* : on fait pivoter les p
 
 Dépôt : [github.com/Astrostellar06/gardendoku](https://github.com/Astrostellar06/gardendoku)
 
-Sur l'accueil, le « G » du titre est un petit jardin de 9 parcelles : à chaque retour sur l'accueil, une parcelle pivote, puis l'eau part de la source au centre, parcourt toute la lettre et fait éclore un lotus au bout. Ses couleurs suivent le style choisi.
+Sur l'accueil, le titre est écrit avec un canal : le mot, légèrement arqué, est creusé dans une bande de jardin. L'eau parcourt les lettres de gauche à droite, l'herbe recouvre la terre derrière elle et des fleurs s'ouvrent (`src/ui/titleArt.ts`). Ses couleurs suivent le style choisi.
+
+Plusieurs mises en page sont à l'essai : toucher le titre passe à la suivante, et le choix est gardé.
+1. Titre-canal, sous-titre et jardin d'exemple.
+2. Sans le sous-titre.
+3. Le titre seul, plus grand, sans jardin.
+4. L'ancien titre : un « G » fait de 9 parcelles, où une parcelle pivote puis l'eau fait éclore un lotus.
 
 ## Rendu 3D (branche `style-3d`)
 
@@ -17,8 +23,8 @@ Sur cette branche, le jardin est dessiné en vraie 3D avec three.js (WebGL), sou
 - **Détails des styles** : arbres, animaux, lanternes, ponts… sont modélisés en low poly, avec les couleurs de leur dessin 2D. Toutes les petites pièces d'une parcelle (herbe, fleurs, détails) sont fusionnées en un seul maillage : une parcelle entière se dessine en un appel. Un détail sans modèle s'affiche en découpe de papier, à partir de son dessin 2D.
 - **Victoire** : la caméra descend vers une vue plus rasante et le jardin tourne lentement devant elle, au-dessus de la carte de victoire. « Admirer le jardin » le ramène en douceur au centre de l'écran. Glisser le doigt le fait tourner, avec de l'élan. Le cadrage est serré : quand le jardin est en diagonale, ses coins peuvent dépasser un peu.
 - **Zoom à la victoire** : on peut aussi zoomer, et déplacer la vue à deux doigts. Tant que le jardin est zoomé, il ne tourne plus tout seul.
-- **Animations** : les ailes des moulins tournent. Ce qui bougeait en 2D flotte doucement : canards et bateaux sur l'eau, abeilles, libellules et ballons dans les airs.
-- **Menu des styles** : chaque aperçu est un petit jardin 3D dans le style. Les aperçus se dessinent un à un, sans retarder l'ouverture du menu, puis restent en mémoire.
+- **Animations** : les ailes des moulins tournent, les jets des fontaines et du geyser bouillonnent et leurs gouttes tournoient. Les ailes des abeilles et des libellules battent, les ballons se balancent, le feu de camp vacille et les arbres ondulent. Canards, cygnes, poissons et bateaux flottent et virent un peu sur l'eau. Tout est calculé par la carte graphique (kit.ts : `spin`, `swing`, `hover`), sans appel de dessin en plus.
+- **Menu des styles** : chaque aperçu est l'image d'un petit jardin 3D dans le style (`public/previews/`). Le menu s'ouvre ainsi sans rien calculer. Si les modèles changent, il faut refaire les images : dans la console du jeu en dev, `__game.savePreviews()` les dessine et les enregistre dans le projet. Sans image, l'aperçu est calculé en direct.
 - **Zoom** : pincer à deux doigts (ou la molette sur ordinateur) zoome, jusqu'à la taille des parcelles d'un jardin 3×3. On ne dézoome pas en dessous du cadrage de départ. Une fois zoomé, glisser un doigt déplace la vue.
 - **Zoom et verrou** : glisser après un appui long verrouille toujours les parcelles, puisque le doigt n'a pas bougé pendant l'appui. En mode Verrou, glisser peint les verrous et la vue ne bouge pas, mais le pincement zoome toujours. Un second doigt qui se pose annule le geste en cours, sans basculer de verrou.
 - **Toujours en 2D** : le ciel, les particules, le projecteur du tutoriel et l'anneau d'appui long sont dessinés par-dessus.
@@ -58,6 +64,7 @@ Le jeu est empaqueté avec [Capacitor](https://capacitorjs.com) : le build Vite 
 npm run sync      # build web + copie dans les projets natifs (à refaire après chaque changement)
 npm run android   # sync, puis ouvre le projet dans Android Studio (bouton Run pour un téléphone ou l'émulateur)
 npm run ios       # sync, puis ouvre le projet dans Xcode (Mac uniquement)
+node scripts/make-icon.mjs   # redessine l'icône (arrosoir sur un jardin) dans assets/ et public/icon.svg
 npm run icons     # régénère icônes et écrans de lancement à partir de assets/*.png
 ```
 
@@ -83,8 +90,8 @@ Les icônes viennent de `public/icon.svg`, déclinée dans `assets/` : icône pl
 
 Le bouton engrenage (accueil, et en haut à droite en jeu) ouvre les **paramètres** : sons, vibrations et langue.
 
-Le jeu existe en **français**, **anglais**, **espagnol**, **allemand**, **néerlandais**, **italien** et **portugais** (`src/i18n/`) :
-- `fr.ts` est la référence, les autres (`en.ts`, `es.ts`, `de.ts`, `nl.ts`, `it.ts`, `pt.ts`) doivent avoir exactement les mêmes clés, les mêmes `{variables}` et les mêmes balises (le typage et `tests/i18n.test.ts` le vérifient) ;
+Le jeu existe en **français**, **anglais**, **espagnol**, **allemand**, **néerlandais**, **italien**, **portugais**, **japonais** et **chinois simplifié** (`src/i18n/`) :
+- `fr.ts` est la référence, les autres (`en.ts`, `es.ts`, `de.ts`, `nl.ts`, `it.ts`, `pt.ts`, `ja.ts`, `zh.ts`) doivent avoir exactement les mêmes clés, les mêmes `{variables}` et les mêmes balises (le typage et `tests/i18n.test.ts` le vérifient) ;
 - dans `index.html`, les textes portent `data-i18n` (ou `data-i18n-attr` pour les étiquettes et textes indicatifs), dans le code ils passent par `t()` / `tn()` (pluriels) ;
 - sans choix enregistré, la langue suit celle du téléphone (anglais si le jeu ne la parle pas). En changer recharge la page, la partie en cours est reprise ;
 - `src/core` reste sans texte : les noms de formes et de styles sont traduits à l'affichage.
@@ -163,9 +170,9 @@ Pour que ça reste lisible :
 
 ## Jardins hexagonaux
 
-Environ un niveau normal sur cinq a des **parcelles hexagonales** : six côtés, donc six voisines possibles, et chaque toucher tourne la parcelle d'un sixième de tour. La règle ne change pas.
+Environ un niveau normal sur quatre a des **parcelles hexagonales** : six côtés, donc six voisines possibles, et chaque toucher tourne la parcelle d'un sixième de tour. La règle ne change pas.
 
-- Les neuf premiers niveaux sont fixés : deux jardins hexagonaux seulement, au niveau 4 (un petit de 12 parcelles) et au niveau 8. Ensuite, chaque niveau normal est tiré au sort, sauf s'il suit un niveau hexagonal (jamais deux à la suite) ou s'il a une forme imposée. Les niveaux difficiles ne sont jamais hexagonaux. La chance du tirage (24 %, `HEX_CHANCE` dans `levels.ts`) est un peu au-dessus de 1/5 pour compenser les niveaux écartés : au final, un niveau normal sur cinq est hexagonal. Les premiers tombent aux niveaux 4, 8, 16, 19, 25, 34, 37, 39, 49…
+- Les neuf premiers niveaux sont fixés : deux jardins hexagonaux seulement, au niveau 4 (un petit de 12 parcelles) et au niveau 8. Ensuite, chaque niveau normal est tiré au sort, sauf s'il suit un niveau hexagonal (jamais deux à la suite) ou s'il a une forme imposée. Les niveaux difficiles ne sont jamais hexagonaux. La chance du tirage (31 %, `HEX_CHANCE` dans `levels.ts`) est au-dessus de 1/4 pour compenser les niveaux écartés : au final, un niveau normal sur quatre est hexagonal. Les premiers tombent aux niveaux 4, 8, 16, 18, 21, 25, 33, 35, 37, 39, 49…
 - Les hexagones ont le sommet plat et sont rangés en colonnes, les colonnes impaires décalées d'une demi-parcelle vers le bas. Les côtés se numérotent N, NE, SE, S, SO, NO (bits 1 à 32 du masque).
 - D'un jardin hexagonal au suivant, les formes s'enchaînent dans un ordre fixe, sans jamais deux fois la même à la suite, et de plus en plus grandes : rayon de miel de 12 parcelles (le 1er, niveau 4), alvéole de 19 (niveau 8), rayon de miel de 25, couronne de 30, rayon de miel de 35, alvéole de 37, rayon de miel de 42, couronne de 54, rayon de miel de 49, alvéole de 61, rayon de miel de 56 (le 11e), puis un cycle des plus grandes.
 - Ils n'ont jamais de bords reliés. Ils demandent des hypothèses plus tard que les autres (à partir du niveau 43) et moins souvent : leurs six voisines suffisent déjà à les rendre exigeants.
@@ -232,7 +239,7 @@ Le bouton **Défi du jour** de l'accueil ouvre un jardin commun à tous les joue
 Un jour compte dans la série dès qu'un jardin fleurit : un niveau ou le défi du jour (`src/streak.ts`). Ouvrir le jeu ne suffit pas : il faut finir un jardin, et un jour sans jardin fleuri remet la série à zéro.
 
 - L'icône est un **arrosoir** (la goutte sert déjà aux indices). Sur l'accueil, un badge en haut à droite montre la série : il est pâle et sans gouttes tant que le jardin du jour n'a pas fleuri, et le toucher ouvre le détail.
-- La série avance par semaines de 7 cases, avec un cadeau le **3ᵉ jour** (1 indice) et le **7ᵉ jour** (3 indices et 1 indice de zone), puis on recommence (jours 10, 14…). Les récompenses se règlent dans `WEEK_REWARDS`.
+- La série avance par semaines de 7 cases, avec un cadeau le **3ᵉ jour** (1 indice) et le **7ᵉ jour** (3 indices et 1 indice de zone), puis on recommence (jours 10, 14…). Les récompenses se règlent dans `WEEK_REWARDS`. Toucher un cadeau affiche une bulle avec son contenu.
 - Le premier jardin du jour affiche la semaine sur la carte de victoire, avec la récompense gagnée ou le nombre de jours avant la prochaine.
 - La carte de la série affiche toujours la **meilleure série** atteinte (`streak.best` dans la sauvegarde).
 - Deux styles se débloquent avec la série : **Montagne** à 7 jours, **Verger** à 14 jours (meilleure série).
@@ -300,7 +307,7 @@ Sans `.env`, la ligue reste cachée.
 
 Les tests (`tests/online.test.ts`) passent les migrations sur un vrai Postgres embarqué (PGlite), avec une imitation de Supabase Auth. Ils couvrent les ligues de 20, le barème, les cadeaux distribués une seule fois, les amis, le filtre de pseudos et l'accès fermé aux tables.
 
-Si la génération des niveaux change, il faut régénérer les points : `npm run level-points` écrit `supabase/migrations/20261028000100_level_points.sql` (pour un nouveau changement, renommer d'abord `OUT` dans le script avec une nouvelle date : les migrations déjà passées ne sont pas rejouées) (5 000 niveaux ; au-delà, le serveur compte 4 pour les bords reliés et 1 sinon). Il faut ensuite appliquer cette migration sur le serveur. Un test vérifie que la table correspond au jeu.
+Si la génération des niveaux change, il faut régénérer les points : `npm run level-points` écrit `supabase/migrations/20261031000000_level_points.sql` (pour un nouveau changement, renommer d'abord `OUT` dans le script avec une nouvelle date : les migrations déjà passées ne sont pas rejouées) (5 000 niveaux ; au-delà, le serveur compte 4 pour les bords reliés et 1 sinon). Il faut ensuite appliquer cette migration sur le serveur. Un test vérifie que la table correspond au jeu.
 
 ## Styles de jardin
 

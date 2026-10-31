@@ -142,7 +142,12 @@ attribute vec3 aAnchor;
 attribute vec2 aGrow;
 attribute vec4 aMove0;
 attribute vec4 aMove1;
+attribute vec2 aMove2;
 uniform float uBloom, uWater, uTime;
+/** Angle of a moving part: turning steadily, or swinging to and fro. */
+float g3Angle() {
+  return uTime * aMove0.w + aMove2.x * sin(uTime * aMove2.y + aMove0.x * 13.0 + aMove0.z * 7.0);
+}
 /** Turn v about the unit axis k by angle a (Rodrigues). */
 vec3 g3Turn(vec3 v, vec3 k, float a) {
   float c = cos(a);
@@ -159,7 +164,7 @@ float g3Back(float t) {
 const GROW_VERTEX = /* glsl */ `
 vec3 transformed = vec3(position);
 // Moving parts: windmill sails turn, swimmers and flyers bob.
-if (aMove0.w != 0.0) transformed = aMove0.xyz + g3Turn(transformed - aMove0.xyz, aMove1.xyz, uTime * aMove0.w);
+if (aMove0.w != 0.0 || aMove2.x != 0.0) transformed = aMove0.xyz + g3Turn(transformed - aMove0.xyz, aMove1.xyz, g3Angle());
 if (aMove1.w != 0.0) transformed.y += aMove1.w * sin(uTime * 2.3 + aMove0.x * 17.0 + aMove0.z * 11.0);
 float k = 1.0;
 if (aGrow.y < 0.5 || aGrow.y > 2.5) k = g3Back(clamp((uBloom - aGrow.x) / 0.35, 0.0, 1.0));
@@ -173,7 +178,7 @@ function growPatch(shader: THREE.WebGLProgramParametersWithUniforms, u: TileUnif
   Object.assign(shader.uniforms, { uBloom: u.uBloom, uWater: u.uWater, uTime: PAL.uTime });
   shader.vertexShader = shader.vertexShader
     .replace('#include <common>', `#include <common>\n${GROW}`)
-    .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\nif (aMove0.w != 0.0) objectNormal = g3Turn(objectNormal, aMove1.xyz, uTime * aMove0.w);')
+    .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\nif (aMove0.w != 0.0 || aMove2.x != 0.0) objectNormal = g3Turn(objectNormal, aMove1.xyz, g3Angle());')
     .replace('#include <begin_vertex>', GROW_VERTEX);
 }
 

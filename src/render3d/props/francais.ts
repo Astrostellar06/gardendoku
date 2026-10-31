@@ -71,11 +71,14 @@ export const francais: ModelMap = {
     k.bloom(0.3, () => {
       k.cyl('#7FD0F2', [0, 0.355, 0], 0.78, 0.01, { sides: 12 });
       k.cyl('#9CDCF5', [0, 1.115, 0], 0.4, 0.01, { sides: 10 });
-      k.ball('#BDE9FF', [0, 1.62, 0], [0.05, 0.15, 0.05], { sides: 0 });
-      for (let n = 0; n < 4; n++) {
-        const a = (n / 4) * Math.PI * 2 + 0.4;
-        k.ball('#BDE9FF', [Math.cos(a) * 0.5, 0.85, Math.sin(a) * 0.5], [0.04, 0.09, 0.04], { sides: 0 });
-      }
+      // The jet bubbles up and the drops falling from the upper basin circle round.
+      k.hover(0.06, () => k.ball('#BDE9FF', [0, 1.62, 0], [0.05, 0.15, 0.05], { sides: 0 }));
+      k.spin([0, 0, 0], [0, 1, 0], 1.3, () => {
+        for (let n = 0; n < 6; n++) {
+          const a = (n / 6) * Math.PI * 2 + 0.4;
+          k.ball('#BDE9FF', [Math.cos(a) * 0.5, 0.75 + (n % 2) * 0.14, Math.sin(a) * 0.5], [0.04, 0.09, 0.04], { sides: 0 });
+        }
+      });
     });
   },
   'balustrade-bridge': bridge3d({ deck: '#F4EEE2', deckShade: '#D8CDB8', side: '#CFC2AA', rail: '#FFFFFF', cap: '#E8DFCC', hump: 0.05 }),

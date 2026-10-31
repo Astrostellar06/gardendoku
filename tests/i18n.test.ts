@@ -62,6 +62,15 @@ describe('translations', () => {
     ]);
   });
 
+  it('count and rank in Japanese and Chinese, which have no plural', () => {
+    setLang('ja');
+    expect([tn('count.hint', 1), tn('count.hint', 3)]).toEqual(['ヒント1個', 'ヒント3個']);
+    expect([1, 12].map(ordinal)).toEqual(['1位', '12位']);
+    setLang('zh');
+    expect([tn('count.hint', 1), tn('count.hint', 3)]).toEqual(['1个提示', '3个提示']);
+    expect([1, 12].map(ordinal)).toEqual(['第1名', '第12名']);
+  });
+
   it('writes the shared daily result in English too', () => {
     setLang('en');
     const text = shareText('2026-10-27', { time: 102, moves: 40, hints: 2, zones: 1, rank: 88 }, 3);
@@ -76,7 +85,10 @@ describe('translations', () => {
     expect(detectLang(undefined, 'fr-CA')).toBe('fr');
     expect(detectLang(undefined, 'de-DE')).toBe('de');
     expect(detectLang(undefined, 'pt-BR')).toBe('pt');
-    expect(detectLang(undefined, 'ja-JP')).toBe('en');
+    expect(detectLang(undefined, 'ja-JP')).toBe('ja');
+    expect(detectLang(undefined, 'zh-CN')).toBe('zh');
+    expect(detectLang(undefined, 'zh-TW')).toBe('zh');
+    expect(detectLang(undefined, 'ko-KR')).toBe('en');
     expect(detectLang('xx', 'en-US')).toBe('en');
   });
 });

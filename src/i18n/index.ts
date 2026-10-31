@@ -1,5 +1,6 @@
 /**
- * Translations: French, English, Spanish, German, Dutch, Italian, Portuguese. French is the source language and the
+ * Translations: French, English, Spanish, German, Dutch, Italian, Portuguese,
+ * Japanese, Simplified Chinese. French is the source language and the
  * default until `setLang` is called (main.ts does it before anything is built),
  * which also keeps the tests in French.
  *
@@ -13,17 +14,19 @@ import { en } from './en';
 import { es } from './es';
 import { fr } from './fr';
 import { it } from './it';
+import { ja } from './ja';
 import { nl } from './nl';
 import { pt } from './pt';
+import { zh } from './zh';
 
-export type Lang = 'fr' | 'en' | 'es' | 'de' | 'nl' | 'it' | 'pt';
+export type Lang = 'fr' | 'en' | 'es' | 'de' | 'nl' | 'it' | 'pt' | 'ja' | 'zh';
 export type Key = keyof typeof fr;
 /** Keys with plural forms, without their `_one` / `_other` suffix. */
 export type PluralKey = { [K in Key]: K extends `${infer Base}_one` ? Base : never }[Key];
 type Vars = Record<string, string | number>;
 
-export const LANGS: Lang[] = ['fr', 'en', 'es', 'de', 'nl', 'it', 'pt'];
-export const DICTS: Record<Lang, Record<Key, string>> = { fr, en, es, de, nl, it, pt };
+export const LANGS: Lang[] = ['fr', 'en', 'es', 'de', 'nl', 'it', 'pt', 'ja', 'zh'];
+export const DICTS: Record<Lang, Record<Key, string>> = { fr, en, es, de, nl, it, pt, ja, zh };
 
 let current: Lang = 'fr';
 let plurals = new Intl.PluralRules('fr');
@@ -80,12 +83,14 @@ export function formatDate(date: Date, opts: Intl.DateTimeFormatOptions): string
   return new Intl.DateTimeFormat(locale(), opts).format(date);
 }
 
-/** "1er", "2e" / "1st", "2nd", "3rd", "11th", "22nd" / "1.º", "1.", "1e"... */
+/** "1er", "2e" / "1st", "2nd", "3rd", "11th", "22nd" / "1.º", "1.", "1e" / "1位", "第1名"... */
 export function ordinal(rank: number): string {
   if (current === 'fr') return rank === 1 ? '1er' : `${rank}e`;
   if (current === 'es' || current === 'it' || current === 'pt') return `${rank}º`;
   if (current === 'de') return `${rank}.`;
   if (current === 'nl') return `${rank}e`;
+  if (current === 'ja') return `${rank}位`;
+  if (current === 'zh') return `第${rank}名`;
   const tens = rank % 100;
   const suffix = tens >= 11 && tens <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[rank % 10] ?? 'th';
   return `${rank}${suffix}`;

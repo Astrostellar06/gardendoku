@@ -35,11 +35,15 @@ export const parcs: ModelMap = {
     k.dome('#E8DCC8', [0, 0, 0], [0.75, 0.15, 0.6]);
     k.cyl('#F4C060', [0, 0.08, 0], 0.45, 0.06, { sides: 8, rz: 0.38 });
     k.cyl('#7FD6F0', [0, 0.1, 0], 0.25, 0.06, { sides: 8, rz: 0.21 });
-    // Caught mid-eruption.
-    k.cyl('#FFFFFF', [0, 0.1, 0], 0.12, 1.6, { top: 0.5 });
-    k.ball('#FFFFFF', [0, 1.75, 0], [0.25, 0.22, 0.25], { sides: 0 });
-    k.ball('#F4FAFF', [0.22, 1.2, 0.1], [0.15, 0.15, 0.15], { sides: 0 });
-    k.ball('#F4FAFF', [-0.2, 0.8, -0.05], [0.18, 0.18, 0.18], { sides: 0 });
+    // Erupting: the jet sways, its crown of steam surges, puffs swirl round it.
+    k.swing([0, 0.1, 0], [0, 0, 1], 0.07, 0.6, () => {
+      k.cyl('#FFFFFF', [0, 0.1, 0], 0.12, 1.6, { top: 0.5 });
+      k.hover(0.18, () => k.ball('#FFFFFF', [0, 1.75, 0], [0.25, 0.22, 0.25], { sides: 0 }));
+    });
+    k.spin([0, 0, 0], [0, 1, 0], 0.9, () => {
+      k.ball('#F4FAFF', [0.22, 1.2, 0.1], [0.15, 0.15, 0.15], { sides: 0 });
+      k.ball('#F4FAFF', [-0.2, 0.8, -0.05], [0.18, 0.18, 0.18], { sides: 0 });
+    });
   },
   'hot-spring'(k, { v }) {
     // Rainbow rings like the Grand Prismatic Spring; the blue deepens with the water.

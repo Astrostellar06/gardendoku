@@ -3,6 +3,8 @@ import { isHardLevel, isHexLevel, LevelInfo } from '../core/levels';
 import { formatTime } from '../core/timing';
 import { type Lang, t, tn } from '../i18n';
 import { RANDOM_STYLE } from '../progress';
+import { rewardText, WEEK_REWARDS } from '../streak';
+import { canalTitle, playTitle } from './titleArt';
 
 export { formatTime };
 
@@ -80,6 +82,7 @@ export class Hud {
   ];
 
   constructor() {
+    this.home.querySelector('.logo')!.appendChild(canalTitle('Gardendoku'));
     for (const overlay of this.closable) {
       overlay.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
@@ -217,11 +220,18 @@ export class Hud {
   showHome(level: number) {
     $('play-level').textContent = t('level.title', { n: level });
     this.home.classList.remove('hidden', 'leaving');
-    // Water the G of the title again.
+    // Water the title again.
     const logo = this.home.querySelector('.logo-g')!;
     logo.classList.remove('play');
     logo.getBoundingClientRect();
     logo.classList.add('play');
+    playTitle(this.home.querySelector('.logo-canal')!);
+  }
+
+  /** Layout of the home screen's title (being tried out): see TITLE_LAYOUTS. */
+  setTitleLayout(layout: string) {
+    this.home.dataset.title = layout;
+    playTitle(this.home.querySelector('.logo-canal')!);
   }
 
   hideHome() {
@@ -280,16 +290,38 @@ export class Hud {
       if (day <= view.filled) slot.classList.add('done');
       if (day === view.next) slot.classList.add('next');
       if (popLast && day === view.filled) slot.classList.add('pop');
-      if (day === 3 || day === 7) {
+      const reward = WEEK_REWARDS[day];
+      if (reward) {
         slot.classList.add('gift');
         if (day === 7) slot.classList.add('big');
         slot.innerHTML =
           '<svg viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="9.5" rx="2" /><path d="M3.5 7h17v3h-17zM12 7v12.5M12 7c-1.6-3.2-5.2-3-4.6-.6.4 1.3 3 .6 4.6.6Zm0 0c1.6-3.2 5.2-3 4.6-.6-.4 1.3-3 .6-4.6.6Z" /></svg>';
+        // Touching a gift tells what it holds.
+        slot.setAttribute('role', 'button');
+        slot.tabIndex = 0;
+        slot.setAttribute('aria-label', rewardText(reward));
+        slot.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.giftTip(slot, rewardText(reward), day >= 6);
+        });
       } else {
         slot.textContent = String(day);
       }
       track.appendChild(slot);
     }
+  }
+
+  /** Little bubble above a gift of the streak, saying what it holds; it fades away by itself. */
+  private giftTip(slot: HTMLElement, text: string, alignRight: boolean) {
+    const open = slot.querySelector('.gift-tip');
+    for (const tip of Array.from(document.querySelectorAll('.gift-tip'))) tip.remove();
+    if (open) return;
+    const tip = document.createElement('span');
+    tip.className = 'gift-tip';
+    if (alignRight) tip.classList.add('right');
+    tip.textContent = text;
+    slot.appendChild(tip);
+    window.setTimeout(() => tip.remove(), 2800);
   }
 
   showWin(w: WinView) {

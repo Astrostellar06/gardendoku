@@ -79,7 +79,7 @@ function hexLevels(count: number): number[] {
 }
 
 describe('hexagonal levels', () => {
-  it('come about once in five normal levels, never two in a row', () => {
+  it('come about once in four normal levels, never two in a row', () => {
     // Set by hand at first: hexagonal at 4 and 8 only.
     expect(Array.from({ length: 9 }, (_, k) => levelInfo(k + 1).hex)).toEqual([false, false, false, true, false, false, false, true, false]);
     let normal = 0;
@@ -94,8 +94,8 @@ describe('hexagonal levels', () => {
       hex++;
       expect(isHexLevel(n - 1), `levels ${n - 1} and ${n}`).toBe(false);
     }
-    expect(hex / normal).toBeGreaterThan(0.17);
-    expect(hex / normal).toBeLessThan(0.23);
+    expect(hex / normal).toBeGreaterThan(0.22);
+    expect(hex / normal).toBeLessThan(0.28);
   });
 
   it('grow one garden after the other, never with the same shape twice in a row', () => {

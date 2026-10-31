@@ -36,8 +36,8 @@ export function vibrate(pattern: number | number[]) {
   });
 }
 
-/** Celebration when a garden is won. */
-export const WIN_BUZZ = [40, 70, 40, 70, 90];
+/** Celebration when a garden is won: quick taps growing into a long final buzz (about 0.8 s). */
+export const WIN_BUZZ = [50, 60, 50, 60, 70, 60, 90, 70, 260];
 
 /** System share sheet in the app; false when the player closed it. */
 export async function nativeShare(text: string): Promise<boolean> {

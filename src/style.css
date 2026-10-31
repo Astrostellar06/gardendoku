@@ -597,6 +597,141 @@ h1 {
   opacity: 0.85;
 }
 
+/*
+ * Title written with a canal (see ui/titleArt.ts), in four layouts to try on
+ * the home screen (a tap on the title switches): canal title with the tagline
+ * and the sample garden, without the tagline, alone (no garden), or the tile G.
+ */
+.logo-canal {
+  display: none;
+  width: min(94vw, 440px);
+  height: auto;
+  margin: -6px auto -10px;
+  overflow: visible;
+  filter: drop-shadow(0 6px 8px rgba(240, 108, 156, 0.22));
+  font-family: inherit;
+  font-weight: 600;
+}
+
+#home[data-title^='canal'] .logo-g,
+#home[data-title^='canal'] .logo-word {
+  display: none;
+}
+
+#home[data-title^='canal'] .logo-canal {
+  display: block;
+}
+
+#home[data-title='canal-plain'] .tagline {
+  display: none;
+}
+
+#home[data-title='canal-solo'] .logo-canal {
+  width: min(100vw, 560px);
+  margin-top: 15vh;
+}
+
+#home[data-title='canal-solo'] .tagline {
+  margin-top: 4px;
+  font-size: 18px;
+}
+
+.logo-canal .t-side,
+.logo-canal .t-soil,
+.logo-canal .t-grass {
+  fill: none;
+  stroke-width: 112px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.logo-canal .t-side {
+  stroke: var(--logo-side);
+}
+
+.logo-canal .t-soil {
+  stroke: var(--logo-soil, #f8d7ae);
+}
+
+.logo-canal .t-grass {
+  stroke: var(--logo-grass);
+}
+
+.logo-canal .t-patch {
+  transform: scale(0);
+}
+
+.logo-canal .t-bank {
+  fill: var(--logo-rim);
+  stroke: var(--logo-rim);
+  stroke-width: 16px;
+  stroke-linejoin: round;
+}
+
+.logo-canal .t-groove {
+  fill: var(--logo-groove);
+}
+
+.logo-canal .t-water {
+  fill: var(--logo-water);
+  stroke: var(--logo-water-deep);
+  stroke-width: 3px;
+}
+
+.logo-canal .t-shine {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2px;
+  stroke-linecap: round;
+  stroke-dasharray: 4 70;
+  opacity: 0.6;
+  animation: t-shine 2.4s linear infinite;
+}
+
+.logo-canal .t-sweep {
+  transform-box: fill-box;
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+
+.logo-canal .t-flower {
+  transform: scale(0);
+}
+
+.logo-canal .t-heart {
+  fill: #ffd45a;
+}
+
+.logo-canal.play .t-sweep {
+  animation: t-sweep 2.2s 0.35s cubic-bezier(0.35, 0, 0.65, 1) forwards;
+}
+
+.logo-canal.play .t-patch {
+  animation: t-grow 0.8s var(--d) cubic-bezier(0.2, 1.2, 0.4, 1) forwards;
+}
+
+.logo-canal.play .t-flower {
+  animation: t-grow 0.5s var(--d) cubic-bezier(0.2, 1.8, 0.4, 1) forwards;
+}
+
+@keyframes t-sweep {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes t-grow {
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes t-shine {
+  to {
+    stroke-dashoffset: -74;
+  }
+}
+
 .home-bottom {
   display: flex;
   flex-direction: column;
@@ -1538,6 +1673,69 @@ h1 {
   color: var(--pink-deep);
   box-shadow: inset 0 0 0 2.5px var(--pink);
   animation: slot-wait 1.6s ease-in-out infinite;
+}
+
+/* What a gift of the streak holds, in a bubble above it once touched. */
+.streak-track .slot.gift {
+  position: relative;
+  cursor: pointer;
+}
+
+.gift-tip {
+  position: absolute;
+  bottom: calc(100% + 9px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  width: max-content;
+  max-width: 170px;
+  padding: 7px 11px;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink, #7a6386);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  box-shadow: 0 4px 14px rgba(120, 70, 110, 0.25);
+  pointer-events: none;
+  animation: gift-tip 2.8s ease both;
+}
+
+.gift-tip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -6px;
+  border: 6px solid transparent;
+  border-top-color: #fff;
+}
+
+.gift-tip.right {
+  left: auto;
+  right: -4px;
+  transform: none;
+}
+
+.gift-tip.right::after {
+  left: auto;
+  right: 13px;
+}
+
+@keyframes gift-tip {
+  0% {
+    opacity: 0;
+    translate: 0 6px;
+  }
+  8%,
+  85% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes slot-wait {

@@ -118,61 +118,67 @@ export function steppingStones3d(stone: string, shade: string): Model {
 
 /** Round, cone-shaped or topiary-ball tree, with fruit once watered. */
 export function tree3d(look: TreeLook): Model {
-  return (k, { v }) => {
-    const c0 = look.foliage[0];
-    const c1 = look.foliage[1] ?? c0;
-    const c2 = look.foliage[2] ?? c0;
-    let base = 0;
-    if (look.pot) {
-      k.cyl(look.pot, [0, 0, 0], 0.4, 0.45, { sides: 8, top: 1.15 });
-      k.cyl(look.pot, [0, 0.42, 0], 0.5, 0.1, { sides: 8 });
-      base = 0.5;
-    }
-    if (look.shape === 'cone') {
-      k.cyl(look.trunk, [0, base, 0], 0.1, 0.25);
-      k.cone([c0, c1], [0, base + 0.2, 0], 0.55, 1.9, { sides: 8 });
-      return;
-    }
-    if (look.shape === 'ball') {
-      k.cyl(look.trunk, [0, base, 0], 0.07, 0.7);
-      k.ball([c0, c1], [0, base + 1.05, 0], [0.55, 0.55, 0.55]);
-    } else {
-      k.cyl(look.trunk, [0, 0, 0], 0.13, 0.9, { top: 0.7 });
-      k.stick(look.trunk, [0, 0.55, 0], [0.3, 0.9, 0.05], 0.1);
-      k.ball([c0, c1], [0, 1.35, 0], [0.62, 0.55, 0.6]);
-      k.ball(c1, [-0.38, 1.05, 0.15], [0.38, 0.34, 0.36]);
-      k.ball(c2, [0.4, 1.1, -0.1], [0.4, 0.36, 0.38]);
-    }
-    if (look.fruit) {
-      const fruit = look.fruit;
-      const cy = base + (look.shape === 'ball' ? 1.05 : 1.3);
-      const rad = look.shape === 'ball' ? 0.55 : 0.6;
-      k.bloom(0.5, () => {
-        for (let n = 0; n < 7; n++) {
-          const a = n * 2.3 + v * 5;
-          const y = cy + Math.sin(n * 1.7) * 0.3;
-          const rr = Math.sqrt(Math.max(0.05, rad * rad - (y - cy) ** 2)) + 0.02;
-          k.ball(fruit, [Math.cos(a) * rr, y, Math.sin(a) * rr], [0.09, 0.09, 0.09], { sides: 0 });
-        }
-      });
-    }
-  };
+  // Trees sway gently in the breeze.
+  return (k, info) => k.swing([0, 0, 0], [1, 0, 0.4], 0.035, 0.32 + info.v * 0.1, () => treeShape(k, info.v, look));
+}
+
+function treeShape(k: Kit, v: number, look: TreeLook) {
+  const c0 = look.foliage[0];
+  const c1 = look.foliage[1] ?? c0;
+  const c2 = look.foliage[2] ?? c0;
+  let base = 0;
+  if (look.pot) {
+    k.cyl(look.pot, [0, 0, 0], 0.4, 0.45, { sides: 8, top: 1.15 });
+    k.cyl(look.pot, [0, 0.42, 0], 0.5, 0.1, { sides: 8 });
+    base = 0.5;
+  }
+  if (look.shape === 'cone') {
+    k.cyl(look.trunk, [0, base, 0], 0.1, 0.25);
+    k.cone([c0, c1], [0, base + 0.2, 0], 0.55, 1.9, { sides: 8 });
+    return;
+  }
+  if (look.shape === 'ball') {
+    k.cyl(look.trunk, [0, base, 0], 0.07, 0.7);
+    k.ball([c0, c1], [0, base + 1.05, 0], [0.55, 0.55, 0.55]);
+  } else {
+    k.cyl(look.trunk, [0, 0, 0], 0.13, 0.9, { top: 0.7 });
+    k.stick(look.trunk, [0, 0.55, 0], [0.3, 0.9, 0.05], 0.1);
+    k.ball([c0, c1], [0, 1.35, 0], [0.62, 0.55, 0.6]);
+    k.ball(c1, [-0.38, 1.05, 0.15], [0.38, 0.34, 0.36]);
+    k.ball(c2, [0.4, 1.1, -0.1], [0.4, 0.36, 0.38]);
+  }
+  if (look.fruit) {
+    const fruit = look.fruit;
+    const cy = base + (look.shape === 'ball' ? 1.05 : 1.3);
+    const rad = look.shape === 'ball' ? 0.55 : 0.6;
+    k.bloom(0.5, () => {
+      for (let n = 0; n < 7; n++) {
+        const a = n * 2.3 + v * 5;
+        const y = cy + Math.sin(n * 1.7) * 0.3;
+        const rr = Math.sqrt(Math.max(0.05, rad * rad - (y - cy) ** 2)) + 0.02;
+        k.ball(fruit, [Math.cos(a) * rr, y, Math.sin(a) * rr], [0.09, 0.09, 0.09], { sides: 0 });
+      }
+    });
+  }
+
 }
 
 /** Pine tree in stacked cones, optionally snowy. */
 export function pine3d(dark: string, light: string, snow = false): Model {
-  return (k) => {
-    k.cyl('#8A6248', [0, 0, 0], 0.1, 0.35);
-    const tiers: Array<[number, number, number]> = [
-      [0.25, 0.7, 1.0],
-      [0.75, 0.55, 0.85],
-      [1.2, 0.4, 0.75],
-    ];
-    for (const [y, r, h] of tiers) {
-      k.cone([dark, light], [0, y, 0], r, h, { sides: 7 });
-      if (snow) k.cone('#FFFFFF', [0, y + h * 0.55, 0], r * 0.48, h * 0.45, { sides: 7 });
-    }
-  };
+  return (k, { v }) => k.swing([0, 0, 0], [1, 0, -0.3], 0.03, 0.3 + v * 0.1, () => pineShape(k, dark, light, snow));
+}
+
+function pineShape(k: Kit, dark: string, light: string, snow: boolean) {
+  k.cyl('#8A6248', [0, 0, 0], 0.1, 0.35);
+  const tiers: Array<[number, number, number]> = [
+    [0.25, 0.7, 1.0],
+    [0.75, 0.55, 0.85],
+    [1.2, 0.4, 0.75],
+  ];
+  for (const [y, r, h] of tiers) {
+    k.cone([dark, light], [0, y, 0], r, h, { sides: 7 });
+    if (snow) k.cone('#FFFFFF', [0, y + h * 0.55, 0], r * 0.48, h * 0.45, { sides: 7 });
+  }
 }
 
 /** Generic four-legged animal (body, head, legs), facing +x: enough for many styles' fauna. */

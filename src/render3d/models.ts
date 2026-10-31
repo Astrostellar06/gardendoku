@@ -287,16 +287,19 @@ export function trayModel(w: number, h: number, r: number): THREE.BufferGeometry
 
 /**
  * How a part moves, in the tile's frame: turning about `axis` through `pivot`
- * at `speed` radians a second (windmill sails), and bobbing up and down by `bob`.
+ * at `speed` radians a second (windmill sails), or swinging to and fro by
+ * `swing` radians `freq` times a second (wings, balloons), and bobbing up and down by `bob`.
  */
 export interface Motion {
   pivot: [number, number, number];
   axis: [number, number, number];
   speed: number;
   bob: number;
+  swing: number;
+  freq: number;
 }
 
-export const STILL: Motion = { pivot: [0, 0, 0], axis: [0, 1, 0], speed: 0, bob: 0 };
+export const STILL: Motion = { pivot: [0, 0, 0], axis: [0, 1, 0], speed: 0, bob: 0, swing: 0, freq: 0 };
 
 /**
  * Collects small parts (blades of grass, petals, pebbles) into a single mesh,
@@ -311,6 +314,7 @@ export class PartsBuilder {
   private grow: number[] = [];
   private move0: number[] = [];
   private move1: number[] = [];
+  private move2: number[] = [];
 
   /**
    * `color` may vary from the bottom (0) to the top (1) of the part.
@@ -345,6 +349,7 @@ export class PartsBuilder {
       this.grow.push(delay, kind);
       this.move0.push(...move.pivot, move.speed);
       this.move1.push(...move.axis, move.bob);
+      this.move2.push(move.swing, move.freq * Math.PI * 2);
     }
     g.dispose();
   }
@@ -362,6 +367,7 @@ export class PartsBuilder {
     g.setAttribute('aGrow', new THREE.Float32BufferAttribute(this.grow, 2));
     g.setAttribute('aMove0', new THREE.Float32BufferAttribute(this.move0, 4));
     g.setAttribute('aMove1', new THREE.Float32BufferAttribute(this.move1, 4));
+    g.setAttribute('aMove2', new THREE.Float32BufferAttribute(this.move2, 2));
     g.computeBoundingSphere();
     return g;
   }

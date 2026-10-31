@@ -12,6 +12,7 @@ import { isUnlocked, RANDOM_STYLE, refreshUnlocks, STYLE_CHALLENGES } from './pr
 import { renderRandomPreview, renderThemePreview } from './render/preview';
 import { GardenRenderer } from './render/renderer';
 import { Garden3D } from './render3d/garden3d';
+import { savePreviews, stylePicture } from './render3d/stylePictures';
 import { currentTheme, setTheme, THEMES } from './render/themes';
 import type { ThemeId } from './render/themes';
 import { showRewardedAd } from './ui/ads';
@@ -26,6 +27,10 @@ import { LevelSnapshot, loadSave, SaveData, writeSave } from './ui/storage';
 import { LAST_HINT_DELAY, TutorialId, TUTORIALS, TutorialStep } from './tutorial';
 
 type Mode = 'home' | 'play' | 'tutorial';
+
+/** Home title layouts being tried out (see Game.nextTitleLayout), and where the choice is kept. */
+const TITLE_LAYOUTS = ['canal', 'canal-plain', 'canal-solo', 'classic'];
+const TITLE_KEY = 'gardendoku:title';
 
 export class Game {
   readonly renderer: GardenRenderer;
@@ -136,6 +141,8 @@ export class Game {
         fn();
       });
     on('btn-play', () => this.play(this.save.level));
+    this.hud.setTitleLayout(this.titleLayout);
+    document.querySelector('#home .logo')!.addEventListener('click', () => this.nextTitleLayout());
     on('btn-daily', () => this.playDaily());
     on('btn-share', () => this.shareDaily());
     on('btn-daily-share', () => this.shareDaily());
@@ -344,8 +351,30 @@ export class Game {
     demo.solveInstantly();
     this.board = demo;
     this.renderer.setBoard(demo, 'accueil');
+    this.renderer.boardHidden = this.titleLayout === 'canal-solo';
     this.analysis = demo.analyze();
     this.renderer.setAnalysis(this.analysis);
+    requestAnimationFrame(() => this.relayout());
+  }
+
+  /**
+   * Home title layouts, being tried out (a tap on the title switches): the
+   * title written with a canal, with the tagline and the sample garden, without
+   * the tagline, alone; or the G made of tiles.
+   */
+  private titleLayout = TITLE_LAYOUTS.includes(localStorage.getItem(TITLE_KEY) ?? '') ? localStorage.getItem(TITLE_KEY)! : TITLE_LAYOUTS[0];
+
+  private nextTitleLayout() {
+    const k = (TITLE_LAYOUTS.indexOf(this.titleLayout) + 1) % TITLE_LAYOUTS.length;
+    this.titleLayout = TITLE_LAYOUTS[k];
+    try {
+      localStorage.setItem(TITLE_KEY, this.titleLayout);
+    } catch {
+      // Private browsing: the choice lasts until the page closes.
+    }
+    this.hud.setTitleLayout(this.titleLayout);
+    this.renderer.boardHidden = this.titleLayout === 'canal-solo';
+    this.hud.toast(`${k + 1} / ${TITLE_LAYOUTS.length}`, false, 1200);
     requestAnimationFrame(() => this.relayout());
   }
 
@@ -875,7 +904,7 @@ export class Game {
       }),
     ];
     // Previews in the garden's own look: 3D tiles, or the flat drawing.
-    const tile = this.renderer instanceof Garden3D ? Garden3D.stylePreview : renderThemePreview;
+    const tile = this.renderer instanceof Garden3D ? stylePicture : renderThemePreview;
     this.hud.openStyles(
       cards,
       this.save.settings.theme,
@@ -917,6 +946,7 @@ export class Game {
     root.setProperty('--logo-side', p.grassSideDark);
     root.setProperty('--logo-rim', p.rim);
     root.setProperty('--logo-groove', p.groove);
+    root.setProperty('--logo-soil', p.soil);
     root.setProperty('--logo-water', p.water);
     root.setProperty('--logo-water-deep', p.waterDeep);
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.palette.bgTop);
@@ -1045,6 +1075,11 @@ export class Game {
   }
 
   /** Dev helper: solve all but `leave` tiles. */
+  /** Development aid: saves the style menu's 3D previews as pictures (see render3d/stylePictures.ts). */
+  savePreviews() {
+    return savePreviews();
+  }
+
   debugSolve(leave = 0) {
     const board = this.board;
     if (!board || this.mode !== 'play') return;

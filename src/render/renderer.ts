@@ -100,6 +100,8 @@ export class GardenRenderer {
   time = 0;
   lockMode = false;
   protected bridgeSprites = new Map<string, HTMLCanvasElement>();
+  /** Draws the sky only (a home screen layout without the sample garden). */
+  boardHidden = false;
   /** Off once the garden is won: the padlocks fade away so it can be admired. */
   showLocks = true;
   hold: { cell: number; start: number; duration: number } | null = null;
@@ -172,6 +174,7 @@ export class GardenRenderer {
     this.decorSeed = decorSeed;
     this.analysis = null;
     this.showLocks = true;
+    this.boardHidden = false;
     this.timers = [];
     this.particles.clearEffects();
     this.sides = board.grid.sides;
@@ -654,7 +657,7 @@ export class GardenRenderer {
     if (this.bg) ctx.drawImage(this.bg, 0, 0, this.width, this.height);
     else ctx.clearRect(0, 0, this.width, this.height);
 
-    const board = this.board;
+    const board = this.boardHidden ? null : this.board;
     if (board) {
       if (this.bed) ctx.drawImage(this.bed, 0, 0, this.width, this.height);
       if (board.grid.wrap) this.drawGhosts();

@@ -970,7 +970,10 @@ export class Garden3D extends GardenRenderer {
       const draw = () => model(kit, { v: p.v, v2: p.v2, canalHalf: M.groove / 2 / unit, waterY: (M.waterY - M.turf) / unit });
       // What moves in the 2D garden bobs here: swimmers on the water, bees and balloons in the air.
       const bob = !def.animated || STANDING.has(def.id) ? 0 : onWater ? 0.12 : 0.35;
-      if (bob) kit.hover(bob, draw);
+      if (bob && onWater) {
+        // Swimmers also turn a little this way and that.
+        kit.swing([0, 0, 0], [0, 1, 0], 0.3, 0.3 + p.v * 0.2, () => kit.hover(bob, draw));
+      } else if (bob) kit.hover(bob, draw);
       else draw();
     }
     return pb.empty ? null : pb.build();
@@ -1217,7 +1220,7 @@ export class Garden3D extends GardenRenderer {
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     if (this.bg) ctx.drawImage(this.bg, 0, 0, this.width, this.height);
     else ctx.clearRect(0, 0, this.width, this.height);
-    if (this.board && this.tiles.length) {
+    if (this.board && this.tiles.length && !this.boardHidden) {
       this.sync();
       this.gl.render(this.scene, this.camera);
       ctx.drawImage(this.gl.domElement, 0, 0, this.width, this.height);

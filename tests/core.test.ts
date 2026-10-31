@@ -94,8 +94,11 @@ describe('board analysis', () => {
 
 describe('advanced levels', () => {
   it('ask for hypothesis reasoning from level 21 on', () => {
-    expect(levelInfo(20).advanced).toBe(0);
-    expect(levelInfo(21).advanced).toBeGreaterThan(0);
+    expect(levelInfo(19).advanced).toBe(0);
+    // The first square garden from 21 on (21 itself may be hexagonal).
+    let first = 21;
+    while (isHardLevel(first) || isHexLevel(first)) first++;
+    expect(levelInfo(first).advanced).toBeGreaterThan(0);
     let needing = 0;
     let total = 0;
     for (let n = 21; n <= 60; n++) {

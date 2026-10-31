@@ -84,7 +84,9 @@ export const amitie: ModelMap = {
   'heart-balloons'(k, { v }) {
     k.box('#9A6A52', [0, 0, 0], [0.18, 0.16, 0.18]);
     const colors = [PINK, LILAC, '#FFC94D'];
-    for (let n = 0; n < 2; n++) {
+    // The balloons sway on their strings, each its own way.
+    for (let n = 0; n < 2; n++) k.swing([0, 0.16, 0], n ? [0.3, 0, 1] : [1, 0, -0.4], 0.12, 0.45 + n * 0.12, () => balloon(n));
+    function balloon(n: number) {
       const x = n ? 0.38 : -0.32;
       const y = n ? 1.85 : 1.55;
       const z = n ? 0.05 : -0.08;

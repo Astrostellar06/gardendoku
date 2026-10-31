@@ -200,12 +200,20 @@ export class Kit {
     this.moving({ ...this.motion, pivot: [p.x, p.y, p.z], axis: [a.x, a.y, a.z], speed }, fn);
   }
 
+  /** Parts that swing to and fro about `axis` through `pivot`, by `amount` radians, `freq` times a second: wings, balloons. */
+  swing(pivot: Vec, axis: Vec, amount: number, freq: number, fn: () => void) {
+    const top = this.stack[this.stack.length - 1];
+    const p = new THREE.Vector3(...pivot).applyMatrix4(top);
+    const a = new THREE.Vector3(...axis).transformDirection(top);
+    this.moving({ ...this.motion, pivot: [p.x, p.y, p.z], axis: [a.x, a.y, a.z], swing: amount, freq }, fn);
+  }
+
   /** Parts that bob up and down by `amount` (prop units): a swimmer, a bee. */
   hover(amount: number, fn: () => void) {
     const top = this.stack[this.stack.length - 1];
     const scale = new THREE.Vector3().setFromMatrixScale(top).y;
     const p = new THREE.Vector3().setFromMatrixPosition(top);
-    const pivot: Vec = this.motion.speed ? this.motion.pivot : [p.x, p.y, p.z];
+    const pivot: Vec = this.motion.speed || this.motion.swing ? this.motion.pivot : [p.x, p.y, p.z];
     this.moving({ ...this.motion, pivot, bob: amount * scale }, fn);
   }
 
