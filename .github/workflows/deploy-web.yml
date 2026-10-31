@@ -1,0 +1,53 @@
+# Web version on GitHub Pages, rebuilt on every push to style-3d.
+# On an iPhone: open the page in Safari, then Share › Add to Home Screen.
+#
+# Setup, once (repository Settings):
+#   - Pages › Build and deployment › Source: GitHub Actions
+#   - Secrets and variables › Actions › New repository secret:
+#       VITE_SUPABASE_URL and VITE_SUPABASE_KEY (the same values as in .env)
+# Without the secrets the game still works, without leagues and friends.
+name: Deploy web
+
+on:
+  push:
+    branches: [style-3d]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_KEY }}
+          # Friend invitation links open this site.
+          VITE_PUBLIC_URL: https://astrostellar06.github.io/gardendoku/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

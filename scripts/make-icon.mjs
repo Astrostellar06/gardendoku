@@ -2,7 +2,7 @@
  * Draws the app icon: a watering can on a garden lawn, in bright colours that
  * stand out on a home screen. Writes the sources used by `npm run icons`
  * (assets/icon-only.png, icon-foreground.png, icon-background.png) and the
- * web icon (public/icon.svg).
+ * web icons (public/icon.svg, apple-touch-icon.png, icon-192.png, icon-512.png).
  *
  *   node scripts/make-icon.mjs && npm run icons
  */
@@ -92,4 +92,9 @@ await png(svg(background + foreground), 'assets/icon-only.png');
 await png(svg(foreground), 'assets/icon-foreground.png');
 await png(svg(background), 'assets/icon-background.png');
 writeFileSync('public/icon.svg', svg(background + foreground, true) + '\n');
+// Web app: the iPhone home screen wants a PNG (it rounds the corners itself), Android sizes for the manifest.
+const full = await sharp(Buffer.from(svg(background + foreground))).png().toBuffer();
+await sharp(full).resize(180).toFile('public/apple-touch-icon.png');
+await sharp(full).resize(192).toFile('public/icon-192.png');
+await sharp(full).resize(512).toFile('public/icon-512.png');
 console.log('icon written');

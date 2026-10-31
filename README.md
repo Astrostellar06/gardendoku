@@ -54,6 +54,21 @@ Ajouter `?debloquer` à l'adresse débloque tous les styles et met 99 indices et
 
 En mode dev, la console du navigateur expose aussi `__game` : `__game.debugSolve(5)` résout tout sauf 5 parcelles (pratique pour voir la victoire). En rendu 3D, `__game.renderer.gallery()` pose un détail du style courant sur chaque parcelle, et le jardin s'affiche arrosé et fleuri. C'est pratique pour passer les modèles en revue ; `gallery(12)` commence au 13e détail.
 
+## Version web (iPhone sans App Store)
+
+Le jeu est publié sur GitHub Pages, à l'adresse https://astrostellar06.github.io/gardendoku/. À chaque push sur `style-3d`, le workflow `.github/workflows/deploy-web.yml` le reconstruit et le remet en ligne.
+
+**Sur un iPhone** : ouvrir l'adresse dans Safari, puis Partager › « Sur l'écran d'accueil ». Le jeu s'ouvre alors en plein écran avec son icône, comme une app. Il n'y a pas de vibrations : Safari ne les autorise pas.
+
+**Sur Android**, Chrome propose aussi « Installer l'application ».
+
+Mise en route, une seule fois, dans les *Settings* du dépôt GitHub :
+1. *Pages* › *Build and deployment* › *Source* : **GitHub Actions**.
+2. *Secrets and variables* › *Actions* : ajouter les secrets `VITE_SUPABASE_URL` et `VITE_SUPABASE_KEY` (les mêmes valeurs que dans `.env`). Sans eux, le jeu marche, mais sans ligue ni amis.
+3. *Actions* › *Deploy web* › *Run workflow*, pour publier tout de suite.
+
+Les liens d'invitation des amis pointent vers cette adresse (`VITE_PUBLIC_URL` dans le workflow).
+
 ## Applications iOS et Android
 
 Le jeu est empaqueté avec [Capacitor](https://capacitorjs.com) : le build Vite (`dist/`) tourne dans la vue web du système, dans un vrai projet natif (`android/` pour Android Studio, `ios/` pour Xcode). Identifiant de l'app : `io.github.astrostellar06.gardendoku` (dans `capacitor.config.ts`, à fixer avant la première publication sur les stores).
