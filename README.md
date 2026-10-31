@@ -54,14 +54,6 @@ Ajouter `?debloquer` à l'adresse débloque tous les styles et met 99 indices et
 
 En mode dev, la console du navigateur expose aussi `__game` : `__game.debugSolve(5)` résout tout sauf 5 parcelles (pratique pour voir la victoire). En rendu 3D, `__game.renderer.gallery()` pose un détail du style courant sur chaque parcelle, et le jardin s'affiche arrosé et fleuri. C'est pratique pour passer les modèles en revue ; `gallery(12)` commence au 13e détail.
 
-## Pubs, achats et statistiques
-
-- **Pubs** : des vidéos récompensées (+1 indice, passer un niveau, essayer un style 24 h, doubler le cadeau de la ligue) et des interstitiels au « Niveau suivant », pas avant le niveau 9, avec 3 min puis 2 min puis 90 s entre deux pubs.
-- **Achats** : « Sans publicité », un pack « Sans publicité + 30 indices », des packs d'indices et d'indices de zone. L'offre « Tu aimes le calme ? » arrive après quelques pubs.
-- **Statistiques** : Firebase. **Réglages à distance** : Remote Config. **Consentement RGPD** : Google UMP.
-
-Détails, réglages et mise en route (AdMob, Firebase, RevenueCat, Play Console) : [docs/monetization.md](docs/monetization.md).
-
 ## Version web (iPhone sans App Store)
 
 Le jeu est publié sur GitHub Pages, à l'adresse https://astrostellar06.github.io/gardendoku/. À chaque push sur `style-3d`, le workflow `.github/workflows/deploy-web.yml` le reconstruit et le remet en ligne.

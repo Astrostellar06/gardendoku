@@ -58,9 +58,6 @@ export class Hud {
   readonly styles = $('styles');
   readonly coach = $('coach');
   readonly hintShop = $('hint-shop');
-  readonly shop = $('shop');
-  readonly offer = $('offer');
-  readonly styleTrial = $('style-trial');
   readonly dailyResult = $('daily-result');
   readonly streak = $('streak');
   readonly zoneInfo = $('zone-info');
@@ -81,7 +78,7 @@ export class Hud {
   /** Cards the player can dismiss (tap outside, close button, back button). */
   private closable = [
     this.howto, this.levels, this.hardIntro, this.hexIntro, this.styles, this.hintShop, this.dailyResult, this.streak, this.zoneInfo, this.skip,
-    this.settings, this.league, this.profile, this.leagueResult, this.shop, this.offer, this.styleTrial,
+    this.settings, this.league, this.profile, this.leagueResult,
   ];
 
   constructor() {
@@ -245,37 +242,14 @@ export class Hud {
     badge.classList.toggle('empty', count <= 0);
   }
 
-  /** No hint left: `text` offers the video (the packs to buy are added by the game). */
-  openHintShop(text: string) {
-    $('hint-shop-text').textContent = text;
+  openHintShop() {
     this.open(this.hintShop);
   }
 
-  /** Explains the zone hint; `text` says how to get more, `video` labels the video button (null: none). */
-  openZoneInfo(text: string, video: string | null = null) {
+  /** Explains the zone hint; `text` says how to get more. */
+  openZoneInfo(text: string) {
     $('zone-info-text').textContent = text;
-    const b = $('btn-zone-video');
-    b.classList.toggle('hidden', !video);
-    b.textContent = video ?? '';
     this.open(this.zoneInfo);
-  }
-
-  /** A locked style: its challenge, and a button to try it for a while after a video. */
-  openStyleTrial(name: string, challenge: string, button: string) {
-    $('style-trial-name').textContent = name;
-    $('style-trial-challenge').textContent = challenge;
-    $('btn-style-trial').textContent = button;
-    this.open(this.styleTrial);
-  }
-
-  /** The end-of-week card offers to double the prize with a video. */
-  setLeagueDouble(on: boolean) {
-    $('btn-league-double').classList.toggle('hidden', !on);
-  }
-
-  /** The settings link to change the consent choices (where the law asks for it). */
-  setPrivacyChoices(on: boolean) {
-    $('btn-privacy-choices').classList.toggle('hidden', !on);
   }
 
   openSkip() {

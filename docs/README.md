@@ -21,7 +21,6 @@ Ensuite, selon le sujet :
 | [ui-and-input.md](ui-and-input.md) | HUD (DOM), gestes (tap, appui long, peinture des verrous, pincement, molette, rotation du jardin), tutoriels, titre de l'accueil, série, indices, paramètres |
 | [i18n.md](i18n.md) | Système de traduction, ajouter une clé, ajouter une langue, tests |
 | [online.md](online.md) | Supabase : tables, fonctions, sécurité, ligues, amis, table des points, file hors ligne, mode démo, variables d'environnement, tests PGlite |
-| [monetization.md](monetization.md) | Pubs (AdMob), achats (RevenueCat), statistiques et réglages à distance (Firebase), consentement RGPD, mise en route avant Google Play |
 | [build-and-release.md](build-and-release.md) | Scripts npm, tests (contenu de chaque fichier), Capacitor, APK Android sous Windows, iOS, icônes, versions, liste de contrôle de sortie |
 | [maintenance.md](maintenance.md) | « Je change la génération », « j'ajoute un détail », « je change le look 3D », « j'ajoute une clé », « je change le serveur » ; pièges ; glossaire |
 

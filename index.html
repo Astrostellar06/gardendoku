@@ -208,10 +208,6 @@
             <span data-i18n="settings.haptics">Vibrations</span>
             <button class="switch" id="set-haptics" role="switch" aria-checked="true" aria-label="Vibrations" data-i18n-attr="aria-label:settings.haptics"></button>
           </div>
-          <div class="setting-row">
-            <span data-i18n="settings.analytics">Statistiques de jeu anonymes</span>
-            <button class="switch" id="set-analytics" role="switch" aria-checked="true" aria-label="Statistiques de jeu anonymes" data-i18n-attr="aria-label:settings.analytics"></button>
-          </div>
           <div class="setting-row lang-row">
             <span data-i18n="settings.language">Langue</span>
             <div class="lang-pick" id="set-lang" role="radiogroup" aria-label="Langue" data-i18n-attr="aria-label:settings.language">
@@ -225,12 +221,6 @@
               <button class="lang-opt" role="radio" aria-checked="false" data-lang="ja" lang="ja">日本語</button>
               <button class="lang-opt" role="radio" aria-checked="false" data-lang="zh" lang="zh">中文</button>
             </div>
-          </div>
-          <div class="settings-links">
-            <button class="soft-btn" id="btn-shop" data-i18n="shop.open">Boutique</button>
-            <button class="link-btn" id="btn-restore" data-i18n="shop.restore">Restaurer mes achats</button>
-            <button class="link-btn hidden" id="btn-privacy-choices" data-i18n="settings.privacyChoices">Choix de confidentialité</button>
-            <a class="link-btn" href="https://astrostellar06.github.io/gardendoku/privacy.html" target="_blank" rel="noopener" data-i18n="settings.privacyPolicy">Politique de confidentialité</a>
           </div>
           <button class="big-btn" data-close data-i18n="common.ok">OK</button>
         </div>
@@ -277,8 +267,7 @@
           <div class="result-medal" id="league-result-medal">2</div>
           <p id="league-result-text"></p>
           <p class="small" id="league-result-prize"></p>
-          <button class="big-btn hidden" id="btn-league-double" data-i18n="leagueResult.double">Doubler avec une vidéo</button>
-          <button class="soft-btn" data-close data-i18n="common.thanks">Merci !</button>
+          <button class="big-btn" data-close data-i18n="common.thanks">Merci !</button>
         </div>
       </section>
 
@@ -313,9 +302,7 @@
           <h2 data-i18n="zone.title">Indice de zone</h2>
           <p data-i18n-html="zone.text">Touche une parcelle : elle et ses voisines, sur un carré de <b>3×3</b>, se remettent dans le bon sens et se verrouillent.</p>
           <p class="small" id="zone-info-text">Tu n'en as plus. Ta série d'arrosage en offre un tous les 7 jours.</p>
-          <button class="big-btn hidden" id="btn-zone-video"></button>
-          <div class="shop-buys" id="zone-buys"></div>
-          <button class="soft-btn" id="btn-zone-streak" data-close data-i18n="zone.seeStreak">Voir ma série</button>
+          <button class="big-btn" id="btn-zone-streak" data-close data-i18n="zone.seeStreak">Voir ma série</button>
           <button class="link-btn" data-close data-i18n="common.close">Fermer</button>
         </div>
       </section>
@@ -335,13 +322,20 @@
         <div class="card">
           <svg class="shop-drop" viewBox="0 0 48 48"><path d="M24 5c6 7.3 13 14.7 13 22.4a13 13 0 0 1-26 0C11 19.7 18 12.3 24 5Z" /><path class="shine" d="M18.5 29a6 6 0 0 0 5.5 5.5" /></svg>
           <h2 data-i18n="hintShop.title">Plus d'indices</h2>
-          <p id="hint-shop-text"></p>
+          <p data-i18n-html="hintShop.text">Tu n'as plus d'indice. Regarde une courte vidéo pour en recevoir <b>3</b>.</p>
           <button class="big-btn" id="btn-watch-ad" data-i18n="common.watchVideo">Regarder une vidéo</button>
-          <div class="shop-buys" id="hint-buys"></div>
           <button class="link-btn" data-close data-i18n="common.later">Plus tard</button>
         </div>
       </section>
 
+      <section id="ad" class="overlay ad-overlay hidden">
+        <div class="card ad-card">
+          <span class="ad-label" data-i18n="ad.label">Publicité · exemple</span>
+          <p data-i18n="ad.text">Ici s'affichera une vraie vidéo publicitaire.</p>
+          <div class="ad-bar"><div id="ad-progress"></div></div>
+          <button class="soft-btn" id="ad-close" disabled data-i18n="ad.wait">Patiente…</button>
+        </div>
+      </section>
 
       <section id="styles" class="overlay hidden">
         <div class="card styles-card">
@@ -357,43 +351,6 @@
           <h2 data-i18n="levels.title">Niveaux</h2>
           <div class="levels-grid" id="levels-grid"></div>
           <button class="soft-btn" data-close data-i18n="common.close">Fermer</button>
-        </div>
-      </section>
-
-      <section id="shop" class="overlay hidden">
-        <div class="card shop-card">
-          <h2 data-i18n="shop.title">Boutique</h2>
-          <p class="small" id="shop-status"></p>
-          <div class="shop-buys" id="shop-buys"></div>
-          <button class="link-btn" data-close data-i18n="common.close">Fermer</button>
-        </div>
-      </section>
-
-      <section id="offer" class="overlay hidden">
-        <div class="card shop-card">
-          <svg class="offer-leaf" viewBox="0 0 48 48" aria-hidden="true"><path d="M10 38C10 20 22 9 40 8c0 18-11 30-29 30Z" /><path class="vein" d="M12 36 32 16" /></svg>
-          <h2 data-i18n="offer.title">Tu aimes le calme ?</h2>
-          <p data-i18n="offer.text">Profite de ton jardin sans aucune publicité entre les niveaux. Les vidéos qui offrent des indices restent là, si tu en veux.</p>
-          <div class="shop-buys" id="offer-buys"></div>
-          <button class="link-btn" data-close data-i18n="offer.later">Non merci</button>
-        </div>
-      </section>
-
-      <section id="style-trial" class="overlay hidden">
-        <div class="card">
-          <h2 id="style-trial-name"></h2>
-          <p class="small" id="style-trial-challenge"></p>
-          <button class="big-btn" id="btn-style-trial"></button>
-          <button class="link-btn" data-close data-i18n="common.later">Plus tard</button>
-        </div>
-      </section>
-
-      <section id="ad" class="overlay ad-overlay hidden">
-        <div class="card ad-card">
-          <span class="ad-label" data-i18n="ad.label">Publicité · exemple</span>
-          <p data-i18n="ad.text">Ici s'affichera une vraie vidéo publicitaire.</p>
-          <div class="ad-bar"><div id="ad-progress"></div></div>
-          <button class="soft-btn" id="ad-close" disabled data-i18n="ad.wait">Patiente…</button>
         </div>
       </section>
     </div>

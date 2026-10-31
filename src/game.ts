@@ -7,7 +7,7 @@ import { buildLevel, GENERATOR_VERSION, LevelInfo, levelInfo } from './core/leve
 import { hashString } from './core/rng';
 import { fasterThan, formatTime, timeModel, ZONE_HINT_WEIGHT } from './core/timing';
 import { dailyThemeId, shareText } from './daily';
-import { isLang, type Key, type Lang, lang, listJoin, t, themeBlurb, themeName, tn } from './i18n';
+import { isLang, type Lang, lang, listJoin, t, themeBlurb, themeName, tn } from './i18n';
 import { isUnlocked, RANDOM_STYLE, refreshUnlocks, STYLE_CHALLENGES } from './progress';
 import { renderRandomPreview, renderThemePreview } from './render/preview';
 import { GardenRenderer } from './render/renderer';
@@ -15,10 +15,10 @@ import { Garden3D } from './render3d/garden3d';
 import { savePreviews, stylePicture } from './render3d/stylePictures';
 import { currentTheme, setTheme, THEMES } from './render/themes';
 import type { ThemeId } from './render/themes';
-import { Monetization, PRODUCTS, track, type ProductId } from './monetize';
+import { showRewardedAd } from './ui/ads';
 import { Hud, StreakView, StyleCard, WinView } from './ui/hud';
 import { attachInput } from './ui/input';
-import { LeagueScreen, ordinal, prizeText } from './ui/league';
+import { LeagueScreen, ordinal } from './ui/league';
 import { vibrate, WIN_BUZZ } from './native';
 import { Social } from './online/social';
 import { shareOrCopy } from './ui/share';
@@ -64,10 +64,6 @@ export class Game {
   private daily: DailyInfo | null = null;
   /** Weekly leagues and friends (online). */
   private social = new Social();
-  /** Ads, purchases and analytics. */
-  private monet: Monetization;
-  /** Last week's prize, which a video can double once. */
-  private leaguePrize: { hints: number; zones: number } | null = null;
   private league: LeagueScreen;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -91,18 +87,16 @@ export class Game {
     this.renderer = !flat && Garden3D.supported() ? new Garden3D(canvas) : new GardenRenderer(canvas);
     this.renderer.events.onWaterArrive = (_cell, dist) => this.sound.water(dist);
     this.sound.enabled = this.save.settings.sound;
-    if (!this.save.ads.firstDay) this.save.ads.firstDay = dayKey();
-    this.monet = new Monetization({ ads: this.save.ads, grant: (c) => this.grant(c), save: () => this.persist() });
     this.hud.setHints(this.save.hints);
     this.hud.setZoneHints(this.save.zoneHints);
     this.league = new LeagueScreen(this.hud, this.social, {
       toast: (text) => this.hud.toast(text, false, 3200),
       reward: (r) => {
-        this.grant({ hints: r.hints, zones: r.zones });
-        // A video can double the prize, once.
-        const prize = r.hints || r.zones ? { hints: r.hints, zones: r.zones } : null;
-        this.leaguePrize = prize && this.monet.config.league_double ? prize : null;
-        this.hud.setLeagueDouble(!!this.leaguePrize);
+        this.save.hints += r.hints;
+        this.save.zoneHints += r.zones;
+        this.hud.setHints(this.save.hints);
+        this.hud.setZoneHints(this.save.zoneHints);
+        this.persist();
       },
       badge: (rank) => this.hud.setLeagueBadge(true, rank ? ordinal(rank) : t('league.badge')),
     });
@@ -168,13 +162,6 @@ export class Game {
     on('btn-home-settings', () => this.openSettings());
     on('set-sound', () => this.toggleSound());
     on('set-haptics', () => this.toggleHaptics());
-    on('set-analytics', () => this.toggleAnalytics());
-    on('btn-shop', () => this.openShop());
-    on('btn-restore', () => this.restorePurchases());
-    on('btn-privacy-choices', () => void this.monet.showPrivacyOptions());
-    on('btn-zone-video', () => this.watchAdForZones());
-    on('btn-league-double', () => this.doubleLeaguePrize());
-    on('btn-style-trial', () => this.tryStyle());
     for (const b of document.querySelectorAll<HTMLElement>('#set-lang [data-lang]')) {
       b.addEventListener('click', () => {
         if (isLang(b.dataset.lang)) this.chooseLang(b.dataset.lang);
@@ -201,7 +188,6 @@ export class Game {
   /** Opens on the home screen, or straight on a level with `?niveau=60` in the URL (handy for testing). */
   start() {
     void this.startOnline();
-    void this.monet.start(this.save.settings.analytics).then(() => this.hud.setPrivacyChoices(this.monet.privacyOptions));
     const requested = Number(new URLSearchParams(location.search).get('niveau'));
     if (Number.isInteger(requested) && requested >= 1) {
       // Drop the parameter so a reload simply resumes the saved game.
@@ -349,7 +335,6 @@ export class Game {
   }
 
   private showHome() {
-    this.quitLevel();
     this.persist();
     this.leaveTutorial();
     this.applyStyle(this.pickStyle());
@@ -374,14 +359,7 @@ export class Game {
     requestAnimationFrame(() => this.relayout());
   }
 
-  /** The player leaves a garden before it is solved (analytics). */
-  private quitLevel() {
-    if (this.mode !== 'play' || this.won || !this.info || !this.board) return;
-    track('level_quit', { level: this.daily ? 0 : this.info.index, seconds: Math.round(this.elapsed), moves: this.board.moves, daily: !!this.daily });
-  }
-
   private play(level: number) {
-    this.quitLevel();
     this.leaveTutorial();
     this.mode = 'play';
     this.hud.hideHome();
@@ -436,13 +414,6 @@ export class Game {
       this.zones = snap.zones ?? 0;
     }
     this.usedLock = !!snap?.usedLock || board.locked.some((l) => l === 1);
-    track('level_start', {
-      level: this.daily ? 0 : info.index,
-      kind: info.wrap ? 'hard' : info.hex ? 'hex' : 'normal',
-      tiles: board.grid.cells.length,
-      daily: !!this.daily,
-      resumed: !!snap,
-    });
     this.renderer.setBoard(board, info.seed);
     this.analysis = board.analyze();
     this.renderer.setAnalysis(this.analysis);
@@ -450,24 +421,15 @@ export class Game {
     this.persist();
   }
 
-  private async next() {
-    if (!this.info || this.leaving) return;
+  private next() {
+    if (!this.info) return;
     this.hud.hideWin();
     if (this.daily) {
       this.showHome();
       return;
     }
-    // Ads only come here, as the player moves on: never during the victory or while admiring.
-    const level = this.info.index;
-    this.leaving = true;
-    const offer = await this.monet.betweenLevels(level).finally(() => (this.leaving = false));
-    if (this.mode !== 'play' || this.info?.index !== level) return;
-    this.loadLevel(level + 1);
-    if (offer) this.renderer.after(0.6, () => this.openOffer());
+    this.loadLevel(this.info.index + 1);
   }
-
-  /** An interstitial is playing before the next level (taps on "next" wait for it). */
-  private leaving = false;
 
   // ---------- Daily challenge ----------
 
@@ -536,7 +498,6 @@ export class Game {
     if (outcome === 'failed') return;
     this.save.stats.shared++;
     const fresh = refreshUnlocks(this.save);
-    for (const id of fresh) track('style_unlocked', { style: id, via: 'challenge' });
     const names = fresh.map((id) => themeName(id));
     const copied = outcome === 'copied';
     if (names.length) {
@@ -577,7 +538,6 @@ export class Game {
   }
 
   private setTutorialStep(index: number) {
-    track('tutorial_step', { tutorial: this.tutorial, step: index });
     this.tutorialIndex = index;
     this.tutorialClock = 0;
     const tutorial = TUTORIALS[this.tutorial];
@@ -604,7 +564,6 @@ export class Game {
       this.save.seenHardIntro = true;
     }
     writeSave(this.save);
-    track('tutorial_step', { tutorial: this.tutorial, step: 'done' });
     this.play(this.tutorialLevel);
   }
 
@@ -740,7 +699,7 @@ export class Game {
     if (!board || !an || this.won) return;
     this.setZoneMode(false);
     if (this.save.hints <= 0) {
-      this.openHintShop();
+      this.hud.openHintShop();
       return;
     }
     const cells = board.grid.cells;
@@ -768,7 +727,6 @@ export class Game {
     this.renderer.particles.sparkle(x, y, 5, 18);
     this.sound.lock(true);
     this.hints++;
-    track('hint_used', { level: this.daily ? 0 : this.info?.index ?? 0, left: this.save.hints });
     this.afterChange();
   }
 
@@ -786,9 +744,7 @@ export class Game {
       // Not watered yet today: the first of these days is today.
       const days = this.save.streak.last === today ? ahead : ahead - 1;
       const when = days <= 0 ? t('zone.nextToday') : tn('zone.nextIn', days);
-      const video = this.monet.config.reward_zones;
-      this.hud.openZoneInfo(t('zone.noneLeft', { when }), video > 0 ? tn('zone.video', video) : null);
-      void this.fillBuys(document.getElementById('zone-buys')!, [PRODUCTS.zones5]);
+      this.hud.openZoneInfo(t('zone.noneLeft', { when }));
       return;
     }
     this.setLockMode(false);
@@ -842,7 +798,6 @@ export class Game {
     }
     this.save.zoneHints--;
     this.hud.setZoneHints(this.save.zoneHints);
-    track('zone_hint_used', { level: this.daily ? 0 : this.info?.index ?? 0, left: this.save.zoneHints });
     this.zones++;
     this.setZoneMode(false);
     this.hud.hideToast();
@@ -882,9 +837,8 @@ export class Game {
     this.hud.close(this.hud.skip);
     if (this.mode !== 'play' || this.won || this.daily || !this.info) return;
     const level = this.info.index;
-    const rewarded = await this.monet.rewarded('skip');
+    const rewarded = await showRewardedAd();
     if (!rewarded || this.mode !== 'play' || this.info?.index !== level) return;
-    track('level_skip', { level, seconds: Math.round(this.elapsed) });
     if (!this.save.skipped.includes(level)) this.save.skipped.push(level);
     this.save.maxLevel = Math.max(this.save.maxLevel, level + 1);
     this.social.syncLevel(this.save.maxLevel);
@@ -899,8 +853,6 @@ export class Game {
 
   /** Style to use now: the chosen one, or for "random" one of the unlocked styles (stable per level). */
   private pickStyle(level?: number): string {
-    // A style tried for a while goes back to the random choice once the trial is over.
-    if (!isUnlocked(this.save, this.save.settings.theme)) this.save.settings.theme = RANDOM_STYLE;
     if (this.save.settings.theme !== RANDOM_STYLE) return this.save.settings.theme;
     const pool = THEMES.filter((t) => isUnlocked(this.save, t.id));
     const k = level === undefined ? Math.floor(Math.random() * pool.length) : hashString(`style:${level}`) % pool.length;
@@ -939,34 +891,8 @@ export class Game {
       this.save.settings.theme,
       (id, size) => (id === RANDOM_STYLE ? renderRandomPreview(unlockedIds, size, dpr, tile) : tile(id as ThemeId, size, dpr)),
       (id) => this.chooseTheme(id),
-      (card) => this.openStyleTrial(card),
+      (card) => this.hud.toast(t('styles.lockedToast', { name: card.name, challenge: card.challenge ?? '', progress: card.progress ?? '' }), false, 3600),
     );
-  }
-
-  /** Style being offered for a trial. */
-  private trialStyle: string | null = null;
-
-  /** A locked style: its challenge, and a trial for a video (Remote Config: style_trial_hours). */
-  private openStyleTrial(card: StyleCard) {
-    const hours = this.monet.config.style_trial_hours;
-    if (hours <= 0) {
-      this.hud.toast(t('styles.lockedToast', { name: card.name, challenge: card.challenge ?? '', progress: card.progress ?? '' }), false, 3600);
-      return;
-    }
-    this.trialStyle = card.id;
-    this.hud.openStyleTrial(card.name, t('styleTrial.challenge', { challenge: card.challenge ?? '', progress: card.progress ?? '' }), tn('styleTrial.button', hours));
-  }
-
-  private async tryStyle() {
-    const id = this.trialStyle;
-    this.hud.close(this.hud.styleTrial);
-    if (!id || !(await this.monet.rewarded('style_trial'))) return;
-    const hours = this.monet.config.style_trial_hours;
-    this.save.trials[id] = Date.now() + hours * 3_600_000;
-    track('style_unlocked', { style: id, via: 'trial' });
-    this.hud.close(this.hud.styles);
-    this.chooseTheme(id);
-    this.hud.toast(tn('styleTrial.started', hours, { name: themeName(id as ThemeId) }), false, 3200);
   }
 
   private chooseTheme(id: string) {
@@ -979,111 +905,15 @@ export class Game {
     this.persist();
   }
 
-  /** No hint left: a video for more (Remote Config: reward_hints), or a pack to buy. */
-  private openHintShop() {
-    this.hud.openHintShop(tn('hintShop.text', this.monet.config.reward_hints));
-    void this.fillBuys(document.getElementById('hint-buys')!, [PRODUCTS.hints10, PRODUCTS.hints40]);
-  }
-
+  /** Rewarded video (placeholder for now): +3 hints. */
   private async watchAdForHints() {
     this.hud.close(this.hud.hintShop);
-    if (!(await this.monet.rewarded('hints'))) return;
-    const n = this.monet.config.reward_hints;
-    this.grant({ hints: n });
-    this.hud.toast(n === 1 ? t('toast.hintGained') : t('toast.hintsGained', { n }));
-  }
-
-  /** Zone hints for a video, when Remote Config allows it (reward_zones > 0). */
-  private async watchAdForZones() {
-    this.hud.close(this.hud.zoneInfo);
-    const n = this.monet.config.reward_zones;
-    if (n <= 0 || !(await this.monet.rewarded('zones'))) return;
-    this.grant({ zones: n });
-    this.hud.toast(tn('toast.zonesGained', n));
-  }
-
-  /** Hints and zone hints received (videos, purchases, prizes). */
-  private grant(c: { hints?: number; zones?: number }) {
-    this.save.hints += c.hints ?? 0;
-    this.save.zoneHints += c.zones ?? 0;
+    const rewarded = await showRewardedAd();
+    if (!rewarded) return;
+    this.save.hints += 3;
     this.hud.setHints(this.save.hints);
-    this.hud.setZoneHints(this.save.zoneHints);
+    this.hud.toast(t('toast.hintsGained', { n: 3 }));
     this.persist();
-  }
-
-  /** The league's prize, once more for a video. */
-  private async doubleLeaguePrize() {
-    const prize = this.leaguePrize;
-    if (!prize) return;
-    this.leaguePrize = null;
-    this.hud.setLeagueDouble(false);
-    if (!(await this.monet.rewarded('league_double'))) {
-      this.leaguePrize = prize;
-      this.hud.setLeagueDouble(true);
-      return;
-    }
-    this.grant(prize);
-    this.hud.toast(t('leagueResult.doubled', { prize: prizeText(prize) }), false, 3200);
-  }
-
-  // ---------- Shop ----------
-
-  /**
-   * Fills `box` with buttons for these products, at the store's prices. Empty
-   * without a store (web version, or no network). "No ads" products are left
-   * out once owned.
-   */
-  private async fillBuys(box: HTMLElement, ids: ProductId[], best?: ProductId): Promise<boolean> {
-    box.textContent = '';
-    if (!this.monet.storeAvailable()) return false;
-    const products = await this.monet.loadProducts();
-    for (const id of ids) {
-      const p = products.find((x) => x.id === id);
-      if (!p || (this.monet.noAds && (id === PRODUCTS.noAds || id === PRODUCTS.noAdsHints))) continue;
-      const b = document.createElement('button');
-      b.className = `shop-item${id === best ? ' best' : ''}`;
-      b.innerHTML = '<b></b><small></small><span class="price"></span>';
-      b.querySelector('b')!.textContent = t(`product.${id}.name` as Key);
-      b.querySelector('small')!.textContent = t(`product.${id}.desc` as Key);
-      b.querySelector('.price')!.textContent = p.price;
-      b.addEventListener('click', () => void this.purchase(id));
-      box.appendChild(b);
-    }
-    return products.length > 0;
-  }
-
-  private async openShop() {
-    const status = document.getElementById('shop-status')!;
-    status.textContent = this.monet.noAds ? t('shop.noAdsActive') : '';
-    this.hud.open(this.hud.shop);
-    const all = [PRODUCTS.noAdsHints, PRODUCTS.noAds, PRODUCTS.hints10, PRODUCTS.hints40, PRODUCTS.zones5];
-    const ok = await this.fillBuys(document.getElementById('shop-buys')!, all, PRODUCTS.noAdsHints);
-    if (!ok) status.textContent = t(this.monet.storeAvailable() ? 'shop.offline' : 'shop.unavailable');
-  }
-
-  /** "You like it calm?": the no-ads offer, after a few interstitials (Remote Config: offer_*). */
-  private async openOffer() {
-    if (this.monet.noAds || !this.monet.storeAvailable()) return;
-    const ok = await this.fillBuys(document.getElementById('offer-buys')!, [PRODUCTS.noAdsHints, PRODUCTS.noAds], PRODUCTS.noAdsHints);
-    if (ok && this.mode === 'play') this.hud.open(this.hud.offer);
-  }
-
-  private async purchase(id: ProductId) {
-    const result = await this.monet.buy(id);
-    if (result.ok) {
-      this.hud.close(this.hud.shop);
-      this.hud.close(this.hud.offer);
-      this.hud.close(this.hud.hintShop);
-      this.hud.close(this.hud.zoneInfo);
-      this.hud.toast(t('shop.thanks'), false, 3200);
-    } else if (!result.cancelled) {
-      this.hud.toast(t('shop.failed'));
-    }
-  }
-
-  private async restorePurchases() {
-    const owned = await this.monet.restore();
-    this.hud.toast(t(owned ? 'shop.restored' : 'shop.nothingToRestore'));
   }
 
   /** The page background behind the canvas follows the style's sky. */
@@ -1105,16 +935,6 @@ export class Game {
 
   private openSettings() {
     this.hud.openSettings(this.sound.enabled, this.save.settings.haptics, lang());
-    this.hud.setSwitch('set-analytics', this.save.settings.analytics);
-    // The shop only exists in the app (Google Play).
-    for (const id of ['btn-shop', 'btn-restore']) document.getElementById(id)!.classList.toggle('hidden', !this.monet.storeAvailable());
-  }
-
-  private toggleAnalytics() {
-    this.save.settings.analytics = !this.save.settings.analytics;
-    this.hud.setSwitch('set-analytics', this.save.settings.analytics);
-    this.monet.setAnalyticsEnabled(this.save.settings.analytics);
-    this.persist();
   }
 
   /** Switch language: save, then reload so every text is rebuilt (the garden in progress is in the save). */
@@ -1185,19 +1005,7 @@ export class Game {
       this.save.skipped = this.save.skipped.filter((n) => n !== this.info!.index);
     }
     this.waterStreak();
-    track('level_complete', {
-      level: this.daily ? 0 : this.info.index,
-      kind: this.info.wrap ? 'hard' : this.info.hex ? 'hex' : 'normal',
-      tiles: this.board.grid.cells.length,
-      seconds: Math.round(this.elapsed),
-      moves: this.board.moves,
-      hints: this.hints,
-      zones: this.zones,
-      daily: !!this.daily,
-    });
-    if (this.daily) track('daily_played', { seconds: Math.round(this.elapsed), moves: this.board.moves, hints: this.hints });
     const fresh = refreshUnlocks(this.save);
-    for (const id of fresh) track('style_unlocked', { style: id, via: 'challenge' });
     if (this.lastWin) this.lastWin.unlocked = fresh.map((id) => themeName(id));
     writeSave(this.save);
     void this.scoreWin();

@@ -93,9 +93,8 @@ export const STYLE_CHALLENGES: Partial<Record<ThemeId, Challenge>> = {
 
 export const RANDOM_STYLE = 'aleatoire';
 
-/** Unlocked for good, or tried for a while after a video (save.trials). */
 export function isUnlocked(save: SaveData, id: string): boolean {
-  return id === 'printemps' || id === RANDOM_STYLE || save.unlocked.includes(id) || (save.trials?.[id] ?? 0) > Date.now();
+  return id === 'printemps' || id === RANDOM_STYLE || save.unlocked.includes(id);
 }
 
 /** Record every challenge now met; returns the styles unlocked by this call. */
