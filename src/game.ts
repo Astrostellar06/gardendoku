@@ -28,10 +28,6 @@ import { LAST_HINT_DELAY, TutorialId, TUTORIALS, TutorialStep } from './tutorial
 
 type Mode = 'home' | 'play' | 'tutorial';
 
-/** Home title layouts being tried out (see Game.nextTitleLayout), and where the choice is kept. */
-const TITLE_LAYOUTS = ['canal', 'canal-plain', 'canal-solo', 'classic'];
-const TITLE_KEY = 'gardendoku:title';
-
 export class Game {
   readonly renderer: GardenRenderer;
   private hud = new Hud();
@@ -141,8 +137,6 @@ export class Game {
         fn();
       });
     on('btn-play', () => this.play(this.save.level));
-    this.hud.setTitleLayout(this.titleLayout);
-    document.querySelector('#home .logo')!.addEventListener('click', () => this.nextTitleLayout());
     on('btn-daily', () => this.playDaily());
     on('btn-share', () => this.shareDaily());
     on('btn-daily-share', () => this.shareDaily());
@@ -310,7 +304,16 @@ export class Game {
     this.hud.setWinLeague(null);
     if (!this.social.enabled || !this.info) return;
     const [kind, ref] = this.daily ? (['daily', Number(this.daily.key.replace(/-/g, ''))] as const) : (['level', this.info.index] as const);
-    const scored = await this.social.recordSolve(kind, ref, this.save.maxLevel);
+    const time = { seconds: this.elapsed, moves: this.board?.moves ?? 0, hints: this.hints, zones: this.zones, generator: GENERATOR_VERSION };
+    const result = await this.social.recordSolve(kind, ref, this.save.maxLevel, time);
+    // Enough players have solved this garden: their real times replace the estimate.
+    const real = result?.rank?.fasterThan;
+    if (real != null && this.lastWin) {
+      this.lastWin.rank = real;
+      this.save.stats.bestFasterThan = Math.max(this.save.stats.bestFasterThan, real);
+      this.hud.setWinRank(real);
+    }
+    const scored = result?.scored;
     if (!scored || scored.points <= 0) return;
     this.hud.setWinLeague(tn('win.leaguePoints', scored.points, { week: scored.weekPoints }));
     void this.refreshLeagueBadge();
@@ -351,30 +354,8 @@ export class Game {
     demo.solveInstantly();
     this.board = demo;
     this.renderer.setBoard(demo, 'accueil');
-    this.renderer.boardHidden = this.titleLayout === 'canal-solo';
     this.analysis = demo.analyze();
     this.renderer.setAnalysis(this.analysis);
-    requestAnimationFrame(() => this.relayout());
-  }
-
-  /**
-   * Home title layouts, being tried out (a tap on the title switches): the
-   * title written with a canal, with the tagline and the sample garden, without
-   * the tagline, alone; or the G made of tiles.
-   */
-  private titleLayout = TITLE_LAYOUTS.includes(localStorage.getItem(TITLE_KEY) ?? '') ? localStorage.getItem(TITLE_KEY)! : TITLE_LAYOUTS[0];
-
-  private nextTitleLayout() {
-    const k = (TITLE_LAYOUTS.indexOf(this.titleLayout) + 1) % TITLE_LAYOUTS.length;
-    this.titleLayout = TITLE_LAYOUTS[k];
-    try {
-      localStorage.setItem(TITLE_KEY, this.titleLayout);
-    } catch {
-      // Private browsing: the choice lasts until the page closes.
-    }
-    this.hud.setTitleLayout(this.titleLayout);
-    this.renderer.boardHidden = this.titleLayout === 'canal-solo';
-    this.hud.toast(`${k + 1} / ${TITLE_LAYOUTS.length}`, false, 1200);
     requestAnimationFrame(() => this.relayout());
   }
 
@@ -1074,11 +1055,12 @@ export class Game {
     this.lastWin = { rank, unlocked: [] };
   }
 
-  /** Dev helper: solve all but `leave` tiles. */
   /** Development aid: saves the style menu's 3D previews as pictures (see render3d/stylePictures.ts). */
   savePreviews() {
     return savePreviews();
   }
+
+  /** Dev helper: solve all but `leave` tiles. */
 
   debugSolve(leave = 0) {
     const board = this.board;

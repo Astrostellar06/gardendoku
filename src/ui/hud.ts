@@ -221,16 +221,6 @@ export class Hud {
     $('play-level').textContent = t('level.title', { n: level });
     this.home.classList.remove('hidden', 'leaving');
     // Water the title again.
-    const logo = this.home.querySelector('.logo-g')!;
-    logo.classList.remove('play');
-    logo.getBoundingClientRect();
-    logo.classList.add('play');
-    playTitle(this.home.querySelector('.logo-canal')!);
-  }
-
-  /** Layout of the home screen's title (being tried out): see TITLE_LAYOUTS. */
-  setTitleLayout(layout: string) {
-    this.home.dataset.title = layout;
     playTitle(this.home.querySelector('.logo-canal')!);
   }
 
@@ -349,6 +339,11 @@ export class Hud {
     $('win-moves').textContent = String(w.moves);
     $('win-moves-label').textContent = tn('win.rotations', w.moves);
     this.open(this.win);
+  }
+
+  /** The rank against other players, once their real times are in (the card may already be open). */
+  setWinRank(rank: number) {
+    $('win-rank').textContent = t('win.fasterThan', { rank });
   }
 
   /** Height of the victory card from the bottom of the screen, once it has slid in. */

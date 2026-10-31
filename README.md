@@ -6,11 +6,9 @@ Dépôt : [github.com/Astrostellar06/gardendoku](https://github.com/Astrostellar
 
 Sur l'accueil, le titre est écrit avec un canal : le mot, légèrement arqué, est creusé dans une bande de jardin. L'eau parcourt les lettres de gauche à droite, l'herbe recouvre la terre derrière elle et des fleurs s'ouvrent (`src/ui/titleArt.ts`). Ses couleurs suivent le style choisi.
 
-Plusieurs mises en page sont à l'essai : toucher le titre passe à la suivante, et le choix est gardé.
-1. Titre-canal, sous-titre et jardin d'exemple.
-2. Sans le sous-titre.
-3. Le titre seul, plus grand, sans jardin.
-4. L'ancien titre : un « G » fait de 9 parcelles, où une parcelle pivote puis l'eau fait éclore un lotus.
+Sous le titre, un petit jardin d'exemple fleurit. Le mot est assez serré pour que toute la bande de jardin tienne dans l'écran.
+
+Documentation technique détaillée : [docs/](docs/README.md).
 
 ## Rendu 3D (branche `style-3d`)
 
@@ -172,7 +170,7 @@ Pour que ça reste lisible :
 
 Environ un niveau normal sur quatre a des **parcelles hexagonales** : six côtés, donc six voisines possibles, et chaque toucher tourne la parcelle d'un sixième de tour. La règle ne change pas.
 
-- Les neuf premiers niveaux sont fixés : deux jardins hexagonaux seulement, au niveau 4 (un petit de 12 parcelles) et au niveau 8. Ensuite, chaque niveau normal est tiré au sort, sauf s'il suit un niveau hexagonal (jamais deux à la suite) ou s'il a une forme imposée. Les niveaux difficiles ne sont jamais hexagonaux. La chance du tirage (31 %, `HEX_CHANCE` dans `levels.ts`) est au-dessus de 1/4 pour compenser les niveaux écartés : au final, un niveau normal sur quatre est hexagonal. Les premiers tombent aux niveaux 4, 8, 16, 18, 21, 25, 33, 35, 37, 39, 49…
+- Les neuf premiers niveaux sont fixés : deux jardins hexagonaux seulement, au niveau 4 (un petit de 12 parcelles) et au niveau 8. Ensuite, chaque niveau normal est tiré au sort, sauf s'il suit un niveau hexagonal (jamais deux à la suite) ou s'il a une forme imposée. Les niveaux difficiles ne sont jamais hexagonaux. La chance du tirage (31 %, `HEX_CHANCE` dans `levels.ts`) est au-dessus de 1/4 pour compenser les niveaux écartés : au final, un niveau normal sur quatre est hexagonal. Les premiers tombent aux niveaux 4, 8, 16, 18, 21, 25, 33, 35, 39, 42, 49… Quelques niveaux sont fixés à la main (37 normal, 39 et 42 hexagonaux, `SET_HEX`) pour bien mélanger les types sur les 50 premiers niveaux.
 - Les hexagones ont le sommet plat et sont rangés en colonnes, les colonnes impaires décalées d'une demi-parcelle vers le bas. Les côtés se numérotent N, NE, SE, S, SO, NO (bits 1 à 32 du masque).
 - D'un jardin hexagonal au suivant, les formes s'enchaînent dans un ordre fixe, sans jamais deux fois la même à la suite, et de plus en plus grandes : rayon de miel de 12 parcelles (le 1er, niveau 4), alvéole de 19 (niveau 8), rayon de miel de 25, couronne de 30, rayon de miel de 35, alvéole de 37, rayon de miel de 42, couronne de 54, rayon de miel de 49, alvéole de 61, rayon de miel de 56 (le 11e), puis un cycle des plus grandes.
 - Ils n'ont jamais de bords reliés. Ils demandent des hypothèses plus tard que les autres (à partir du niveau 43) et moins souvent : leurs six voisines suffisent déjà à les rendre exigeants.
@@ -183,13 +181,15 @@ Environ un niveau normal sur quatre a des **parcelles hexagonales** : six côté
 
 ### « Plus rapide que X % des joueurs »
 
-Le calcul se fait sans serveur, dans `src/core/timing.ts` :
+Le rang vient d'abord d'une estimation, dans `src/core/timing.ts` :
 
 - **Temps médian estimé** d'un niveau : `0,8 × parcelles^1,3` secondes, plus 7 s par parcelle qui exige un raisonnement par hypothèse, le tout × 2,5 pour les bords reliés et × 1,4 pour les hexagones (au moins 20 s). Exemples : un niveau difficile de 5×6 sans déduction avancée est estimé à environ 2 min 45, une alvéole de 37 parcelles à 2 min.
-- **Répartition des temps des joueurs** : une loi log-normale (courbe en cloche sur le logarithme du temps, écart-type 0,55). Le rang affiché est la part des joueurs théoriquement plus lents.
-- **Indices** : chaque indice utilisé ajoute 25 s au temps pris en compte.
+- **Répartition des temps des joueurs** : une loi log-normale (courbe en cloche sur le logarithme du temps). L'écart-type est large, 0,95 (`TIME_SPREAD`), car un débutant met souvent plusieurs fois le temps médian. Le rang affiché est la part des joueurs théoriquement plus lents.
+- **Indices** : chaque indice utilisé ajoute 25 s au temps pris en compte (un indice de zone compte pour trois).
 
-Exemple : sur un 5×5, le temps médian estimé est de 52 s. En 25 s, on est plus rapide que 91 % des joueurs ; en 2 min, que 6 %.
+Exemple : sur un 5×5, le temps médian estimé est de 52 s. En 25 s, on est plus rapide que 78 % des joueurs ; en 2 min, que 19 %.
+
+**Vrais temps** : chaque jardin réussi envoie son temps au serveur (secondes, rotations, indices, version du générateur ; fonction `record_time`, table `solve_times`). Seul le premier passage d'un joueur sur un jardin compte. Dès que 20 autres joueurs ont un temps sur ce jardin, le serveur renvoie la part de ceux qui ont été plus lents, et ce vrai rang remplace l'estimation sur la carte de victoire. Les temps attendent dans la file hors ligne comme les points de la ligue. Ces données permettront aussi de recaler l'estimation (médiane, écart-type) avec des requêtes sur `solve_times`.
 
 ### Styles à débloquer
 
@@ -307,7 +307,7 @@ Sans `.env`, la ligue reste cachée.
 
 Les tests (`tests/online.test.ts`) passent les migrations sur un vrai Postgres embarqué (PGlite), avec une imitation de Supabase Auth. Ils couvrent les ligues de 20, le barème, les cadeaux distribués une seule fois, les amis, le filtre de pseudos et l'accès fermé aux tables.
 
-Si la génération des niveaux change, il faut régénérer les points : `npm run level-points` écrit `supabase/migrations/20261031000000_level_points.sql` (pour un nouveau changement, renommer d'abord `OUT` dans le script avec une nouvelle date : les migrations déjà passées ne sont pas rejouées) (5 000 niveaux ; au-delà, le serveur compte 4 pour les bords reliés et 1 sinon). Il faut ensuite appliquer cette migration sur le serveur. Un test vérifie que la table correspond au jeu.
+Si la génération des niveaux change, il faut régénérer les points : `npm run level-points` écrit une nouvelle migration `supabase/migrations/<date et heure>_level_points.sql` (un nouveau fichier à chaque fois : les migrations déjà passées ne sont pas rejouées, et rien n'est écrasé) (5 000 niveaux ; au-delà, le serveur compte 4 pour les bords reliés et 1 sinon). Il faut ensuite appliquer cette migration sur le serveur. Un test vérifie que la table correspond au jeu.
 
 ## Styles de jardin
 

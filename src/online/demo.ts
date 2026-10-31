@@ -101,6 +101,10 @@ export function demoBackend(): SocialBackend {
       }
       return wait({ points, weekPoints: s.points });
     },
+    async recordTime() {
+      // Made-up players have no times: the app keeps its own estimate.
+      return wait({ players: 0, fasterThan: null });
+    },
     async league() {
       const end = weekStart();
       end.setDate(end.getDate() + 7);

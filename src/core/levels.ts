@@ -3,9 +3,10 @@
  * size, shape and generator settings are derived from a per-level seed,
  * then the garden itself is generated from that seed.
  *
- * Every fifth level is a "hard" one: a square or rectangular garden whose
- * opposite edges are joined (water leaving one side comes back on the other).
- * About one normal level in five is hexagonal: tiles with six sides.
+ * Hard levels (every 10th up to level 50, then every 5th) are square or
+ * rectangular gardens whose opposite edges are joined (water leaving one side
+ * comes back on the other). About one normal level in four is hexagonal:
+ * tiles with six sides.
  */
 import { generate, Puzzle } from './generator';
 import { Rng } from './rng';
@@ -33,7 +34,7 @@ export interface LevelInfo {
  * Bump whenever generation changes: saved games from another version are not
  * restored (they would land on a different garden).
  */
-export const GENERATOR_VERSION = 8;
+export const GENERATOR_VERSION = 9;
 
 /** From these levels on, gardens require hypothesis reasoning on part of the tiles. */
 export const ADVANCED_FROM = 21;
@@ -73,8 +74,11 @@ export const HEX_CHANCE = 0.31;
 const hexFlags: boolean[] = [false];
 const hexBefore: number[] = [0];
 
-/** The first levels are set by hand: hexagonal gardens at 4 (a small one) and 8. */
-const SET_HEX: Record<number, boolean> = { 1: false, 2: false, 3: false, 4: true, 5: false, 6: false, 7: false, 8: true, 9: false };
+/**
+ * Levels set by hand: the first ones (hexagonal gardens at 4, a small one, and
+ * 8), then a few touches so the first 50 levels mix the kinds evenly.
+ */
+const SET_HEX: Record<number, boolean> = { 1: false, 2: false, 3: false, 4: true, 5: false, 6: false, 7: false, 8: true, 9: false, 37: false, 38: false, 39: true, 41: false, 42: true };
 
 function drawHex(index: number, afterHex: boolean): boolean {
   if (index in SET_HEX) return SET_HEX[index];
@@ -89,7 +93,7 @@ function extendHex(index: number) {
   }
 }
 
-/** About one normal level in five has hexagonal tiles, never two levels in a row. */
+/** About one normal level in four has hexagonal tiles, never two levels in a row. */
 export function isHexLevel(index: number): boolean {
   if (index < 1) return false;
   extendHex(index);

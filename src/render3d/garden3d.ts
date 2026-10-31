@@ -1220,7 +1220,7 @@ export class Garden3D extends GardenRenderer {
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     if (this.bg) ctx.drawImage(this.bg, 0, 0, this.width, this.height);
     else ctx.clearRect(0, 0, this.width, this.height);
-    if (this.board && this.tiles.length && !this.boardHidden) {
+    if (this.board && this.tiles.length) {
       this.sync();
       this.gl.render(this.scene, this.camera);
       ctx.drawImage(this.gl.domElement, 0, 0, this.width, this.height);

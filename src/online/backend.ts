@@ -54,6 +54,24 @@ export interface Scored {
 
 export type SolveKind = 'level' | 'daily';
 
+/** How a garden was solved, collected to compare players' real times. */
+export interface SolveTime {
+  seconds: number;
+  moves: number;
+  hints: number;
+  zones: number;
+  /** Version of the level generator (the same number is another garden after a change). */
+  generator: number;
+}
+
+/** How a time compares with the other players who solved the same garden. */
+export interface TimeRank {
+  /** How many others have a recorded time. */
+  players: number;
+  /** Share of them slower (1..99), or null while they are too few. */
+  fasterThan: number | null;
+}
+
 export interface SocialBackend {
   /** Sign in (anonymously, the first time) and return the player's profile. */
   connect(): Promise<Profile>;
@@ -61,6 +79,8 @@ export interface SocialBackend {
   syncLevel(level: number): Promise<void>;
   /** `ref`: level number, or day of the challenge as YYYYMMDD. */
   submitSolve(kind: SolveKind, ref: number): Promise<Scored>;
+  /** Keep the time of a garden (the first solve counts) and compare it with the others'. */
+  recordTime(kind: SolveKind, ref: number, time: SolveTime): Promise<TimeRank>;
   league(): Promise<League>;
   /** The player and their friends, most points first. */
   friends(): Promise<PlayerRow[]>;

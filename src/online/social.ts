@@ -5,7 +5,7 @@
  * solved offline wait in a queue (localStorage) until the server has them.
  */
 import { type Key, t } from '../i18n';
-import type { League, PlayerRow, Profile, Scored, SocialBackend, SolveKind, WeekResult } from './backend';
+import type { League, PlayerRow, Profile, Scored, SocialBackend, SolveKind, SolveTime, TimeRank, WeekResult } from './backend';
 
 const QUEUE_KEY = 'gardendoku:social-queue';
 const DEMO_KEY = 'gardendoku:social-demo';
@@ -13,10 +13,18 @@ const DEMO_KEY = 'gardendoku:social-demo';
 interface Pending {
   kind: SolveKind;
   ref: number;
+  /** The solve's time, to collect real players' times (older queues have none). */
+  time?: SolveTime;
+}
+
+/** What the server made of a solve: points for the league, and the time's rank. */
+export interface SolveResult {
+  scored: Scored | null;
+  rank: TimeRank | null;
 }
 
 /** Server refusals that will never change: such a solve is dropped from the queue. */
-const PERMANENT = ['level_locked', 'daily_closed', 'bad_kind'];
+const PERMANENT = ['level_locked', 'daily_closed', 'bad_kind', 'bad_time'];
 
 /** Server error codes and the text shown for each. */
 const MESSAGES: Record<string, Key> = {
@@ -111,41 +119,51 @@ export class Social {
     this.level = Math.max(this.level, level);
   }
 
-  /** A garden was solved: scored now if possible, later otherwise (null then). */
-  async recordSolve(kind: SolveKind, ref: number, level: number): Promise<Scored | null> {
+  /** A garden was solved: scored (and its time compared) now if possible, later otherwise (null then). */
+  async recordSolve(kind: SolveKind, ref: number, level: number, time?: SolveTime): Promise<SolveResult | null> {
     if (!this.enabled) return null;
     this.syncLevel(level);
-    this.queue.push({ kind, ref });
+    this.queue.push({ kind, ref, time });
     writeStorage(QUEUE_KEY, JSON.stringify(this.queue));
-    const scored = await this.flush();
-    return scored.get(`${kind}:${ref}`) ?? null;
+    const results = await this.flush();
+    return results.get(`${kind}:${ref}`) ?? null;
   }
 
   /** Send the level and the waiting solves, in order; stops at the first network failure. */
-  flush(): Promise<Map<string, Scored>> {
+  flush(): Promise<Map<string, SolveResult>> {
     const run = this.chain.then(async () => {
-      const scored = new Map<string, Scored>();
+      const results = new Map<string, SolveResult>();
       const b = await this.ready();
-      if (!b) return scored;
+      if (!b) return results;
       try {
         if (this.profile && this.level > this.profile.level) {
           await b.syncLevel(this.level);
           this.profile.level = this.level;
         }
         while (this.queue.length) {
-          const { kind, ref } = this.queue[0];
+          const { kind, ref, time } = this.queue[0];
+          const result: SolveResult = { scored: null, rank: null };
           try {
-            scored.set(`${kind}:${ref}`, await b.submitSolve(kind, ref));
+            result.scored = await b.submitSolve(kind, ref);
           } catch (e) {
             if (!(e instanceof Error) || !PERMANENT.includes(e.message)) throw e;
           }
+          if (time) {
+            // Scoring again after a failure here is harmless: a garden only counts once.
+            try {
+              result.rank = await b.recordTime(kind, ref, time);
+            } catch (e) {
+              if (!(e instanceof Error) || !PERMANENT.includes(e.message)) throw e;
+            }
+          }
+          results.set(`${kind}:${ref}`, result);
           this.queue.shift();
           writeStorage(QUEUE_KEY, JSON.stringify(this.queue));
         }
       } catch {
         // Offline: what is left goes with the next flush.
       }
-      return scored;
+      return results;
     });
     this.chain = run;
     return run;

@@ -38,7 +38,6 @@ export const ja: Record<keyof typeof fr, string> = {
   'tools.zone': 'エリア',
 
   // ---------- Home ----------
-  'home.tagline': '水を導いて、庭に花を咲かせよう。',
   'home.play': 'プレイ',
   'home.styles': 'スタイル',
   'levels.title': 'レベル',

@@ -406,172 +406,10 @@ svg {
   animation: float-in 0.9s cubic-bezier(0.2, 1.3, 0.4, 1) both;
 }
 
-/* Title: a G made of canal tiles (watered by a short animation), then the word. */
+/* Title: the word written with a canal (see ui/titleArt.ts). */
 .logo {
   display: flex;
-  align-items: baseline;
   justify-content: center;
-  gap: 0.03em;
-}
-
-.logo-g {
-  flex: none;
-  height: 1.02em;
-  width: auto;
-  overflow: visible;
-  transform: translateY(0.07em);
-  filter: drop-shadow(0 5px 8px rgba(240, 108, 156, 0.3));
-}
-
-.logo-g .g-side {
-  fill: var(--logo-side);
-  stroke: none;
-}
-
-.logo-g .g-face {
-  fill: var(--logo-grass);
-  stroke: rgba(255, 255, 255, 0.6);
-  stroke-width: 1.3;
-}
-
-.logo-g .g-rim,
-.logo-g .g-groove,
-.logo-g .g-water,
-.logo-g .g-shine {
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.logo-g .g-rim {
-  stroke: var(--logo-rim);
-  stroke-width: 13;
-}
-
-.logo-g .g-groove {
-  stroke: var(--logo-groove);
-  stroke-width: 8;
-}
-
-.logo-g .g-water {
-  stroke: var(--logo-water);
-  stroke-width: 6;
-  stroke-dasharray: 100 100;
-}
-
-.logo-g .g-shine {
-  stroke: rgba(255, 255, 255, 0.8);
-  stroke-width: 1.6;
-  stroke-dasharray: 2.5 9.5;
-  animation: g-shine 1.8s linear infinite;
-}
-
-.logo-g .g-basin {
-  fill: var(--logo-rim);
-  stroke: none;
-}
-
-.logo-g .g-spring {
-  fill: var(--logo-water-deep);
-  stroke: none;
-}
-
-.logo-g .g-petal {
-  fill: #ff97be;
-  stroke: #fff;
-  stroke-width: 0.8;
-}
-
-.logo-g .g-heart {
-  fill: #ffd86a;
-  stroke: none;
-}
-
-.logo-g .g-turn {
-  transform-box: view-box;
-  transform-origin: 15px 81px;
-}
-
-.logo-g .g-lotus {
-  transform-box: view-box;
-  transform-origin: 81px 15px;
-}
-
-.logo-g .g-tile {
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-/* The sequence: tiles pop in, one turns into place, the water runs from the spring to the lotus. */
-.logo-g.play .g-tile {
-  animation: g-pop 0.45s cubic-bezier(0.2, 1.5, 0.4, 1) both;
-  animation-delay: calc(var(--i) * 45ms);
-}
-
-.logo-g.play .g-canal {
-  animation: g-appear 0.3s ease 0.3s both;
-}
-
-.logo-g.play .g-turn {
-  animation: g-turn 0.6s cubic-bezier(0.3, 1.7, 0.5, 1) 0.8s both;
-}
-
-.logo-g.play .g-water {
-  animation: g-flow 1.6s cubic-bezier(0.45, 0, 0.4, 1) 1.45s both;
-}
-
-.logo-g.play .g-lotus {
-  animation: g-bloom 0.7s cubic-bezier(0.2, 1.6, 0.4, 1) 2.95s both;
-}
-
-.logo-g.play .g-shine {
-  animation:
-    g-shine 1.8s linear infinite,
-    g-appear 0.5s ease 3s both;
-}
-
-@keyframes g-pop {
-  from {
-    transform: scale(0.4);
-    opacity: 0;
-  }
-}
-
-@keyframes g-appear {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes g-turn {
-  from {
-    transform: rotate(90deg);
-  }
-}
-
-@keyframes g-flow {
-  from {
-    stroke-dashoffset: 100;
-  }
-}
-
-@keyframes g-bloom {
-  from {
-    transform: scale(0) rotate(-70deg);
-  }
-}
-
-@keyframes g-shine {
-  to {
-    stroke-dashoffset: -24;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .logo-g *,
-  .logo-g.play * {
-    animation: none !important;
-  }
 }
 
 h1 {
@@ -590,20 +428,14 @@ h1 {
     0 14px 26px rgba(240, 108, 156, 0.35);
 }
 
-.tagline {
-  margin: 12px 0 0;
-  font-size: 17px;
-  color: var(--ink);
-  opacity: 0.85;
-}
-
-/*
- * Title written with a canal (see ui/titleArt.ts), in four layouts to try on
- * the home screen (a tap on the title switches): canal title with the tagline
- * and the sample garden, without the tagline, alone (no garden), or the tile G.
- */
 .logo-canal {
-  display: none;
+  display: block;
+  /* The h1's own lettering (shadow, outline) would draw around every letter. */
+  text-shadow: none;
+  stroke: none;
+  stroke-width: 0;
+  -webkit-text-stroke: 0;
+  paint-order: normal;
   width: min(94vw, 440px);
   height: auto;
   margin: -6px auto -10px;
@@ -613,34 +445,10 @@ h1 {
   font-weight: 600;
 }
 
-#home[data-title^='canal'] .logo-g,
-#home[data-title^='canal'] .logo-word {
-  display: none;
-}
-
-#home[data-title^='canal'] .logo-canal {
-  display: block;
-}
-
-#home[data-title='canal-plain'] .tagline {
-  display: none;
-}
-
-#home[data-title='canal-solo'] .logo-canal {
-  width: min(100vw, 560px);
-  margin-top: 15vh;
-}
-
-#home[data-title='canal-solo'] .tagline {
-  margin-top: 4px;
-  font-size: 18px;
-}
-
 .logo-canal .t-side,
 .logo-canal .t-soil,
 .logo-canal .t-grass {
   fill: none;
-  stroke-width: 112px;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -661,6 +469,10 @@ h1 {
   transform: scale(0);
 }
 
+.logo-canal .t-patch-all {
+  opacity: 0;
+}
+
 .logo-canal .t-bank {
   fill: var(--logo-rim);
   stroke: var(--logo-rim);
@@ -672,20 +484,22 @@ h1 {
   fill: var(--logo-groove);
 }
 
-.logo-canal .t-water {
-  fill: var(--logo-water);
+/* The deep edge of the water is a stroke under it: no line shows where a letter's strokes overlap. */
+.logo-canal .t-edge {
+  fill: var(--logo-water-deep);
   stroke: var(--logo-water-deep);
-  stroke-width: 3px;
+  stroke-width: 5px;
+  stroke-linejoin: round;
 }
 
-.logo-canal .t-shine {
-  fill: none;
-  stroke: #fff;
-  stroke-width: 2px;
-  stroke-linecap: round;
-  stroke-dasharray: 4 70;
-  opacity: 0.6;
-  animation: t-shine 2.4s linear infinite;
+.logo-canal .t-water {
+  fill: var(--logo-water);
+}
+
+/* A glint sliding through the letters, now and then. */
+.logo-canal .t-gleam {
+  transform: skewX(-20deg);
+  animation: t-gleam 3.6s 2.6s ease-in-out infinite;
 }
 
 .logo-canal .t-sweep {
@@ -710,6 +524,11 @@ h1 {
   animation: t-grow 0.8s var(--d) cubic-bezier(0.2, 1.2, 0.4, 1) forwards;
 }
 
+/* Once every patch has grown, the grass covers the whole strip. */
+.logo-canal.play .t-patch-all {
+  animation: t-show 0.5s 3.6s forwards;
+}
+
 .logo-canal.play .t-flower {
   animation: t-grow 0.5s var(--d) cubic-bezier(0.2, 1.8, 0.4, 1) forwards;
 }
@@ -726,9 +545,27 @@ h1 {
   }
 }
 
-@keyframes t-shine {
+@keyframes t-show {
   to {
-    stroke-dashoffset: -74;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-canal *,
+  .logo-canal.play * {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}
+
+@keyframes t-gleam {
+  0% {
+    transform: skewX(-20deg) translateX(0);
+  }
+  45%,
+  100% {
+    transform: skewX(-20deg) translateX(760px);
   }
 }
 

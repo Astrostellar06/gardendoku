@@ -40,7 +40,6 @@ export const fr = {
   'tools.zone': 'Zone',
 
   // ---------- Home ----------
-  'home.tagline': 'Guide l\'eau, fais fleurir ton jardin.',
   'home.play': 'Jouer',
   'home.styles': 'Styles',
   'levels.title': 'Niveaux',

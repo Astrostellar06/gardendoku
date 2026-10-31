@@ -18,8 +18,10 @@ describe('rank against other players', () => {
   it('puts the median time at 50 % and rewards speed', () => {
     const model = timeModel(buildLevel(4));
     expect(fasterThan(model.median, model)).toBe(50);
-    expect(fasterThan(model.median / 3, model)).toBeGreaterThan(95);
-    expect(fasterThan(model.median * 3, model)).toBeLessThan(5);
+    expect(fasterThan(model.median / 3, model)).toBeGreaterThan(85);
+    expect(fasterThan(model.median * 3, model)).toBeLessThan(15);
+    // Spread wide: a beginner twice as slow as the median still beats a fifth of the players.
+    expect(fasterThan(model.median * 2, model)).toBeGreaterThan(20);
     expect(fasterThan(model.median / 2, model)).toBeGreaterThan(fasterThan(model.median, model));
   });
 

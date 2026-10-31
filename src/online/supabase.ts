@@ -4,7 +4,7 @@
  * Loaded on demand, only when a project is configured.
  */
 import { createClient } from '@supabase/supabase-js';
-import type { League, PlayerRow, Profile, Scored, SocialBackend, WeekResult } from './backend';
+import type { League, PlayerRow, Profile, Scored, SocialBackend, TimeRank, WeekResult } from './backend';
 
 interface ProfileJson {
   id: string;
@@ -45,6 +45,18 @@ export function supabaseBackend(url: string, key: string): SocialBackend {
     async submitSolve(kind, ref) {
       const r = await rpc<{ points: number; week_points: number }>('submit_solve', { p_kind: kind, p_ref: ref });
       return { points: r.points, weekPoints: r.week_points } satisfies Scored;
+    },
+    async recordTime(kind, ref, time) {
+      const r = await rpc<{ players: number; faster_than: number | null }>('record_time', {
+        p_kind: kind,
+        p_ref: ref,
+        p_generator: time.generator,
+        p_seconds: Math.max(1, Math.round(time.seconds)),
+        p_moves: time.moves,
+        p_hints: time.hints,
+        p_zones: time.zones,
+      });
+      return { players: r.players, fasterThan: r.faster_than } satisfies TimeRank;
     },
     async league() {
       const r = await rpc<{ week_end: string; members: PlayerRow[] }>('get_league');

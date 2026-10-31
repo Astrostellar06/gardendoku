@@ -9,9 +9,13 @@ import { Rng } from '../core/rng';
 const NS = 'http://www.w3.org/2000/svg';
 const W = 600;
 const H = 200;
-const FONT = 96;
-/** The arc the word follows: a quadratic curve, its middle 40 units above its ends. */
-const ARC: [number, number, number, number, number, number] = [40, 158, 300, 78, 560, 158];
+const FONT = 84;
+/** Letters a little closer than the font's own spacing. */
+const SPACING = -1.5;
+/** The arc the word follows: a quadratic curve, its middle 40 units above its ends. The strip's rounded ends stay inside the picture. */
+const ARC: [number, number, number, number, number, number] = [70, 156, 300, 76, 530, 156];
+/** Width of the strip of garden. */
+const STRIP = FONT * 1.17;
 /** Seconds the water takes to run through the word. */
 const FLOW = 2.2;
 const FLOW_DELAY = 0.35;
@@ -51,18 +55,19 @@ export function canalTitle(word: string): SVGSVGElement {
   // The strip of garden: a thick band along the arc, lifted to the letters'
   // middle; the grass spreads over its soil through a mask of growing patches.
   const lift = FONT * 0.3;
-  const band: string[] = [];
+  const line: string[] = [];
   for (let k = 0; k <= 24; k++) {
     const [x, y, nx, ny] = point(k / 24);
-    band.push(`${k ? 'L' : 'M'}${(x + nx * lift).toFixed(1)} ${(y + ny * lift).toFixed(1)}`);
+    line.push(`${k ? 'L' : 'M'}${(x + nx * lift).toFixed(1)} ${(y + ny * lift).toFixed(1)}`);
   }
-  const strip = band.join(' ');
+  const strip = line.join(' ');
   const patches: string[] = [];
   for (let k = 0; k <= 30; k++) {
     const [x, y, nx, ny] = point(k / 30);
     const bx = x + nx * lift + rng.float(-10, 10);
-    const by = y + ny * lift + rng.float(-14, 14);
-    const r = FONT * rng.float(0.5, 0.75);
+    const by = y + ny * lift + rng.float(-8, 8);
+    // Each patch reaches both edges of the strip: once grown, the grass is one solid colour.
+    const r = STRIP * rng.float(0.62, 0.78);
     patches.push(
       `<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="${r.toFixed(1)}" fill="#fff" class="t-patch" style="--d:${(reach(bx) + 0.15).toFixed(2)}s;transform-origin:${bx.toFixed(1)}px ${by.toFixed(1)}px"/>`,
     );
@@ -80,22 +85,33 @@ export function canalTitle(word: string): SVGSVGElement {
     flowers.push(flowerMarkup(fx, fy, rng.float(8, 12), colours[k % colours.length], reach(fx) + 0.55, rng.float(0, 72)));
   }
 
-  const text = (cls: string) =>
-    `<text class="${cls}" font-size="${FONT}"><textPath href="#t-arc" startOffset="50%" text-anchor="middle">${word}</textPath></text>`;
+  const text = (cls: string, fill = '') =>
+    `<text class="${cls}" font-size="${FONT}" letter-spacing="${SPACING}"${fill}><textPath href="#t-arc" startOffset="50%" text-anchor="middle">${word}</textPath></text>`;
+  const band = (cls: string, extra = '') => `<path class="${cls}" d="${strip}" stroke-width="${STRIP.toFixed(1)}"${extra}/>`;
   svg.innerHTML = `
     <defs>
       <path id="t-arc" d="${arc}"/>
-      <mask id="t-meadow" maskUnits="userSpaceOnUse" x="-40" y="-40" width="${W + 80}" height="${H + 80}">${patches.join('')}</mask>
+      <mask id="t-meadow" maskUnits="userSpaceOnUse" x="-40" y="-40" width="${W + 80}" height="${H + 80}">${patches.join('')}<rect class="t-patch-all" x="-40" y="-40" width="${W + 80}" height="${H + 80}" fill="#fff"/></mask>
       <mask id="t-flow" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}">
-        <rect class="t-sweep" x="${x0 - 30}" y="0" width="${x1 - x0 + 60}" height="${H}" fill="#fff"/>
+        <rect class="t-sweep" x="${x0 - 40}" y="0" width="${x1 - x0 + 80}" height="${H}" fill="#fff"/>
       </mask>
+      <mask id="t-letters" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}">${text('', ' fill="#fff"')}</mask>
+      <linearGradient id="t-gleam" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+        <stop offset="0.5" stop-color="#fff" stop-opacity="0.75"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
     </defs>
-    <path class="t-side" d="${strip}" transform="translate(0 9)"/>
-    <path class="t-soil" d="${strip}"/>
-    <path class="t-grass" d="${strip}" mask="url(#t-meadow)"/>
+    ${band('t-side', ' transform="translate(0 8)"')}
+    ${band('t-soil')}
+    ${band('t-grass', ' mask="url(#t-meadow)"')}
     ${text('t-bank')}
     ${text('t-groove')}
-    <g mask="url(#t-flow)">${text('t-water')}${text('t-shine')}</g>
+    <g mask="url(#t-flow)">
+      ${text('t-edge')}
+      ${text('t-water')}
+      <g mask="url(#t-letters)"><rect class="t-gleam" x="-60" y="0" width="60" height="${H}" fill="url(#t-gleam)"/></g>
+    </g>
     <g class="t-flowers">${flowers.join('')}</g>`;
   return svg;
 }

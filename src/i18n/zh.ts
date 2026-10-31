@@ -38,7 +38,6 @@ export const zh: Record<keyof typeof fr, string> = {
   'tools.zone': '区域',
 
   // ---------- Home ----------
-  'home.tagline': '引导流水，让花园盛开。',
   'home.play': '开始',
   'home.styles': '风格',
   'levels.title': '关卡',

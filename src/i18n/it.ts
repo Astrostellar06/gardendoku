@@ -38,7 +38,6 @@ export const it: Record<keyof typeof fr, string> = {
   'tools.zone': 'Zona',
 
   // ---------- Home ----------
-  'home.tagline': 'Guida l’acqua, fai fiorire il tuo giardino.',
   'home.play': 'Gioca',
   'home.styles': 'Stili',
   'levels.title': 'Livelli',

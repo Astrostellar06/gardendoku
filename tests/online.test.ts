@@ -221,6 +221,33 @@ describe('online: friends', () => {
   });
 });
 
+describe('online: solve times', () => {
+  const time = (p: string, ref: number, seconds: number, hints = 0) => call<{ players: number; faster_than: number | null }>(p, 'record_time', 'level', ref, 9, seconds, 12, hints, 0);
+
+  it('keeps the first time of each player, and ranks it once enough players are in', async () => {
+    const first = await newPlayer();
+    expect(await time(first, 7, 60)).toEqual({ players: 0, faster_than: null });
+    // A replay does not replace the first time.
+    await time(first, 7, 5);
+    for (let k = 0; k < 18; k++) await time(await newPlayer(), 7, 30 + k * 10);
+    // 19 others: still too few to rank.
+    expect((await time(await newPlayer(), 7, 1000)).faster_than).toBeNull();
+    // 20 others now; 40 s and a hint count as 65 s, beating the 15 who took longer.
+    const me = await newPlayer();
+    const r = await time(me, 7, 40, 1);
+    expect(r).toEqual({ players: 20, faster_than: 75 });
+    // Another version of the generator is another garden.
+    expect((await time(me, 7, 40)).players).toBe(20);
+    expect((await call<{ players: number }>(me, 'record_time', 'level', 7, 10, 40, 12, 0, 0)).players).toBe(0);
+  });
+
+  it('refuses impossible times', async () => {
+    const p = await newPlayer();
+    expect(await failure(p, 'record_time', 'level', 3, 9, 0, 5, 0, 0)).toBe('bad_time');
+    expect(await failure(p, 'record_time', 'other', 3, 9, 30, 5, 0, 0)).toBe('bad_kind');
+  });
+});
+
 describe('online: access', () => {
   it('keeps the tables and helpers closed to the app, and the functions open', async () => {
     const p = await newPlayer();

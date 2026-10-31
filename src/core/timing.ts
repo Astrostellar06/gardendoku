@@ -31,6 +31,9 @@ export const WRAP_FACTOR = 2.5;
 /** Hexagonal tiles have six orientations and six neighbours to check. */
 export const HEX_FACTOR = 1.4;
 
+/** Spread of log(time) between players (0.55 at first: too tight, every player came out fast). */
+export const TIME_SPREAD = 0.95;
+
 export function timeModel(puzzle: Puzzle): TimeModel {
   const tiles = puzzle.grid.cells.length;
   // Bigger gardens take more than proportionally longer to read.
@@ -38,7 +41,8 @@ export function timeModel(puzzle: Puzzle): TimeModel {
   median += (puzzle.deepCells ?? 0) * 7;
   if (puzzle.grid.wrap) median *= WRAP_FACTOR;
   if (puzzle.grid.hex) median *= HEX_FACTOR;
-  return { median: Math.max(20, median), sigma: 0.55 };
+  // A wide spread: beginners often take several times longer than the median.
+  return { median: Math.max(20, median), sigma: TIME_SPREAD };
 }
 
 /** Standard normal cumulative distribution (Abramowitz & Stegun 7.1.26 on erf). */
